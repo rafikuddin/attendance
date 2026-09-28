@@ -8,7 +8,7 @@ import java.net.URL
 
 object Config {
     // Paste the Web app URL you get after deploying the Google Apps Script (Code.gs)
-    const val SCRIPT_URL = "PASTE_WEB_APP_URL_HERE"
+    const val SCRIPT_URL = "https://script.google.com/macros/s/AKfycbztyaTuqcxiyfCAV-CjkN2v9_coAcGTBttEVCPtU224piZAmErForxruqXci3-kHnjC1A/exec"
 }
 
 class Session(ctx: Context) {
