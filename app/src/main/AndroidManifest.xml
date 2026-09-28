@@ -6,14 +6,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
-    <application
-        android:label="Attendance"
-        android:theme="@style/Theme.MaterialComponents.DayNight.DarkActionBar">
-        <activity android:name=".MainActivity" android:exported="true">
+    <application android:label="Attendance" android:theme="@style/Theme.Attendance">
+        <activity android:name=".LoginActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MainActivity" android:exported="false" />
+        <activity android:name=".AttendanceActivity" android:exported="false" />
+        <activity android:name=".LeaveActivity" android:exported="false" />
+        <activity android:name=".CalendarActivity" android:exported="false" />
     </application>
 </manifest>

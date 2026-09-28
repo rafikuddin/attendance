@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingBottom="24dp">
+        <include layout="@layout/header_bar" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="340dp"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="-16dp"
+            app:cardCornerRadius="24dp" app:cardElevation="6dp">
+            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                <androidx.camera.view.PreviewView android:id="@+id/previewView" app:implementationMode="compatible"
+                    android:layout_width="match_parent" android:layout_height="match_parent" />
+                <ImageView android:id="@+id/imgSelfie" android:visibility="gone" android:scaleType="centerCrop"
+                    android:background="#000000" android:layout_width="match_parent" android:layout_height="match_parent" />
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnCapture" android:text="📸  Capture Selfie"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="16dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="14dp"
+            app:cardCornerRadius="18dp" app:cardElevation="3dp">
+            <TextView android:id="@+id/tvLive" android:text="Date: -\nTime: -\nLocation: -"
+                android:textSize="15sp" android:textColor="@color/ink" android:lineSpacingExtra="4dp" android:padding="18dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnSubmit" android:text="Submit Attendance"
+            android:enabled="false" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="14dp" />
+
+        <com.google.android.material.card.MaterialCardView android:id="@+id/cardSummary" android:visibility="gone"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="14dp"
+            app:cardCornerRadius="18dp" app:cardElevation="0dp">
+            <TextView android:id="@+id/tvSummary" android:textSize="15sp" android:lineSpacingExtra="4dp" android:padding="18dp"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</ScrollView>

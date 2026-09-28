@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:background="@drawable/bg_header" android:gravity="center"
+            android:orientation="vertical" android:paddingTop="72dp" android:paddingBottom="96dp">
+            <TextView android:text="🕘" android:textSize="56sp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:text="Attendance" android:textSize="30sp" android:textStyle="bold"
+                android:textColor="#FFFFFF" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:text="Sign in to continue" android:textColor="#CCFFFFFF"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        </LinearLayout>
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:layout_marginTop="-56dp"
+            app:cardCornerRadius="24dp" app:cardElevation="8dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="22dp">
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:hint="Username" android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/etUser"
+                        android:inputType="text" android:layout_width="match_parent" android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:hint="Password" app:endIconMode="password_toggle"
+                    android:layout_marginTop="14dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/etPass"
+                        android:inputType="textPassword" android:layout_width="match_parent" android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.button.MaterialButton android:id="@+id/btnLogin" android:text="Login"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="22dp" />
+                <TextView android:id="@+id/tvError" android:textColor="#DC2626" android:gravity="center"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</ScrollView>
