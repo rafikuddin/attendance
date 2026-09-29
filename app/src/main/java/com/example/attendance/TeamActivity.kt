@@ -170,7 +170,7 @@ class TeamActivity : AppCompatActivity() {
 
     private fun decide(o: JSONObject, decision: String, vararg buttons: MaterialButton) {
         buttons.forEach { it.isEnabled = false }
-        val body = body().put("action", "decideLeave").put("username", o.optString("username"))
+        val body = body().put("action", "decideLeave").put("empUsername", o.optString("username"))
             .put("appliedOn", o.optString("appliedOn")).put("from", o.optString("from")).put("to", o.optString("to"))
             .put("decision", decision)
         api(body) { res, err ->
