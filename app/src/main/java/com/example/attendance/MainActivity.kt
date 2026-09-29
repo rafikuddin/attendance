@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.tileAttendance).setOnClickListener { open(AttendanceActivity::class.java) }
         findViewById<android.view.View>(R.id.tileLeave).setOnClickListener { open(LeaveActivity::class.java) }
         findViewById<android.view.View>(R.id.tileCalendar).setOnClickListener { open(CalendarActivity::class.java) }
+        findViewById<android.view.View>(R.id.tileTeam).setOnClickListener { open(TeamActivity::class.java) }
     }
 
     override fun onResume() {
@@ -71,6 +72,8 @@ class MainActivity : AppCompatActivity() {
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Color.parseColor("#DC2626")) }
             }
             tvMonth.text = "Present this month: $present day(s)"
+            findViewById<android.view.View>(R.id.tileTeam).visibility =
+                if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
             res.optJSONArray("balance")?.let { b ->
                 tvLeaveBal.text = "🌴 Leave left: " + (0 until b.length()).joinToString("  ·  ") {
                     val o = b.getJSONObject(it); o.getString("type").substringBefore(" ") + " " + o.optInt("remaining")

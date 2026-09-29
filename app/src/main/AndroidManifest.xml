@@ -17,5 +17,6 @@
         <activity android:name=".AttendanceActivity" android:exported="false" />
         <activity android:name=".LeaveActivity" android:exported="false" />
         <activity android:name=".CalendarActivity" android:exported="false" />
+        <activity android:name=".TeamActivity" android:exported="false" />
     </application>
 </manifest>
