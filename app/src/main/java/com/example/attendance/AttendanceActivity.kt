@@ -165,7 +165,9 @@ class AttendanceActivity : AppCompatActivity() {
                     runOnUiThread { showLive(); btnSubmit.isEnabled = true }
                 }.start()
             }
-            .addOnFailureListener { tvLive.text = "Location failed: ${it.message}" }
+            .addOnFailureListener {
+                tvLive.text = "⚠️ Location failed: ${it.message}\nTurn on GPS, then tap Retake and capture again."
+            }
     }
 
     private fun showLive() {
