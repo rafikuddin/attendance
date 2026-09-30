@@ -3,6 +3,7 @@ package com.example.attendance
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
@@ -27,7 +28,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvName).text = session.name
         findViewById<TextView>(R.id.tvDate).text =
             SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date())
-        findViewById<TextView>(R.id.tvLogout).setOnClickListener { session.clear(); goLogin() }
+        findViewById<TextView>(R.id.btnRefresh).setOnClickListener { loadStatus() }
+        findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
         findViewById<android.view.View>(R.id.tileAttendance).setOnClickListener { open(AttendanceActivity::class.java) }
         findViewById<android.view.View>(R.id.tileLeave).setOnClickListener { open(LeaveActivity::class.java) }
         findViewById<android.view.View>(R.id.tileCalendar).setOnClickListener { open(CalendarActivity::class.java) }
@@ -40,6 +42,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun open(c: Class<*>) = startActivity(Intent(this, c))
+
+    private fun showMenu(anchor: android.view.View) {
+        val menu = PopupMenu(this, anchor)
+        menu.menu.add("Change Password")
+        menu.menu.add("Logout")
+        menu.setOnMenuItemClickListener { item ->
+            when (item.title.toString()) {
+                "Change Password" -> ChangePasswordDialog.show(this, session)
+                "Logout" -> { session.clear(); goLogin() }
+            }
+            true
+        }
+        menu.show()
+    }
 
     private fun goLogin() {
         startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))

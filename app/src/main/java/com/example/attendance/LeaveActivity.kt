@@ -36,7 +36,7 @@ class LeaveActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_leave)
-        setupHeader("Apply for Leave")
+        setupHeader("Apply for Leave") { loadList() }
         session = Session(this)
         ddType = findViewById(R.id.ddType)
         etFrom = findViewById(R.id.etFrom); etTo = findViewById(R.id.etTo)

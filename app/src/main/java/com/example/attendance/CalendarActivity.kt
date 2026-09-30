@@ -24,7 +24,7 @@ class CalendarActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_calendar)
-        setupHeader("My Attendance")
+        setupHeader("My Attendance") { loadData() }
         grid = findViewById(R.id.grid)
         tvMonth = findViewById(R.id.tvMonth)
         tvCount = findViewById(R.id.tvCount)
@@ -32,11 +32,15 @@ class CalendarActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnPrev).setOnClickListener { cal.add(Calendar.MONTH, -1); render() }
         findViewById<TextView>(R.id.btnNext).setOnClickListener { cal.add(Calendar.MONTH, 1); render() }
         render()
+        loadData()
+    }
 
+    private fun loadData() {
         val s = Session(this)
         tvCount.text = "Loading..."
         api(JSONObject().put("action", "history").put("username", s.username).put("password", s.password)) { res, err ->
             if (res == null) { tvCount.text = err; return@api }
+            records.clear(); leaveDays.clear()
             val arr = res.getJSONArray("records")
             for (i in 0 until arr.length()) arr.getJSONObject(i).let { records[it.getString("date")] = it }
             res.optJSONArray("leaves")?.let { lv ->

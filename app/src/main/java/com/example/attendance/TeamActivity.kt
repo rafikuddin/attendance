@@ -33,13 +33,12 @@ class TeamActivity : AppCompatActivity() {
         setContentView(R.layout.activity_team)
         of = intent.getStringExtra(EXTRA_OF)
         val ofName = intent.getStringExtra(EXTRA_OF_NAME)
-        setupHeader(if (ofName != null) "$ofName's Team" else "My Team")
+        setupHeader(if (ofName != null) "$ofName's Team" else "My Team") { loadAll() }
         session = Session(this)
         countsBox = findViewById(R.id.countsBox)
         listTeam = findViewById(R.id.listTeam)
         listLeaves = findViewById(R.id.listLeaves)
-        loadTeam()
-        loadLeaves()
+        loadAll()
     }
 
     private fun body(): JSONObject {
@@ -53,27 +52,24 @@ class TeamActivity : AppCompatActivity() {
             .putExtra(EXTRA_OF, username).putExtra(EXTRA_OF_NAME, name))
     }
 
-    private fun loadTeam() {
-        listTeam.removeAllViews()
-        listTeam.addView(note("Loading..."))
+    // One request for the whole screen — status, roll-ups, counts and leave requests together.
+    private fun loadAll() {
+        listTeam.removeAllViews(); listTeam.addView(note("Loading..."))
+        listLeaves.removeAllViews(); listLeaves.addView(note("Loading..."))
         api(body().put("action", "team")) { res, err ->
-            listTeam.removeAllViews()
-            if (res == null) { listTeam.addView(note(err ?: "Failed to load")); return@api }
+            listTeam.removeAllViews(); listLeaves.removeAllViews()
+            if (res == null) {
+                listTeam.addView(note(err ?: "Failed to load")); listLeaves.addView(note(err ?: "Failed to load")); return@api
+            }
             renderCounts(res.getJSONObject("counts"))
-            val arr = res.getJSONArray("reports")
-            if (arr.length() == 0) { listTeam.addView(note("No one reports here yet.")); return@api }
-            for (i in 0 until arr.length()) listTeam.addView(teamCard(arr.getJSONObject(i)))
-        }
-    }
+            val reports = res.getJSONArray("reports")
+            if (reports.length() == 0) listTeam.addView(note("No one reports here yet."))
+            else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
 
-    private fun loadLeaves() {
-        api(body().put("action", "teamLeaves")) { res, err ->
-            listLeaves.removeAllViews()
-            if (res == null) { listLeaves.addView(note(err ?: "Failed to load")); return@api }
             canDecide = res.optBoolean("isOwn")
-            val arr = res.getJSONArray("leaves")
-            if (arr.length() == 0) { listLeaves.addView(note("No leave requests here.")); return@api }
-            for (i in 0 until arr.length()) listLeaves.addView(leaveCard(arr.getJSONObject(i)))
+            val leaves = res.getJSONArray("leaves")
+            if (leaves.length() == 0) listLeaves.addView(note("No leave requests here."))
+            else for (i in 0 until leaves.length()) listLeaves.addView(leaveCard(leaves.getJSONObject(i)))
         }
     }
 
@@ -220,7 +216,7 @@ class TeamActivity : AppCompatActivity() {
             .put("appliedOn", o.optString("appliedOn")).put("from", o.optString("from")).put("to", o.optString("to"))
             .put("decision", decision)
         api(body) { res, err ->
-            if (res != null) { loadTeam(); loadLeaves() }
+            if (res != null) { loadAll() }
             else { buttons.forEach { it.isEnabled = true }; android.widget.Toast.makeText(this, err, android.widget.Toast.LENGTH_LONG).show() }
         }
     }

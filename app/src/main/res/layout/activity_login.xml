@@ -7,11 +7,18 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:background="@drawable/bg_header" android:gravity="center"
             android:orientation="vertical" android:paddingTop="72dp" android:paddingBottom="96dp">
-            <TextView android:text="🕘" android:textSize="56sp"
+            <com.google.android.material.card.MaterialCardView
+                app:cardCornerRadius="20dp" app:cardElevation="4dp"
+                android:layout_width="88dp" android:layout_height="88dp">
+                <ImageView android:src="@drawable/logo" android:scaleType="centerCrop"
+                    android:layout_width="match_parent" android:layout_height="match_parent" />
+            </com.google.android.material.card.MaterialCardView>
+            <TextView android:text="SAM BOND" android:textSize="26sp" android:textStyle="bold"
+                android:textColor="#FFFFFF" android:letterSpacing="0.05" android:layout_marginTop="14dp"
                 android:layout_width="wrap_content" android:layout_height="wrap_content" />
-            <TextView android:text="Attendance" android:textSize="30sp" android:textStyle="bold"
-                android:textColor="#FFFFFF" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-            <TextView android:text="Sign in to continue" android:textColor="#CCFFFFFF"
+            <TextView android:text="Attendance" android:textSize="15sp"
+                android:textColor="#CCFFFFFF" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            <TextView android:text="Sign in to continue" android:textColor="#CCFFFFFF" android:layout_marginTop="6dp"
                 android:layout_width="wrap_content" android:layout_height="wrap_content" />
         </LinearLayout>
         <com.google.android.material.card.MaterialCardView
