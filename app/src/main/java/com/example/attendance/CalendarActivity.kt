@@ -71,20 +71,26 @@ class CalendarActivity : AppCompatActivity() {
         if (stroke) setStroke(dp(2), Color.parseColor("#4F46E5"))
     }
 
+    // Friday is the weekly off day — never counted as absent. To add Saturday too,
+    // also check `dow == Calendar.SATURDAY` everywhere FRIDAY is checked below.
     private fun render() {
         grid.removeAllViews()
         tvMonth.text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(cal.time)
         for (d in listOf("S", "M", "T", "W", "T", "F", "S"))
             grid.addView(cell(d).apply { setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#6B7280")) })
-        repeat(cal.get(Calendar.DAY_OF_WEEK) - 1) { grid.addView(cell("")) }
+        val firstDow = cal.get(Calendar.DAY_OF_WEEK)
+        repeat(firstDow - 1) { grid.addView(cell("")) }
 
         val y = cal.get(Calendar.YEAR); val m = cal.get(Calendar.MONTH) + 1
         val now = Calendar.getInstance()
-        var present = 0; var late = 0; var leave = 0
+        val todayKey = String.format(Locale.US, "%04d-%02d-%02d", now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
+        val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18   // matches Code.gs's ABSENT_AFTER_HOUR (6:00 PM)
+        var present = 0; var late = 0; var leave = 0; var absent = 0; var off = 0
         for (day in 1..cal.getActualMaximum(Calendar.DAY_OF_MONTH)) {
             val key = String.format(Locale.US, "%04d-%02d-%02d", y, m, day)
             val c = cell(day.toString())
-            val isToday = y == now.get(Calendar.YEAR) && m == now.get(Calendar.MONTH) + 1 && day == now.get(Calendar.DAY_OF_MONTH)
+            val isToday = key == todayKey
+            val isFriday = ((firstDow - 1 + (day - 1)) % 7) + 1 == Calendar.FRIDAY
             val lv = leaveDays[key]
             when {
                 records.containsKey(key) -> {
@@ -101,20 +107,39 @@ class CalendarActivity : AppCompatActivity() {
                     c.background = circle(if (approved) "#F59E0B" else "#FDE68A", isToday)
                     c.setOnClickListener { show(key) }
                 }
+                isFriday -> {
+                    off++
+                    c.setTextColor(Color.parseColor("#374151")); c.background = circle("#E5E7EB", isToday)
+                    c.setOnClickListener { show(key) }
+                }
+                key < todayKey || (isToday && isAfterCutoff) -> {
+                    absent++
+                    c.setTextColor(Color.WHITE); c.background = circle("#DC2626", isToday)
+                    c.setOnClickListener { show(key) }
+                }
                 isToday -> c.background = circle(null, true)
             }
             if (isToday) c.setTypeface(null, Typeface.BOLD)
             grid.addView(c)
         }
-        tvCount.text = "This month: $present present" + (if (late > 0) " ($late late)" else "") + " · $leave leave day(s)      Total present: ${records.size}"
+        tvCount.text = "This month: $present present" + (if (late > 0) " ($late late)" else "") +
+            " · $leave leave · $absent absent · $off Friday off"
     }
 
     private fun show(key: String) {
         val r = records[key]
         val lv = leaveDays[key]
+        val now = Calendar.getInstance()
+        val todayKey = String.format(Locale.US, "%04d-%02d-%02d", now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
+        val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18
+        val p = key.split("-").map { it.toInt() }
+        val dayCal = Calendar.getInstance().apply { set(p[0], p[1] - 1, p[2]) }
+        val isFriday = dayCal.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
         tvDetail.text = when {
             r != null -> "${if (r.optBoolean("late")) "⏰ Late Present" else "✅ Present"} · $key\nTime: ${r.optString("time")}\nLocation: ${r.optString("lat")}, ${r.optString("lng")}\n${r.optString("address")}"
             lv != null -> "🌴 ${lv.optString("type")} (${lv.optString("status")})\n${lv.optString("from")} → ${lv.optString("to")} · ${lv.optString("days")} day(s)\n${lv.optString("reason")}"
+            isFriday -> "🗓️ Weekly Off (Friday) · $key"
+            key < todayKey || (key == todayKey && isAfterCutoff) -> "❌ Absent · $key\nNo attendance was marked and no approved leave covers this day."
             else -> ""
         }
     }

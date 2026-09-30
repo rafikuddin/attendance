@@ -79,13 +79,15 @@ class TeamActivity : AppCompatActivity() {
             Triple("Present", c.optInt("present"), "#16A34A"),
             Triple("Late", c.optInt("late"), "#D97706"),
             Triple("On Leave", c.optInt("onLeave"), "#EA580C"),
+            Triple("Off", c.optInt("off"), "#6B7280"),
+            Triple("Absent", c.optInt("absent"), "#B91C1C"),
             Triple("Pending", c.optInt("pending"), "#DC2626")
         )
         for ((label, value, color) in items) {
             val col = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                setPadding(dp(4), dp(12), dp(4), dp(12))
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             }
             col.addView(TextView(this).apply {
                 text = value.toString(); textSize = 26f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor(color))
@@ -120,6 +122,8 @@ class TeamActivity : AppCompatActivity() {
             status == "Present" && late -> "#9A3412" to "#FFEDD5"
             status == "Present" -> "#166534" to "#DCFCE7"
             status == "On Leave" -> "#B45309" to "#FEF3C7"
+            status == "Off" -> "#374151" to "#E5E7EB"
+            status == "Absent" -> "#FFFFFF" to "#B91C1C"
             else -> "#B91C1C" to "#FEE2E2"
         }
         val isManagerRow = o.optBoolean("isManager")
@@ -143,9 +147,10 @@ class TeamActivity : AppCompatActivity() {
         val summary = o.optJSONObject("summary")
         if (isManagerRow && summary != null) {
             val p = summary.optInt("present"); val lt = summary.optInt("late"); val l = summary.optInt("onLeave")
-            val pe = summary.optInt("pending"); val t = summary.optInt("total")
+            val off = summary.optInt("off"); val ab = summary.optInt("absent"); val pe = summary.optInt("pending"); val t = summary.optInt("total")
             col.addView(TextView(this).apply {
-                text = "👥 Team: $p Present" + (if (lt > 0) " ($lt Late)" else "") + " · $l On Leave · $pe Pending  (of $t)"
+                text = "👥 Team: $p Present" + (if (lt > 0) " ($lt Late)" else "") + " · $l On Leave" +
+                    (if (off > 0) " · $off Off" else "") + (if (ab > 0) " · $ab Absent" else "") + " · $pe Pending  (of $t)"
                 textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#4F46E5"))
                 setPadding(0, dp(8), 0, 0)
             })
