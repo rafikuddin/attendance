@@ -76,7 +76,7 @@ class CalendarActivity : AppCompatActivity() {
 
         val y = cal.get(Calendar.YEAR); val m = cal.get(Calendar.MONTH) + 1
         val now = Calendar.getInstance()
-        var present = 0; var leave = 0
+        var present = 0; var late = 0; var leave = 0
         for (day in 1..cal.getActualMaximum(Calendar.DAY_OF_MONTH)) {
             val key = String.format(Locale.US, "%04d-%02d-%02d", y, m, day)
             val c = cell(day.toString())
@@ -84,7 +84,10 @@ class CalendarActivity : AppCompatActivity() {
             val lv = leaveDays[key]
             when {
                 records.containsKey(key) -> {
-                    present++; c.setTextColor(Color.WHITE); c.background = circle("#16A34A", isToday)
+                    present++
+                    val isLate = records[key]?.optBoolean("late") == true
+                    if (isLate) late++
+                    c.setTextColor(Color.WHITE); c.background = circle(if (isLate) "#EA580C" else "#16A34A", isToday)
                     c.setOnClickListener { show(key) }
                 }
                 lv != null -> {
@@ -99,14 +102,14 @@ class CalendarActivity : AppCompatActivity() {
             if (isToday) c.setTypeface(null, Typeface.BOLD)
             grid.addView(c)
         }
-        tvCount.text = "This month: $present present · $leave leave day(s)      Total present: ${records.size}"
+        tvCount.text = "This month: $present present" + (if (late > 0) " ($late late)" else "") + " · $leave leave day(s)      Total present: ${records.size}"
     }
 
     private fun show(key: String) {
         val r = records[key]
         val lv = leaveDays[key]
         tvDetail.text = when {
-            r != null -> "✅ Present · $key\nTime: ${r.optString("time")}\nLocation: ${r.optString("lat")}, ${r.optString("lng")}\n${r.optString("address")}"
+            r != null -> "${if (r.optBoolean("late")) "⏰ Late Present" else "✅ Present"} · $key\nTime: ${r.optString("time")}\nLocation: ${r.optString("lat")}, ${r.optString("lng")}\n${r.optString("address")}"
             lv != null -> "🌴 ${lv.optString("type")} (${lv.optString("status")})\n${lv.optString("from")} → ${lv.optString("to")} · ${lv.optString("days")} day(s)\n${lv.optString("reason")}"
             else -> ""
         }

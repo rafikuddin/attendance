@@ -204,9 +204,10 @@ class AttendanceActivity : AppCompatActivity() {
         api(body) { res, err ->
             btnCapture.isEnabled = true
             if (res != null) {
-                cardSummary.setCardBackgroundColor(Color.parseColor("#DCFCE7"))
-                tvSummary.setTextColor(Color.parseColor("#166534"))
-                tvSummary.text = "✅ Attendance Submitted\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
+                val late = res.optBoolean("late")
+                cardSummary.setCardBackgroundColor(Color.parseColor(if (late) "#FFEDD5" else "#DCFCE7"))
+                tvSummary.setTextColor(Color.parseColor(if (late) "#9A3412" else "#166534"))
+                tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
                     "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
             } else {

@@ -52,10 +52,11 @@ class MainActivity : AppCompatActivity() {
             if (res == null) { tvStatus.text = "Offline"; tvMonth.text = err ?: ""; return@api }
             var present = 0
             var todayTime: String? = null
+            var todayLate = false
             val recs = res.getJSONArray("records")
             for (i in 0 until recs.length()) {
                 val r = recs.getJSONObject(i); val d = r.getString("date")
-                if (d == today) todayTime = r.optString("time")
+                if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late") }
                 if (d.startsWith(today.substring(0, 7))) present++
             }
             var leaveType: String? = null
@@ -67,6 +68,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             when {
+                todayTime != null && todayLate -> { tvStatus.text = "⏰ Late Present · $todayTime"; tvStatus.setTextColor(Color.parseColor("#D97706")) }
                 todayTime != null -> { tvStatus.text = "✅ Present · $todayTime"; tvStatus.setTextColor(Color.parseColor("#16A34A")) }
                 leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Color.parseColor("#D97706")) }
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Color.parseColor("#DC2626")) }

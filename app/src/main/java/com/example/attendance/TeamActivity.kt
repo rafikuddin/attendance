@@ -1,5 +1,6 @@
 package com.example.attendance
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -15,15 +16,24 @@ import com.google.android.material.card.MaterialCardView
 import org.json.JSONObject
 
 class TeamActivity : AppCompatActivity() {
+    companion object {
+        const val EXTRA_OF = "of"
+        const val EXTRA_OF_NAME = "ofName"
+    }
+
     private lateinit var session: Session
     private lateinit var countsBox: LinearLayout
     private lateinit var listTeam: LinearLayout
     private lateinit var listLeaves: LinearLayout
+    private var of: String? = null          // null = viewing my own team
+    private var canDecide = false           // only true for your own direct team
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_team)
-        setupHeader("My Team")
+        of = intent.getStringExtra(EXTRA_OF)
+        val ofName = intent.getStringExtra(EXTRA_OF_NAME)
+        setupHeader(if (ofName != null) "$ofName's Team" else "My Team")
         session = Session(this)
         countsBox = findViewById(R.id.countsBox)
         listTeam = findViewById(R.id.listTeam)
@@ -32,7 +42,16 @@ class TeamActivity : AppCompatActivity() {
         loadLeaves()
     }
 
-    private fun body() = JSONObject().put("username", session.username).put("password", session.password)
+    private fun body(): JSONObject {
+        val b = JSONObject().put("username", session.username).put("password", session.password)
+        of?.let { b.put("of", it) }
+        return b
+    }
+
+    private fun openTeamOf(username: String, name: String) {
+        startActivity(Intent(this, TeamActivity::class.java)
+            .putExtra(EXTRA_OF, username).putExtra(EXTRA_OF_NAME, name))
+    }
 
     private fun loadTeam() {
         listTeam.removeAllViews()
@@ -42,7 +61,7 @@ class TeamActivity : AppCompatActivity() {
             if (res == null) { listTeam.addView(note(err ?: "Failed to load")); return@api }
             renderCounts(res.getJSONObject("counts"))
             val arr = res.getJSONArray("reports")
-            if (arr.length() == 0) { listTeam.addView(note("No one reports to you yet.")); return@api }
+            if (arr.length() == 0) { listTeam.addView(note("No one reports here yet.")); return@api }
             for (i in 0 until arr.length()) listTeam.addView(teamCard(arr.getJSONObject(i)))
         }
     }
@@ -51,8 +70,9 @@ class TeamActivity : AppCompatActivity() {
         api(body().put("action", "teamLeaves")) { res, err ->
             listLeaves.removeAllViews()
             if (res == null) { listLeaves.addView(note(err ?: "Failed to load")); return@api }
+            canDecide = res.optBoolean("isOwn")
             val arr = res.getJSONArray("leaves")
-            if (arr.length() == 0) { listLeaves.addView(note("No leave requests from your team.")); return@api }
+            if (arr.length() == 0) { listLeaves.addView(note("No leave requests here.")); return@api }
             for (i in 0 until arr.length()) listLeaves.addView(leaveCard(arr.getJSONObject(i)))
         }
     }
@@ -61,7 +81,8 @@ class TeamActivity : AppCompatActivity() {
         countsBox.removeAllViews()
         val items = listOf(
             Triple("Present", c.optInt("present"), "#16A34A"),
-            Triple("On Leave", c.optInt("onLeave"), "#D97706"),
+            Triple("Late", c.optInt("late"), "#D97706"),
+            Triple("On Leave", c.optInt("onLeave"), "#EA580C"),
             Triple("Pending", c.optInt("pending"), "#DC2626")
         )
         for ((label, value, color) in items) {
@@ -97,28 +118,53 @@ class TeamActivity : AppCompatActivity() {
 
     private fun teamCard(o: JSONObject): View {
         val status = o.optString("status")
-        val (fg, bg) = when (status) {
-            "Present" -> "#166534" to "#DCFCE7"
-            "On Leave" -> "#B45309" to "#FEF3C7"
+        val late = o.optBoolean("late")
+        val pillLabel = if (status == "Present" && late) "Late" else status
+        val (fg, bg) = when {
+            status == "Present" && late -> "#9A3412" to "#FFEDD5"
+            status == "Present" -> "#166534" to "#DCFCE7"
+            status == "On Leave" -> "#B45309" to "#FEF3C7"
             else -> "#B91C1C" to "#FEE2E2"
         }
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-        }
-        val col = LinearLayout(this).apply {
+        val isManagerRow = o.optBoolean("isManager")
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
+
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val nameCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        col.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#111827")) })
+        nameCol.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#111827")) })
         val detail = o.optString("detail")
-        col.addView(TextView(this).apply {
-            text = "Present ${o.optInt("presentThisMonth")} day(s) this month" + if (detail.isNotEmpty() && status == "Present") " · $detail" else ""
-            textSize = 13f; setTextColor(Color.parseColor("#6B7280"))
+        nameCol.addView(TextView(this).apply {
+            text = "Own attendance: ${o.optInt("presentThisMonth")} day(s) this month" + if (detail.isNotEmpty() && status == "Present") " · $detail" else ""
+            textSize = 12f; setTextColor(Color.parseColor("#6B7280"))
         })
-        row.addView(col)
-        row.addView(pill(if (status == "On Leave" && detail.isNotEmpty()) detail.substringBefore(" ") else status, fg, bg))
-        return cardWrap(row)
+        top.addView(nameCol)
+        top.addView(pill(if (status == "On Leave" && detail.isNotEmpty()) detail.substringBefore(" ") else pillLabel, fg, bg))
+        col.addView(top)
+
+        val summary = o.optJSONObject("summary")
+        if (isManagerRow && summary != null) {
+            val p = summary.optInt("present"); val lt = summary.optInt("late"); val l = summary.optInt("onLeave")
+            val pe = summary.optInt("pending"); val t = summary.optInt("total")
+            col.addView(TextView(this).apply {
+                text = "👥 Team: $p Present" + (if (lt > 0) " ($lt Late)" else "") + " · $l On Leave · $pe Pending  (of $t)"
+                textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#4F46E5"))
+                setPadding(0, dp(8), 0, 0)
+            })
+            col.addView(TextView(this).apply {
+                text = "Tap to view →"; textSize = 12f; setTextColor(Color.parseColor("#9CA3AF"))
+                setPadding(0, dp(2), 0, 0)
+            })
+        }
+
+        val card = cardWrap(col)
+        if (isManagerRow) {
+            card.isClickable = true; card.isFocusable = true
+            card.setOnClickListener { openTeamOf(o.optString("username"), o.optString("name")) }
+        }
+        return card
     }
 
     private fun leaveCard(o: JSONObject): View {
@@ -147,7 +193,7 @@ class TeamActivity : AppCompatActivity() {
         if (o.optString("reason").isNotEmpty())
             col.addView(TextView(this).apply { text = o.optString("reason"); textSize = 13f; setTextColor(Color.parseColor("#6B7280")) })
 
-        if (status == "Pending") {
+        if (status == "Pending" && canDecide) {
             val btnRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }

@@ -24,7 +24,7 @@
                 </LinearLayout>
                 <GridLayout android:id="@+id/grid" android:columnCount="7" android:layout_marginTop="6dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
-                <TextView android:text="🟢 Present    🟠 Leave    🟡 Pending" android:textSize="13sp" android:textColor="@color/muted"
+                <TextView android:text="🟢 Present   🟧 Late   🟡 Leave   🟨 Pending Leave" android:textSize="12sp" android:textColor="@color/muted"
                     android:gravity="center" android:layout_marginTop="10dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
             </LinearLayout>
