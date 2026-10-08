@@ -69,7 +69,7 @@ class AttendanceActivity : AppCompatActivity() {
         btnSubmit = findViewById(R.id.btnSubmit)
 
         btnCapture.setOnClickListener {
-            if (imgSelfie.visibility == View.VISIBLE) retake() else captureSelfie()
+            if (photoFile != null) retake() else captureSelfie()
         }
         btnSubmit.setOnClickListener { submit() }
 
@@ -106,11 +106,18 @@ class AttendanceActivity : AppCompatActivity() {
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(r: ImageCapture.OutputFileResults) {
                     photoFile = file
-                    imgSelfie.setImageBitmap(loadScaled(file.absolutePath, 1000))
-                    imgSelfie.visibility = View.VISIBLE
                     btnCapture.text = "🔄  Retake"
                     btnCapture.isEnabled = true
-                    fetchLocation()
+                    fetchLocation()                       // starts right away, in parallel with the preview below
+                    Thread {
+                        val preview = try { loadScaled(file.absolutePath, 800) } catch (e: Exception) { null }
+                        runOnUiThread {
+                            if (preview != null && photoFile == file) {
+                                imgSelfie.setImageBitmap(preview)
+                                imgSelfie.visibility = View.VISIBLE
+                            }
+                        }
+                    }.start()
                 }
                 override fun onError(e: ImageCaptureException) {
                     btnCapture.isEnabled = true
@@ -140,6 +147,7 @@ class AttendanceActivity : AppCompatActivity() {
     }
 
     private fun retake() {
+        photoFile = null
         imgSelfie.visibility = View.GONE
         btnCapture.text = "📸  Capture Selfie"
         btnSubmit.isEnabled = false
@@ -181,9 +189,6 @@ class AttendanceActivity : AppCompatActivity() {
         val t = captureTime ?: return
         val l = location ?: return
         val file = photoFile ?: return
-        val out = ByteArrayOutputStream()
-        loadScaled(file.absolutePath, 800).compress(Bitmap.CompressFormat.JPEG, 70, out)
-        val photo = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
 
         btnSubmit.isEnabled = false
         btnCapture.isEnabled = false
@@ -192,18 +197,45 @@ class AttendanceActivity : AppCompatActivity() {
         tvSummary.setTextColor(Color.parseColor("#0D47A1"))
         tvSummary.text = "Submitting..."
 
-        val body = JSONObject()
-            .put("action", "submit")
-            .put("username", session.username)
-            .put("password", session.password)
-            .put("selfieTime", "${dateFmt.format(t)} ${timeFmt.format(t)}")
-            .put("lat", l.latitude).put("lng", l.longitude)
-            .put("address", address)
-            .put("photo", photo)
+        val selfieTimeText = "${dateFmt.format(t)} ${timeFmt.format(t)}"
+        val username = session.username
+        val password = session.password
+        val addr = address
 
+        // Shrinking and encoding the photo is heavy, so it runs off the screen thread (no freezing).
+        // 640px at quality 65 is plenty to recognise a face and uploads much faster on slow mobile data.
+        Thread {
+            val body: JSONObject = try {
+                val out = ByteArrayOutputStream()
+                loadScaled(file.absolutePath, 640).compress(Bitmap.CompressFormat.JPEG, 65, out)
+                val photo = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+                JSONObject()
+                    .put("action", "submit")
+                    .put("username", username)
+                    .put("password", password)
+                    .put("selfieTime", selfieTimeText)
+                    .put("lat", l.latitude).put("lng", l.longitude)
+                    .put("address", addr)
+                    .put("photo", photo)
+            } catch (e: Exception) {
+                runOnUiThread {
+                    btnSubmit.isEnabled = true; btnCapture.isEnabled = true
+                    cardSummary.setCardBackgroundColor(Color.parseColor("#FFEBEE"))
+                    tvSummary.setTextColor(Color.parseColor("#B71C1C"))
+                    tvSummary.text = "❌ Couldn't prepare the photo. Please retake the selfie."
+                }
+                return@Thread
+            }
+            runOnUiThread { sendAttendance(body, t, l) }
+        }.start()
+    }
+
+    private fun sendAttendance(body: JSONObject, t: Date, l: Location) {
         api(body) { res, err ->
             btnCapture.isEnabled = true
             if (res != null) {
+                // Saved copies of Home and Calendar are now out of date.
+                ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
                 val late = res.optBoolean("late")
                 cardSummary.setCardBackgroundColor(Color.parseColor(if (late) "#FFEDD5" else "#DCFCE7"))
                 tvSummary.setTextColor(Color.parseColor(if (late) "#9A3412" else "#166534"))

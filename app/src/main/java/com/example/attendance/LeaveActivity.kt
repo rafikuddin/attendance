@@ -91,6 +91,9 @@ class LeaveActivity : AppCompatActivity() {
             btnApply.isEnabled = true
             if (res != null) {
                 msg("✅ Leave applied for ${res.optInt("days")} day(s). Status: Pending", true)
+                // Saved copies of Home / Calendar / Leave are now out of date.
+                ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username),
+                    ResponseCache.leavesKey(session.username))
                 from = null; to = null; etReason.setText(""); refresh(); loadList()
             } else msg("❌ $err", false)
         }
@@ -104,14 +107,25 @@ class LeaveActivity : AppCompatActivity() {
     private fun fmt(s: String) = try { nice.format(iso.parse(s)!!) } catch (e: Exception) { s }
 
     private fun loadList() {
-        api(JSONObject().put("action", "leaves").put("username", session.username).put("password", session.password)) { res, err ->
-            list.removeAllViews()
-            if (res == null) { list.addView(TextView(this).apply { text = err }); return@api }
-            renderBalance(res)
-            val arr = res.getJSONArray("leaves")
-            if (arr.length() == 0) list.addView(TextView(this).apply { text = "No leave requests yet."; setTextColor(Color.GRAY) })
-            for (i in 0 until arr.length()) list.addView(card(arr.getJSONObject(i)))
-        }
+        // Balance and requests appear instantly from the last saved copy, then refresh.
+        apiCached(
+            cacheKey = ResponseCache.leavesKey(session.username),
+            body = JSONObject().put("action", "leaves").put("username", session.username).put("password", session.password),
+            maxAgeMs = 24 * HOUR_MS,
+            busy = findViewById<View>(R.id.btnRefresh),
+            onData = { res -> showLeaves(res) },
+            onError = { err, hadSaved ->
+                if (!hadSaved) { list.removeAllViews(); list.addView(TextView(this).apply { text = err }) }
+            }
+        )
+    }
+
+    private fun showLeaves(res: JSONObject) {
+        list.removeAllViews()
+        renderBalance(res)
+        val arr = res.getJSONArray("leaves")
+        if (arr.length() == 0) list.addView(TextView(this).apply { text = "No leave requests yet."; setTextColor(Color.GRAY) })
+        for (i in 0 until arr.length()) list.addView(card(arr.getJSONObject(i)))
     }
 
     private fun renderBalance(res: JSONObject) {

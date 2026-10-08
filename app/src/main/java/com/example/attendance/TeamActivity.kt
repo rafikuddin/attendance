@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -53,59 +54,67 @@ class TeamActivity : AppCompatActivity() {
     }
 
     // One request for the whole screen — status, roll-ups, counts and leave requests together.
+    // Opens instantly from the last saved copy (if it is from the last 30 minutes), then refreshes.
     private fun loadAll() {
-        listTeam.removeAllViews(); listTeam.addView(note("Loading..."))
-        listLeaves.removeAllViews(); listLeaves.addView(note("Loading..."))
-        api(body().put("action", "team")) { res, err ->
-            listTeam.removeAllViews(); listLeaves.removeAllViews()
-            if (res == null) {
-                listTeam.addView(note(err ?: "Failed to load")); listLeaves.addView(note(err ?: "Failed to load")); return@api
+        val showedSaved = apiCached(
+            cacheKey = ResponseCache.teamKey(session.username, of),
+            body = body().put("action", "team"),
+            maxAgeMs = HOUR_MS / 2,
+            busy = findViewById<View>(R.id.btnRefresh),
+            onData = { res -> render(res) },
+            onError = { err, hadSaved ->
+                if (!hadSaved) {
+                    listTeam.removeAllViews(); listLeaves.removeAllViews()
+                    listTeam.addView(note(err ?: "Failed to load")); listLeaves.addView(note(err ?: "Failed to load"))
+                }
             }
-            renderCounts(res.getJSONObject("counts"))
-            val reports = res.getJSONArray("reports")
-            if (reports.length() == 0) listTeam.addView(note("No one reports here yet."))
-            else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
-
-            canDecide = res.optBoolean("isOwn")
-            val leaves = res.getJSONArray("leaves")
-            if (leaves.length() == 0) listLeaves.addView(note("No leave requests here."))
-            else for (i in 0 until leaves.length()) listLeaves.addView(leaveCard(leaves.getJSONObject(i)))
-        }
-    }
-
-    private fun renderCounts(c: JSONObject) {
-        countsBox.removeAllViews()
-        val items = listOf(
-            Triple("Present", c.optInt("present"), "#16A34A"),
-            Triple("Late", c.optInt("late"), "#D97706"),
-            Triple("On Leave", c.optInt("onLeave"), "#EA580C"),
-            Triple("Off", c.optInt("off"), "#6B7280"),
-            Triple("Absent", c.optInt("absent"), "#B91C1C"),
-            Triple("Pending", c.optInt("pending"), "#DC2626")
         )
-        for ((label, value, color) in items) {
-            val col = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            }
-            col.addView(TextView(this).apply {
-                text = value.toString(); textSize = 26f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor(color))
-            })
-            col.addView(TextView(this).apply { text = label; textSize = 12f; setTextColor(Color.parseColor("#6B7280")) })
-            countsBox.addView(col)
+        if (!showedSaved) {
+            listTeam.removeAllViews(); listTeam.addView(note("Loading..."))
+            listLeaves.removeAllViews(); listLeaves.addView(note("Loading..."))
         }
     }
 
-    private fun note(text: String) = TextView(this).apply {
-        this.text = text; setTextColor(Color.parseColor("#6B7280"))
-        setPadding(dp(4), dp(6), dp(4), dp(6))
+    private fun render(res: JSONObject) {
+        listTeam.removeAllViews(); listLeaves.removeAllViews()
+        renderCounts(res.getJSONObject("counts"))
+        val reports = res.getJSONArray("reports")
+        if (reports.length() == 0) listTeam.addView(note("No one reports here yet."))
+        else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
+
+        canDecide = res.optBoolean("isOwn")
+        val leaves = res.getJSONArray("leaves")
+        if (leaves.length() == 0) listLeaves.addView(note("No leave requests here."))
+        else for (i in 0 until leaves.length()) listLeaves.addView(leaveCard(leaves.getJSONObject(i)))
     }
 
-    private fun pill(text: String, fg: String, bg: String) = TextView(this).apply {
-        this.text = text; setTextColor(Color.parseColor(fg)); setTypeface(null, Typeface.BOLD); textSize = 12f
-        setPadding(dp(10), dp(4), dp(10), dp(4))
-        background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.parseColor(bg)) }
+    // Shows today's selfie (loaded privately through the Apps Script photo proxy) when present,
+    // otherwise a plain initials circle — so every row always has a consistent-looking avatar.
+    private fun avatarView(o: JSONObject): View {
+        val size = dp(46)
+        val card = MaterialCardView(this).apply {
+            radius = (size / 2).toFloat(); cardElevation = 0f
+            layoutParams = LinearLayout.LayoutParams(size, size).apply { marginEnd = dp(12) }
+        }
+        val selfie = o.optString("selfie")
+        if (o.optString("status") == "Present" && selfie.isNotEmpty()) {
+            card.setCardBackgroundColor(Color.parseColor("#E5E7EB"))
+            val img = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            }
+            card.clipToOutline = true
+            card.addView(img)
+            PhotoLoader.load(this, session, selfie, img)
+        } else {
+            card.setCardBackgroundColor(Color.parseColor("#E0E7FF"))
+            card.addView(TextView(this).apply {
+                text = o.optString("name").trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+                gravity = Gravity.CENTER; setTextColor(Color.parseColor("#4F46E5")); setTypeface(null, Typeface.BOLD); textSize = 16f
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            })
+        }
+        return card
     }
 
     private fun cardWrap(inner: View): MaterialCardView = MaterialCardView(this).apply {
@@ -130,6 +139,7 @@ class TeamActivity : AppCompatActivity() {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
 
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        top.addView(avatarView(o))
         val nameCol = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
@@ -140,6 +150,13 @@ class TeamActivity : AppCompatActivity() {
             text = "Own attendance: ${o.optInt("presentThisMonth")} day(s) this month" + if (detail.isNotEmpty() && status == "Present") " · $detail" else ""
             textSize = 12f; setTextColor(Color.parseColor("#6B7280"))
         })
+        val address = o.optString("address")
+        if (status == "Present" && address.isNotEmpty()) {
+            nameCol.addView(TextView(this).apply {
+                text = "📍 $address"; textSize = 12f; setTextColor(Color.parseColor("#6B7280"))
+                maxLines = 2; setPadding(0, dp(2), 0, 0)
+            })
+        }
         top.addView(nameCol)
         top.addView(pill(if (status == "On Leave" && detail.isNotEmpty()) detail.substringBefore(" ") else pillLabel, fg, bg))
         col.addView(top)

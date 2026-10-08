@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
         menu.setOnMenuItemClickListener { item ->
             when (item.title.toString()) {
                 "Change Password" -> ChangePasswordDialog.show(this, session)
-                "Logout" -> { session.clear(); goLogin() }
+                "Logout" -> { ResponseCache.clear(this); session.clear(); goLogin() }
             }
             true
         }
@@ -64,6 +64,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Friday is the weekly off day — never counted as absent, never shown as "not marked yet".
+    // "This month" runs PERIOD_START_DAY → PERIOD_END_DAY (26th → 25th), not the calendar month —
+    // keep this in sync with Code.gs's PERIOD_START_DAY/PERIOD_END_DAY if you ever change the cycle.
     private fun loadStatus() {
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val now = Calendar.getInstance()
@@ -71,17 +73,26 @@ class MainActivity : AppCompatActivity() {
         val isFridayToday = now.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
         val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18   // matches Code.gs's ABSENT_AFTER_HOUR (6:00 PM)
 
-        api(JSONObject().put("action", "history").put("username", session.username).put("password", session.password)) { res, err ->
-            if (res == null) { tvStatus.text = "Offline"; tvMonth.text = err ?: ""; return@api }
+        val periodStartDay = 26
+        val periodEndDay = 25
+        val periodStart = (now.clone() as Calendar).apply {
+            if (get(Calendar.DAY_OF_MONTH) < periodStartDay) add(Calendar.MONTH, -1)
+            set(Calendar.DAY_OF_MONTH, periodStartDay)
+        }
+        val periodEnd = (periodStart.clone() as Calendar).apply { add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, periodEndDay) }
+        val periodStartKey = fmt.format(periodStart.time)
+        val periodEndKey = fmt.format(periodEnd.time)
+
+        val render: (JSONObject) -> Unit = { res ->
             var present = 0
             var todayTime: String? = null
             var todayLate = false
-            val presentThisMonth = HashSet<String>()
+            val presentThisPeriod = HashSet<String>()
             val recs = res.getJSONArray("records")
             for (i in 0 until recs.length()) {
                 val r = recs.getJSONObject(i); val d = r.getString("date")
                 if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late") }
-                if (d.startsWith(today.substring(0, 7))) { present++; presentThisMonth.add(d) }
+                if (d >= periodStartKey && d <= periodEndKey) { present++; presentThisPeriod.add(d) }
             }
             val leaves = res.optJSONArray("leaves")
             fun approvedLeaveOn(dateKey: String): String? {
@@ -96,16 +107,14 @@ class MainActivity : AppCompatActivity() {
             }
             val leaveType = approvedLeaveOn(today)
 
-            // Absent = days from the 1st of this month to yesterday, that aren't Friday, present, or approved leave.
+            // Absent = days from the start of this pay period to yesterday, that aren't Friday, present, or approved leave.
             var absent = 0
-            val dayCal = Calendar.getInstance()
-            for (day in 1 until now.get(Calendar.DAY_OF_MONTH)) {
-                dayCal.set(now.get(Calendar.YEAR), now.get(Calendar.MONTH), day)
-                val dKey = fmt.format(dayCal.time)
-                if (dayCal.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY) continue
-                if (presentThisMonth.contains(dKey)) continue
-                if (approvedLeaveOn(dKey) != null) continue
-                absent++
+            val cursor = periodStart.clone() as Calendar
+            val yesterday = (now.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, -1) }
+            while (!cursor.after(yesterday)) {
+                val dKey = fmt.format(cursor.time)
+                if (cursor.get(Calendar.DAY_OF_WEEK) != Calendar.FRIDAY && !presentThisPeriod.contains(dKey) && approvedLeaveOn(dKey) == null) absent++
+                cursor.add(Calendar.DAY_OF_MONTH, 1)
             }
 
             when {
@@ -116,7 +125,7 @@ class MainActivity : AppCompatActivity() {
                 isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Color.parseColor("#B91C1C")) }
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Color.parseColor("#DC2626")) }
             }
-            tvMonth.text = "Present this month: $present day(s)" + (if (absent > 0) "  ·  Absent: $absent" else "")
+            tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             findViewById<android.view.View>(R.id.tileTeam).visibility =
                 if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
             res.optJSONArray("balance")?.let { b ->
@@ -125,5 +134,17 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        // Shows the last saved answer straight away (so Home opens instantly), then refreshes it.
+        // Only this pay period's records are requested, so the reply stays small as history grows.
+        apiCached(
+            cacheKey = ResponseCache.homeKey(session.username),
+            body = JSONObject().put("action", "history").put("username", session.username)
+                .put("password", session.password).put("from", periodStartKey),
+            maxAgeMs = 24 * HOUR_MS,
+            busy = findViewById<android.view.View>(R.id.btnRefresh),
+            onData = { res -> render(res) },
+            onError = { err, hadSaved -> if (!hadSaved) { tvStatus.text = "Offline"; tvMonth.text = err ?: "" } }
+        )
     }
 }

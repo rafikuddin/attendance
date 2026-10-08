@@ -5,6 +5,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
@@ -15,7 +16,15 @@ class CalendarActivity : AppCompatActivity() {
     private val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private val records = HashMap<String, JSONObject>()
     private val leaveDays = HashMap<String, JSONObject>()
-    private val cal = Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1) }
+    // `cal` always holds the 26th that starts the currently-shown pay period. Adding/subtracting a
+    // MONTH is safe here because the 26th exists in every month, so the day-of-month never drifts.
+    // Keep PERIOD_START_DAY/END in sync with Code.gs's PERIOD_START_DAY/PERIOD_END_DAY if ever changed.
+    private val PERIOD_START_DAY = 26
+    private val PERIOD_END_DAY = 25
+    private val cal = Calendar.getInstance().apply {
+        if (get(Calendar.DAY_OF_MONTH) < PERIOD_START_DAY) add(Calendar.MONTH, -1)
+        set(Calendar.DAY_OF_MONTH, PERIOD_START_DAY)
+    }
     private lateinit var grid: GridLayout
     private lateinit var tvMonth: TextView
     private lateinit var tvCount: TextView
@@ -37,9 +46,20 @@ class CalendarActivity : AppCompatActivity() {
 
     private fun loadData() {
         val s = Session(this)
-        tvCount.text = "Loading..."
-        api(JSONObject().put("action", "history").put("username", s.username).put("password", s.password)) { res, err ->
-            if (res == null) { tvCount.text = err; return@api }
+        // Draws the last saved copy immediately (if any), then replaces it with the fresh answer.
+        val showedSaved = apiCached(
+            cacheKey = ResponseCache.calKey(s.username),
+            body = JSONObject().put("action", "history").put("username", s.username).put("password", s.password),
+            maxAgeMs = 24 * HOUR_MS,
+            busy = findViewById<View>(R.id.btnRefresh),
+            onData = { res -> showHistory(res) },
+            onError = { err, hadSaved -> if (!hadSaved) tvCount.text = err }
+        )
+        if (!showedSaved) tvCount.text = "Loading..."
+    }
+
+    private fun showHistory(res: JSONObject) {
+        run {
             records.clear(); leaveDays.clear()
             val arr = res.getJSONArray("records")
             for (i in 0 until arr.length()) arr.getJSONObject(i).let { records[it.getString("date")] = it }
@@ -73,24 +93,31 @@ class CalendarActivity : AppCompatActivity() {
 
     // Friday is the weekly off day — never counted as absent. To add Saturday too,
     // also check `dow == Calendar.SATURDAY` everywhere FRIDAY is checked below.
+    // A "month" here is one pay period: PERIOD_START_DAY of one calendar month through
+    // PERIOD_END_DAY of the next, so the grid spans a real date range, not a calendar month.
     private fun render() {
         grid.removeAllViews()
-        tvMonth.text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(cal.time)
+        val periodStart = cal.clone() as Calendar
+        val periodEnd = (cal.clone() as Calendar).apply { add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, PERIOD_END_DAY) }
+        val dFmt = SimpleDateFormat("d MMM", Locale.getDefault())
+        val yFmt = SimpleDateFormat("yyyy", Locale.getDefault())
+        tvMonth.text = "${dFmt.format(periodStart.time)} – ${dFmt.format(periodEnd.time)} ${yFmt.format(periodEnd.time)}"
+
         for (d in listOf("S", "M", "T", "W", "T", "F", "S"))
             grid.addView(cell(d).apply { setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#6B7280")) })
-        val firstDow = cal.get(Calendar.DAY_OF_WEEK)
-        repeat(firstDow - 1) { grid.addView(cell("")) }
+        repeat(periodStart.get(Calendar.DAY_OF_WEEK) - 1) { grid.addView(cell("")) }
 
-        val y = cal.get(Calendar.YEAR); val m = cal.get(Calendar.MONTH) + 1
         val now = Calendar.getInstance()
         val todayKey = String.format(Locale.US, "%04d-%02d-%02d", now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
         val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18   // matches Code.gs's ABSENT_AFTER_HOUR (6:00 PM)
         var present = 0; var late = 0; var leave = 0; var absent = 0; var off = 0
-        for (day in 1..cal.getActualMaximum(Calendar.DAY_OF_MONTH)) {
-            val key = String.format(Locale.US, "%04d-%02d-%02d", y, m, day)
-            val c = cell(day.toString())
+
+        val cursor = periodStart.clone() as Calendar
+        while (!cursor.after(periodEnd)) {
+            val key = String.format(Locale.US, "%04d-%02d-%02d", cursor.get(Calendar.YEAR), cursor.get(Calendar.MONTH) + 1, cursor.get(Calendar.DAY_OF_MONTH))
+            val c = cell(cursor.get(Calendar.DAY_OF_MONTH).toString())
             val isToday = key == todayKey
-            val isFriday = ((firstDow - 1 + (day - 1)) % 7) + 1 == Calendar.FRIDAY
+            val isFriday = cursor.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
             val lv = leaveDays[key]
             when {
                 records.containsKey(key) -> {
@@ -121,8 +148,9 @@ class CalendarActivity : AppCompatActivity() {
             }
             if (isToday) c.setTypeface(null, Typeface.BOLD)
             grid.addView(c)
+            cursor.add(Calendar.DAY_OF_MONTH, 1)
         }
-        tvCount.text = "This month: $present present" + (if (late > 0) " ($late late)" else "") +
+        tvCount.text = "This period: $present present" + (if (late > 0) " ($late late)" else "") +
             " · $leave leave · $absent absent · $off Friday off"
     }
 
