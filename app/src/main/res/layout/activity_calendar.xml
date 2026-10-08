@@ -24,7 +24,7 @@
                 </LinearLayout>
                 <GridLayout android:id="@+id/grid" android:columnCount="7" android:layout_marginTop="6dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
-                <TextView android:text="🟢 Present   🟧 Late   🟡 Leave   ⬜ Friday Off   🔴 Absent" android:textSize="11sp" android:textColor="@color/muted"
+                <TextView android:text="🟢 Present   🟧 Late   🟡 Leave   ⬜ Friday Off   🔴 Absent   🌙 Night hold" android:textSize="11sp" android:textColor="@color/muted"
                     android:gravity="center" android:layout_marginTop="10dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
             </LinearLayout>
@@ -36,7 +36,7 @@
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="10dp"
             app:cardCornerRadius="18dp" app:cardElevation="3dp">
-            <TextView android:id="@+id/tvDetail" android:text="Tap a colored date to see details."
+            <TextView android:id="@+id/tvDetail" android:text="Tap any date to see details, including night hold status."
                 android:textSize="15sp" android:textColor="@color/ink" android:lineSpacingExtra="4dp" android:padding="18dp"
                 android:layout_width="match_parent" android:layout_height="wrap_content" />
         </com.google.android.material.card.MaterialCardView>

@@ -4,6 +4,9 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import android.view.Gravity
 import android.view.View
 import android.widget.*
@@ -16,6 +19,7 @@ class CalendarActivity : AppCompatActivity() {
     private val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private val records = HashMap<String, JSONObject>()
     private val leaveDays = HashMap<String, JSONObject>()
+    private val nightDays = HashMap<String, JSONObject>()   // date -> that day's night hold
     // `cal` always holds the 26th that starts the currently-shown pay period. Adding/subtracting a
     // MONTH is safe here because the 26th exists in every month, so the day-of-month never drifts.
     // Keep PERIOD_START_DAY/END in sync with Code.gs's PERIOD_START_DAY/PERIOD_END_DAY if ever changed.
@@ -49,7 +53,7 @@ class CalendarActivity : AppCompatActivity() {
         // Draws the last saved copy immediately (if any), then replaces it with the fresh answer.
         val showedSaved = apiCached(
             cacheKey = ResponseCache.calKey(s.username),
-            body = JSONObject().put("action", "history").put("username", s.username).put("password", s.password),
+            body = JSONObject().put("action", "history").put("username", s.username).put("password", s.password).put("nights", true),
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<View>(R.id.btnRefresh),
             onData = { res -> showHistory(res) },
@@ -60,7 +64,10 @@ class CalendarActivity : AppCompatActivity() {
 
     private fun showHistory(res: JSONObject) {
         run {
-            records.clear(); leaveDays.clear()
+            records.clear(); leaveDays.clear(); nightDays.clear()
+            res.optJSONArray("nights")?.let { nl ->
+                for (i in 0 until nl.length()) nl.getJSONObject(i).let { nightDays[it.getString("date")] = it }
+            }
             val arr = res.getJSONArray("records")
             for (i in 0 until arr.length()) arr.getJSONObject(i).let { records[it.getString("date")] = it }
             res.optJSONArray("leaves")?.let { lv ->
@@ -110,7 +117,7 @@ class CalendarActivity : AppCompatActivity() {
         val now = Calendar.getInstance()
         val todayKey = String.format(Locale.US, "%04d-%02d-%02d", now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
         val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18   // matches Code.gs's ABSENT_AFTER_HOUR (6:00 PM)
-        var present = 0; var late = 0; var leave = 0; var absent = 0; var off = 0
+        var present = 0; var late = 0; var leave = 0; var absent = 0; var off = 0; var nightCount = 0
 
         val cursor = periodStart.clone() as Calendar
         while (!cursor.after(periodEnd)) {
@@ -146,12 +153,22 @@ class CalendarActivity : AppCompatActivity() {
                 }
                 isToday -> c.background = circle(null, true)
             }
+            if (nightDays.containsKey(key)) {
+                nightCount++
+                val label = SpannableStringBuilder(cursor.get(Calendar.DAY_OF_MONTH).toString())
+                val moonStart = label.length
+                label.append("\n🌙")
+                label.setSpan(RelativeSizeSpan(0.6f), moonStart, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                c.text = label
+            }
+            c.setOnClickListener { show(key) }   // every date can be tapped, so night hold status is always one tap away
             if (isToday) c.setTypeface(null, Typeface.BOLD)
             grid.addView(c)
             cursor.add(Calendar.DAY_OF_MONTH, 1)
         }
         tvCount.text = "This period: $present present" + (if (late > 0) " ($late late)" else "") +
-            " · $leave leave · $absent absent · $off Friday off"
+            " · $leave leave · $absent absent · $off Friday off" +
+            (if (nightCount > 0) " · $nightCount night hold" else "")
     }
 
     private fun show(key: String) {
@@ -163,12 +180,26 @@ class CalendarActivity : AppCompatActivity() {
         val p = key.split("-").map { it.toInt() }
         val dayCal = Calendar.getInstance().apply { set(p[0], p[1] - 1, p[2]) }
         val isFriday = dayCal.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
-        tvDetail.text = when {
+        val dayText = when {
             r != null -> "${if (r.optBoolean("late")) "⏰ Late Present" else "✅ Present"} · $key\nTime: ${r.optString("time")}\nLocation: ${r.optString("lat")}, ${r.optString("lng")}\n${r.optString("address")}"
             lv != null -> "🌴 ${lv.optString("type")} (${lv.optString("status")})\n${lv.optString("from")} → ${lv.optString("to")} · ${lv.optString("days")} day(s)\n${lv.optString("reason")}"
             isFriday -> "🗓️ Weekly Off (Friday) · $key"
             key < todayKey || (key == todayKey && isAfterCutoff) -> "❌ Absent · $key\nNo attendance was marked and no approved leave covers this day."
             else -> ""
+        }
+        val night = nightDays[key]
+        val nightText = when {
+            night != null -> "🌙 Night hold: Submitted\n🏨 ${night.optString("hotel")}\n" +
+                "📍 ${night.optString("thana")}, ${night.optString("district")}\n🕒 ${night.optString("time")}" +
+                (if (night.optString("address").isNotEmpty()) "\n${night.optString("address")}" else "")
+            key <= todayKey -> "🌙 Night hold: None"
+            else -> ""
+        }
+        tvDetail.text = when {
+            dayText.isEmpty() && nightText.isEmpty() -> "Nothing recorded for $key yet."
+            dayText.isEmpty() -> nightText
+            nightText.isEmpty() -> dayText
+            else -> "$dayText\n\n$nightText"
         }
     }
 }

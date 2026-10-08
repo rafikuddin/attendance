@@ -41,6 +41,7 @@ object ResponseCache {
     fun homeKey(user: String) = "home:$user"
     fun calKey(user: String) = "cal:$user"
     fun leavesKey(user: String) = "leaves:$user"
+    fun nightKey(user: String) = "night:$user"
     fun teamKey(user: String, of: String?) = "team:$user:${of ?: ""}"
 }
 
