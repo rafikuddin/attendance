@@ -1,7 +1,7 @@
 name: Apply Update
 on:
   push:
-    paths: ['update.zip']
+    paths: ['update*.zip']
   workflow_dispatch:
 permissions:
   contents: write
@@ -10,9 +10,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          unzip -o update.zip -d .
-          rm -f update.zip app/src/main/res/layout/activity_main.xml
+      - name: Unpack the update zip
+        run: |
+          shopt -s nullglob
+          zips=(update*.zip)
+          if [ ${#zips[@]} -eq 0 ]; then
+            echo "::error::No update zip found in the repo root. Upload update.zip first (it is removed after it is applied)."
+            exit 1
+          fi
+          if [ ${#zips[@]} -gt 1 ]; then
+            echo "::error::More than one update zip found: ${zips[*]}. Delete the old ones and keep only the newest."
+            exit 1
+          fi
+          echo "Applying: ${zips[0]}"
+          unzip -o "${zips[0]}" -d .
+          rm -f "${zips[0]}" app/src/main/res/layout/activity_main.xml
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add -A
