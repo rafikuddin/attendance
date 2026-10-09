@@ -117,6 +117,41 @@ class TeamActivity : AppCompatActivity() {
         return card
     }
 
+    private fun renderCounts(c: JSONObject) {
+        countsBox.removeAllViews()
+        val items = listOf(
+            Triple("Present", c.optInt("present"), "#16A34A"),
+            Triple("Late", c.optInt("late"), "#D97706"),
+            Triple("On Leave", c.optInt("onLeave"), "#EA580C"),
+            Triple("Off", c.optInt("off"), "#6B7280"),
+            Triple("Absent", c.optInt("absent"), "#B91C1C"),
+            Triple("Pending", c.optInt("pending"), "#DC2626")
+        )
+        for ((label, value, color) in items) {
+            val col = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            }
+            col.addView(TextView(this).apply {
+                text = value.toString(); textSize = 26f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor(color))
+            })
+            col.addView(TextView(this).apply { text = label; textSize = 12f; setTextColor(Color.parseColor("#6B7280")) })
+            countsBox.addView(col)
+        }
+    }
+
+    private fun note(text: String) = TextView(this).apply {
+        this.text = text; setTextColor(Color.parseColor("#6B7280"))
+        setPadding(dp(4), dp(6), dp(4), dp(6))
+    }
+
+    private fun pill(text: String, fg: String, bg: String) = TextView(this).apply {
+        this.text = text; setTextColor(Color.parseColor(fg)); setTypeface(null, Typeface.BOLD); textSize = 12f
+        setPadding(dp(10), dp(4), dp(10), dp(4))
+        background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.parseColor(bg)) }
+    }
+
     private fun cardWrap(inner: View): MaterialCardView = MaterialCardView(this).apply {
         radius = dp(16).toFloat(); cardElevation = dp(2).toFloat(); setCardBackgroundColor(Color.WHITE)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
