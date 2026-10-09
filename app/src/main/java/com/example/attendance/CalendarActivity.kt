@@ -95,7 +95,7 @@ class CalendarActivity : AppCompatActivity() {
     private fun circle(fill: String?, stroke: Boolean) = GradientDrawable().apply {
         shape = GradientDrawable.OVAL
         if (fill != null) setColor(Color.parseColor(fill))
-        if (stroke) setStroke(dp(2), Color.parseColor("#4F46E5"))
+        if (stroke) setStroke(dp(2), Color.parseColor("#FF4D6D"))
     }
 
     // Friday is the weekly off day — never counted as absent. To add Saturday too,

@@ -146,12 +146,12 @@ class LeaveActivity : AppCompatActivity() {
             col.addView(TextView(this).apply { text = b.optString("type").substringBefore(" "); textSize = 13f; setTextColor(Color.parseColor("#6B7280")) })
             col.addView(TextView(this).apply {
                 text = rem.toString(); textSize = 32f; setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.parseColor(if (rem <= 0) "#DC2626" else "#4F46E5"))
+                setTextColor(Color.parseColor(if (rem <= 0) "#DC2626" else "#1E2247"))
             })
             col.addView(TextView(this).apply { text = "of $quota left"; textSize = 12f; setTextColor(Color.parseColor("#6B7280")) })
             col.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                 max = quota; progress = (used + pend).coerceIn(0, quota)
-                progressTintList = ColorStateList.valueOf(Color.parseColor(if (rem <= 0) "#DC2626" else "#4F46E5"))
+                progressTintList = ColorStateList.valueOf(Color.parseColor(if (rem <= 0) "#DC2626" else "#FF4D6D"))
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(6)).apply { topMargin = dp(6); marginStart = dp(8); marginEnd = dp(8) }
             })
             col.addView(TextView(this).apply {

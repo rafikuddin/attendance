@@ -107,10 +107,10 @@ class TeamActivity : AppCompatActivity() {
             card.addView(img)
             PhotoLoader.load(this, session, selfie, img)
         } else {
-            card.setCardBackgroundColor(Color.parseColor("#E0E7FF"))
+            card.setCardBackgroundColor(Color.parseColor("#E6E9F7"))
             card.addView(TextView(this).apply {
                 text = o.optString("name").trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-                gravity = Gravity.CENTER; setTextColor(Color.parseColor("#4F46E5")); setTypeface(null, Typeface.BOLD); textSize = 16f
+                gravity = Gravity.CENTER; setTextColor(Color.parseColor("#1E2247")); setTypeface(null, Typeface.BOLD); textSize = 16f
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             })
         }
@@ -203,7 +203,7 @@ class TeamActivity : AppCompatActivity() {
             col.addView(TextView(this).apply {
                 text = "👥 Team: $p Present" + (if (lt > 0) " ($lt Late)" else "") + " · $l On Leave" +
                     (if (off > 0) " · $off Off" else "") + (if (ab > 0) " · $ab Absent" else "") + " · $pe Pending  (of $t)"
-                textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#4F46E5"))
+                textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#1E2247"))
                 setPadding(0, dp(8), 0, 0)
             })
             col.addView(TextView(this).apply {
