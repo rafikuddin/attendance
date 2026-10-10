@@ -65,7 +65,7 @@ class AttendanceActivity : AppCompatActivity() {
         tvSummary = findViewById(R.id.tvSummary)
         cardSummary = findViewById(R.id.cardSummary)
         setupHeader("Mark Attendance")
-        setupBottomNav(Tab.HOME)
+        setupBottomNav(Tab.ATTENDANCE)
         btnCapture = findViewById(R.id.btnCapture)
         btnSubmit = findViewById(R.id.btnSubmit)
 

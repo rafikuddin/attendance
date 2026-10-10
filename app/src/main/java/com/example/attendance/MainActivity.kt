@@ -15,7 +15,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var session: Session
     private lateinit var tvStatus: TextView
     private lateinit var tvMonth: TextView
-    private lateinit var tvTodayLoc: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,17 +23,15 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_home)
         tvStatus = findViewById(R.id.tvStatus)
         tvMonth = findViewById(R.id.tvMonth)
-        tvTodayLoc = findViewById(R.id.tvTodayLoc)
         findViewById<TextView>(R.id.tvName).text = session.name
         findViewById<TextView>(R.id.tvAvatar).text = session.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
         findViewById<TextView>(R.id.tvDate).text =
             SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date())
         findViewById<TextView>(R.id.btnRefresh).setOnClickListener { loadStatus() }
         findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
-        findViewById<android.view.View>(R.id.tileAttendance).setOnClickListener { open(AttendanceActivity::class.java) }
 
+        findViewById<android.view.View>(R.id.cardNight).setOnClickListener { open(NightHoldActivity::class.java) }
         setupBottomNav(Tab.HOME)
-        findViewById<android.view.View>(R.id.btnMark).setOnClickListener { open(AttendanceActivity::class.java) }
     }
 
     override fun onResume() {
@@ -65,6 +62,62 @@ class MainActivity : AppCompatActivity() {
     private fun goLogin() {
         startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
         finish()
+    }
+
+    /** This pay period's night holds: today's status on top, then one row per night. */
+    private fun showNights(arr: org.json.JSONArray?, today: String, from: String, to: String) {
+        val inFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val outFmt = SimpleDateFormat("EEE, dd MMM", Locale.getDefault())
+        val list = findViewById<android.widget.LinearLayout>(R.id.nightList)
+        list.removeAllViews()
+        val rows = ArrayList<JSONObject>()
+        if (arr != null) {
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val d = o.optString("date")
+                if (d >= from && d <= to) rows.add(o)
+            }
+        }
+        rows.sortByDescending { it.optString("date") }
+        val periodLabel = SimpleDateFormat("dd MMM", Locale.getDefault())
+        val startLbl = periodLabel.format(inFmt.parse(from) ?: Date())
+        val endLbl = periodLabel.format(inFmt.parse(to) ?: Date())
+        findViewById<TextView>(R.id.tvNightHeading).text = "NIGHT HOLD · $startLbl – $endLbl"
+        findViewById<TextView>(R.id.tvNightCount).text = if (rows.size == 1) "1 night" else "${rows.size} nights"
+
+        val tonight = rows.firstOrNull { it.optString("date") == today }
+        val tvToday = findViewById<TextView>(R.id.tvNightToday)
+        if (tonight != null) {
+            tvToday.text = "✅ Submitted · ${tonight.optString("time")}"
+            tvToday.setTextColor(Color.parseColor("#16A34A"))
+        } else {
+            tvToday.text = "Not submitted today"
+            tvToday.setTextColor(Color.parseColor("#6C7293"))
+        }
+
+        if (rows.isEmpty()) {
+            list.addView(TextView(this).apply {
+                text = "No night hold submitted this month. Tap to submit one."
+                textSize = 13f; setTextColor(Color.parseColor("#6C7293")); setPadding(0, dp(10), 0, 0)
+            })
+            return
+        }
+        for (o in rows) {
+            val dateText = try { outFmt.format(inFmt.parse(o.optString("date"))!!) } catch (e: Exception) { o.optString("date") }
+            val line = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setPadding(0, dp(10), 0, 0)
+            }
+            line.addView(TextView(this).apply {
+                text = "🌙  $dateText"; textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(Color.parseColor("#1B1E3B"))
+            })
+            line.addView(TextView(this).apply {
+                text = "🏨 ${o.optString("hotel")} · ${o.optString("thana")}, ${o.optString("district")}"
+                textSize = 13f; setTextColor(Color.parseColor("#6C7293")); setPadding(dp(28), 0, 0, 0)
+            })
+            list.addView(line)
+        }
     }
 
     /** Fills the three leave bars: the bar shows what is left (full = nothing used yet). */
@@ -117,12 +170,11 @@ class MainActivity : AppCompatActivity() {
             var present = 0
             var todayTime: String? = null
             var todayLate = false
-            var todayAddr = ""
             val presentThisPeriod = HashSet<String>()
             val recs = res.getJSONArray("records")
             for (i in 0 until recs.length()) {
                 val r = recs.getJSONObject(i); val d = r.getString("date")
-                if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late"); todayAddr = r.optString("address") }
+                if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late") }
                 if (d >= periodStartKey && d <= periodEndKey) { present++; presentThisPeriod.add(d) }
             }
             val leaves = res.optJSONArray("leaves")
@@ -160,12 +212,8 @@ class MainActivity : AppCompatActivity() {
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
             session.isManager = res.optBoolean("isManager")
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
-            tvTodayLoc.text = when {
-                todayTime != null && todayAddr.isNotEmpty() -> "📍 $todayAddr"
-                todayTime != null -> "📍 Location saved with today's attendance"
-                else -> "📍 Location is captured when you mark attendance"
-            }
             res.optJSONArray("balance")?.let { showBalance(it) }
+            showNights(res.optJSONArray("nights"), today, periodStartKey, periodEndKey)
         }
 
         // Shows the last saved answer straight away (so Home opens instantly), then refreshes it.
@@ -173,7 +221,7 @@ class MainActivity : AppCompatActivity() {
         apiCached(
             cacheKey = ResponseCache.homeKey(session.username),
             body = JSONObject().put("action", "history").put("username", session.username)
-                .put("password", session.password).put("from", periodStartKey),
+                .put("password", session.password).put("from", periodStartKey).put("nights", true),
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<android.view.View>(R.id.btnRefresh),
             onData = { res -> render(res) },

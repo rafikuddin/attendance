@@ -144,43 +144,42 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Quick actions -->
-            <TextView android:text="QUICK ACTIONS" android:textSize="13sp" android:textStyle="bold"
-                android:textColor="@color/primary" android:letterSpacing="0.08"
-                android:layout_marginStart="22dp" android:layout_marginTop="22dp"
-                android:layout_width="wrap_content" android:layout_height="wrap_content" />
-
-            <com.google.android.material.card.MaterialCardView android:id="@+id/tileAttendance"
+            <!-- Night hold this month -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical"
+                android:layout_marginStart="22dp" android:layout_marginEnd="22dp" android:layout_marginTop="22dp">
+                <TextView android:id="@+id/tvNightHeading" android:text="NIGHT HOLD · THIS MONTH" android:textSize="13sp" android:textStyle="bold"
+                    android:textColor="@color/primary" android:letterSpacing="0.08"
+                    android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
+                <TextView android:id="@+id/tvNightCount" android:text="0 nights" android:textSize="13sp" android:textColor="@color/muted"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <com.google.android.material.card.MaterialCardView android:id="@+id/cardNight"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="8dp"
                 android:clickable="true" android:focusable="true"
-                app:cardBackgroundColor="@color/primary" app:cardCornerRadius="26dp" app:cardElevation="6dp">
+                app:cardCornerRadius="24dp" app:cardElevation="3dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:padding="18dp">
+                    android:orientation="vertical" android:padding="16dp">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:orientation="horizontal" android:gravity="center_vertical">
-                        <TextView android:text="📸" android:textSize="26sp" android:gravity="center"
-                            android:background="@drawable/bg_icon_btn"
-                            android:layout_width="54dp" android:layout_height="54dp" />
+                        <TextView android:text="🌙" android:textSize="22sp" android:gravity="center"
+                            android:background="@drawable/bg_chip"
+                            android:layout_width="46dp" android:layout_height="46dp" />
                         <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-                            android:layout_marginStart="14dp" android:orientation="vertical">
-                            <TextView android:text="Mark Attendance" android:textColor="#FFFFFF" android:textSize="19sp" android:textStyle="bold"
+                            android:orientation="vertical" android:layout_marginStart="12dp">
+                            <TextView android:text="TODAY" android:textSize="11sp" android:textStyle="bold" android:textColor="@color/muted"
+                                android:letterSpacing="0.08"
                                 android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                            <TextView android:text="Selfie · Location · Time" android:textColor="#B3FFFFFF" android:textSize="13sp"
-                                android:layout_marginTop="1dp"
+                            <TextView android:id="@+id/tvNightToday" android:text="Checking..." android:textSize="16sp" android:textStyle="bold"
+                                android:textColor="@color/ink"
                                 android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         </LinearLayout>
+                        <TextView android:text="›" android:textColor="@color/muted" android:textSize="26sp" android:textStyle="bold"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>
-                    <TextView android:id="@+id/btnMark" android:text="Take selfie &amp; submit  →" android:textColor="#FFFFFF"
-                        android:textStyle="bold" android:textSize="16sp" android:gravity="center"
-                        android:background="@drawable/bg_btn_coral"
-                        android:layout_marginTop="16dp"
-                        android:layout_width="match_parent" android:layout_height="52dp" />
-                    <TextView android:id="@+id/tvTodayLoc" android:text="📍 Location is captured when you mark attendance"
-                        android:textColor="#E6FFFFFF" android:textSize="13sp" android:maxLines="2"
-                        android:background="@drawable/bg_loc_strip"
-                        android:paddingStart="14dp" android:paddingEnd="14dp" android:paddingTop="10dp" android:paddingBottom="10dp"
-                        android:layout_marginTop="12dp"
+                    <LinearLayout android:id="@+id/nightList" android:orientation="vertical"
+                        android:layout_marginTop="6dp"
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

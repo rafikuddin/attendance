@@ -24,7 +24,7 @@ fun AppCompatActivity.dp(v: Int): Int = (v * resources.displayMetrics.density).t
 
 
 enum class Tab(val navId: Int) {
-    HOME(R.id.navHome), LEAVE(R.id.navLeave), TEAM(R.id.navTeam), CALENDAR(R.id.navCalendar), NIGHT(R.id.navNight)
+    HOME(R.id.navHome), ATTENDANCE(R.id.navAttendance), LEAVE(R.id.navLeave), TEAM(R.id.navTeam), CALENDAR(R.id.navCalendar), NIGHT(R.id.navNight)
 }
 
 /** Wires the bottom bar (layout/bottom_nav.xml) that every screen shows, and marks [active]. */
@@ -45,6 +45,7 @@ fun AppCompatActivity.setupBottomNav(active: Tab) {
             if (!on) {
                 val target: Class<*> = when (tab) {
                     Tab.HOME -> MainActivity::class.java
+                    Tab.ATTENDANCE -> AttendanceActivity::class.java
                     Tab.LEAVE -> LeaveActivity::class.java
                     Tab.TEAM -> TeamActivity::class.java
                     Tab.CALENDAR -> CalendarActivity::class.java

@@ -252,7 +252,7 @@ class NightHoldActivity : AppCompatActivity() {
         api(body) { res, err ->
             if (res != null) {
                 // Saved copies of the Calendar and this screen are now out of date.
-                ResponseCache.remove(this, ResponseCache.calKey(session.username), ResponseCache.nightKey(session.username))
+                ResponseCache.remove(this, ResponseCache.calKey(session.username), ResponseCache.nightKey(session.username), ResponseCache.homeKey(session.username))
                 msg("", true)
                 showDone(
                     JSONObject().put("date", res.optString("date")).put("time", res.optString("time"))
