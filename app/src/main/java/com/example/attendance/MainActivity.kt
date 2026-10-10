@@ -42,12 +42,16 @@ class MainActivity : AppCompatActivity() {
         if (session.loggedIn) loadStatus()
     }
 
+    private val versionName: String
+        get() = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "" } catch (e: Exception) { "" }
+
     private fun open(c: Class<*>) = startActivity(Intent(this, c))
 
     private fun showMenu(anchor: android.view.View) {
         val menu = PopupMenu(this, anchor)
         menu.menu.add("Change Password")
         menu.menu.add("Logout")
+        menu.menu.add("App version $versionName").isEnabled = false
         menu.setOnMenuItemClickListener { item ->
             when (item.title.toString()) {
                 "Change Password" -> ChangePasswordDialog.show(this, session)

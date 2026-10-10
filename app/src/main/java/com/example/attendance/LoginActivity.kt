@@ -17,6 +17,7 @@ class LoginActivity : AppCompatActivity() {
         val etPass = findViewById<EditText>(R.id.etPass)
         val btn = findViewById<Button>(R.id.btnLogin)
         val tvErr = findViewById<TextView>(R.id.tvError)
+        findViewById<TextView>(R.id.tvVersion).text = "Version " + (try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { "" })
 
         btn.setOnClickListener {
             val u = etUser.text.toString().trim()

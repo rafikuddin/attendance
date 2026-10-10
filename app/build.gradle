@@ -5,12 +5,24 @@ plugins {
 android {
     namespace 'com.example.attendance'
     compileSdk 34
+    // One fixed signing key for every build, so a new APK installs over the old one as an update.
+    // (Without this, each GitHub build is signed with a different random key and Android refuses to update.)
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+    // The GitHub build passes its run number (-PverCode=N), so every build has a higher version than the last.
+    def buildNumber = (project.findProperty('verCode') ?: '1').toString().toInteger()
     defaultConfig {
         applicationId "com.example.attendance"
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = '17' }
