@@ -4,67 +4,68 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:background="@color/bg">
 
+    <!-- Fixed top: stays in place while the page below scrolls -->
+    <!-- Header -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="@drawable/bg_header" android:orientation="vertical"
+        android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="10dp" android:paddingBottom="40dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <com.google.android.material.card.MaterialCardView
+                app:cardCornerRadius="24dp" app:cardElevation="0dp" app:cardBackgroundColor="#33FFFFFF"
+                android:layout_width="48dp" android:layout_height="48dp">
+                <TextView android:id="@+id/tvAvatar" android:gravity="center" android:textColor="#FFFFFF"
+                    android:textSize="20sp" android:textStyle="bold"
+                    android:layout_width="match_parent" android:layout_height="match_parent" />
+            </com.google.android.material.card.MaterialCardView>
+            <TextView android:text="SAM BOND" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="26sp"
+                android:letterSpacing="0.03" android:layout_marginStart="12dp"
+                android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
+            <TextView android:id="@+id/btnRefresh" android:text="⟳" android:textSize="22sp"
+                android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
+                android:gravity="center" android:clickable="true" android:focusable="true"
+                android:layout_width="42dp" android:layout_height="42dp" />
+            <TextView android:id="@+id/btnMenu" android:text="👤" android:textSize="18sp"
+                android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
+                android:gravity="center" android:layout_marginStart="8dp"
+                android:clickable="true" android:focusable="true"
+                android:layout_width="42dp" android:layout_height="42dp" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="bottom" android:layout_marginTop="10dp">
+            <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView android:text="Welcome back" android:textColor="#B3FFFFFF" android:textSize="13sp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <TextView android:id="@+id/tvName" android:textColor="#FFFFFF" android:textSize="22sp" android:textStyle="bold"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <TextView android:id="@+id/tvDate" android:textColor="#B3FFFFFF" android:textSize="13sp" android:layout_marginTop="1dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <LinearLayout android:background="@drawable/bg_pill_translucent" android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp" android:paddingEnd="14dp" android:paddingTop="8dp" android:paddingBottom="8dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content">
+                <TextClock android:format12Hour="hh:mm a" android:format24Hour="hh:mm a"
+                    android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+    <View android:background="@drawable/bg_sheet_top"
+        android:layout_width="match_parent" android:layout_height="30dp" android:layout_marginTop="-30dp" />
+
     <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
         android:fillViewport="true" android:scrollbars="none">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:paddingBottom="20dp">
 
-            <!-- Header -->
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:background="@drawable/bg_header" android:orientation="vertical"
-                android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="40dp" android:paddingBottom="60dp">
-
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="horizontal" android:gravity="center_vertical">
-                    <com.google.android.material.card.MaterialCardView
-                        app:cardCornerRadius="24dp" app:cardElevation="0dp" app:cardBackgroundColor="#33FFFFFF"
-                        android:layout_width="48dp" android:layout_height="48dp">
-                        <TextView android:id="@+id/tvAvatar" android:gravity="center" android:textColor="#FFFFFF"
-                            android:textSize="20sp" android:textStyle="bold"
-                            android:layout_width="match_parent" android:layout_height="match_parent" />
-                    </com.google.android.material.card.MaterialCardView>
-                    <TextView android:text="SAM BOND" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="26sp"
-                        android:letterSpacing="0.03" android:layout_marginStart="12dp"
-                        android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
-                    <TextView android:id="@+id/btnRefresh" android:text="⟳" android:textSize="22sp"
-                        android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
-                        android:gravity="center" android:clickable="true" android:focusable="true"
-                        android:layout_width="42dp" android:layout_height="42dp" />
-                    <TextView android:id="@+id/btnMenu" android:text="👤" android:textSize="18sp"
-                        android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
-                        android:gravity="center" android:layout_marginStart="8dp"
-                        android:clickable="true" android:focusable="true"
-                        android:layout_width="42dp" android:layout_height="42dp" />
-                </LinearLayout>
-
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="horizontal" android:gravity="bottom" android:layout_marginTop="20dp">
-                    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-                        android:orientation="vertical">
-                        <TextView android:text="Welcome back" android:textColor="#B3FFFFFF" android:textSize="13sp"
-                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:id="@+id/tvName" android:textColor="#FFFFFF" android:textSize="22sp" android:textStyle="bold"
-                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:id="@+id/tvDate" android:textColor="#B3FFFFFF" android:textSize="13sp" android:layout_marginTop="1dp"
-                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-                    <LinearLayout android:background="@drawable/bg_pill_translucent" android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingStart="14dp" android:paddingEnd="14dp" android:paddingTop="8dp" android:paddingBottom="8dp"
-                        android:layout_width="wrap_content" android:layout_height="wrap_content">
-                        <TextClock android:format12Hour="hh:mm a" android:format24Hour="hh:mm a"
-                            android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold"
-                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-            <View android:background="@drawable/bg_sheet_top"
-                android:layout_width="match_parent" android:layout_height="30dp" android:layout_marginTop="-30dp" />
-
             <!-- Today's status -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="-34dp"
+                android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="2dp"
                 app:cardCornerRadius="24dp" app:cardElevation="6dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical" android:padding="18dp">
@@ -233,7 +234,7 @@
         <View android:layout_width="22dp" android:layout_height="4dp" android:layout_marginBottom="4dp" />
         <TextView android:text="🌙" android:textSize="22sp" android:alpha="0.6"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-        <TextView android:text="Night" android:textSize="11sp" android:textStyle="normal" android:textColor="@color/muted"
+        <TextView android:text="Night Hold" android:textSize="11sp" android:textStyle="normal" android:textColor="@color/muted"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
     </LinearLayout>
     </LinearLayout>
