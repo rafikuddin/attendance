@@ -32,17 +32,13 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnRefresh).setOnClickListener { loadStatus() }
         findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
         findViewById<android.view.View>(R.id.tileAttendance).setOnClickListener { open(AttendanceActivity::class.java) }
-        findViewById<android.view.View>(R.id.tileLeave).setOnClickListener { open(LeaveActivity::class.java) }
-        findViewById<android.view.View>(R.id.tileNight).setOnClickListener { open(NightHoldActivity::class.java) }
-        findViewById<android.view.View>(R.id.tileCalendar).setOnClickListener { open(CalendarActivity::class.java) }
-        findViewById<android.view.View>(R.id.tileTeam).setOnClickListener { open(TeamActivity::class.java) }
 
         // Bottom navigation (Home is this screen)
         findViewById<android.view.View>(R.id.btnMark).setOnClickListener { open(AttendanceActivity::class.java) }
         findViewById<android.view.View>(R.id.navLeave).setOnClickListener { open(LeaveActivity::class.java) }
         findViewById<android.view.View>(R.id.navTeam).setOnClickListener { open(TeamActivity::class.java) }
         findViewById<android.view.View>(R.id.navCalendar).setOnClickListener { open(CalendarActivity::class.java) }
-        findViewById<android.view.View>(R.id.navSettings).setOnClickListener { showMenu(it) }
+        findViewById<android.view.View>(R.id.navNight).setOnClickListener { open(NightHoldActivity::class.java) }
     }
 
     override fun onResume() {
@@ -162,7 +158,6 @@ class MainActivity : AppCompatActivity() {
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
-            findViewById<android.view.View>(R.id.tileTeam).visibility = manager
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
             tvTodayLoc.text = when {
                 todayTime != null && todayAddr.isNotEmpty() -> "📍 $todayAddr"
