@@ -6,7 +6,7 @@
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:background="@drawable/bg_header" android:gravity="center_vertical"
         android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp"
-        android:paddingTop="40dp" android:paddingBottom="44dp">
+        android:paddingTop="10dp" android:paddingBottom="36dp">
         <TextView android:id="@+id/btnBack" android:text="‹" android:textSize="26sp"
             android:textColor="#FFFFFF" android:gravity="center" android:clickable="true" android:focusable="true"
             android:background="@drawable/bg_icon_btn"

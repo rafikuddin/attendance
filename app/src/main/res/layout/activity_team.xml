@@ -2,10 +2,11 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+<!-- Fixed top: stays in place while the page below scrolls -->
+<include layout="@layout/header_bar" />
 <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:paddingBottom="24dp">
-        <include layout="@layout/header_bar" />
+        android:orientation="vertical" android:paddingTop="4dp" android:paddingBottom="24dp">
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent" android:layout_height="wrap_content"
