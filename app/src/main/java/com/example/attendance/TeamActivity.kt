@@ -35,6 +35,7 @@ class TeamActivity : AppCompatActivity() {
         of = intent.getStringExtra(EXTRA_OF)
         val ofName = intent.getStringExtra(EXTRA_OF_NAME)
         setupHeader(if (ofName != null) "$ofName's Team" else "My Team") { loadAll() }
+        setupBottomNav(Tab.TEAM)
         session = Session(this)
         countsBox = findViewById(R.id.countsBox)
         listTeam = findViewById(R.id.listTeam)

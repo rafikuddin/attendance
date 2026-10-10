@@ -60,6 +60,7 @@ class NightHoldActivity : AppCompatActivity() {
         session = Session(this)
         if (!session.loggedIn) { finish(); return }
         setupHeader("Night Hold") { loadStatus(); startLocation() }
+        setupBottomNav(Tab.NIGHT)
 
         tvLoc = findViewById(R.id.tvLoc)
         btnRetry = findViewById(R.id.btnRetryLoc)

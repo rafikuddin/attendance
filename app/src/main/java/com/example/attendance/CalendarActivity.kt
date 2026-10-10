@@ -38,6 +38,7 @@ class CalendarActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_calendar)
         setupHeader("My Attendance") { loadData() }
+        setupBottomNav(Tab.CALENDAR)
         grid = findViewById(R.id.grid)
         tvMonth = findViewById(R.id.tvMonth)
         tvCount = findViewById(R.id.tvCount)

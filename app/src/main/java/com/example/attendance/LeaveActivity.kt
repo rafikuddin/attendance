@@ -37,6 +37,7 @@ class LeaveActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_leave)
         setupHeader("Apply for Leave") { loadList() }
+        setupBottomNav(Tab.LEAVE)
         session = Session(this)
         ddType = findViewById(R.id.ddType)
         etFrom = findViewById(R.id.etFrom); etTo = findViewById(R.id.etTo)

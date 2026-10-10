@@ -22,6 +22,9 @@ class Session(ctx: Context) {
     var name: String
         get() = p.getString("n", "") ?: ""
         set(v) { p.edit().putString("n", v).apply() }
+    var isManager: Boolean
+        get() = p.getBoolean("m", false)
+        set(v) { p.edit().putBoolean("m", v).apply() }
     val loggedIn: Boolean get() = username.isNotEmpty()
     fun clear() { p.edit().clear().apply() }
 }

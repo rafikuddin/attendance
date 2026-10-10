@@ -33,12 +33,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
         findViewById<android.view.View>(R.id.tileAttendance).setOnClickListener { open(AttendanceActivity::class.java) }
 
-        // Bottom navigation (Home is this screen)
+        setupBottomNav(Tab.HOME)
         findViewById<android.view.View>(R.id.btnMark).setOnClickListener { open(AttendanceActivity::class.java) }
-        findViewById<android.view.View>(R.id.navLeave).setOnClickListener { open(LeaveActivity::class.java) }
-        findViewById<android.view.View>(R.id.navTeam).setOnClickListener { open(TeamActivity::class.java) }
-        findViewById<android.view.View>(R.id.navCalendar).setOnClickListener { open(CalendarActivity::class.java) }
-        findViewById<android.view.View>(R.id.navNight).setOnClickListener { open(NightHoldActivity::class.java) }
     }
 
     override fun onResume() {
@@ -87,7 +83,7 @@ class MainActivity : AppCompatActivity() {
             }
             if (ids != null) {
                 findViewById<android.widget.ProgressBar>(ids.first).progress = pct
-                findViewById<TextView>(ids.third).text = "$rem/$quota ($pct%)"
+                findViewById<TextView>(ids.third).text = "$rem left of $quota · ${o.optInt("used")} used"
             }
         }
         findViewById<TextView>(R.id.tvBalUsed).text = "Used $used" + (if (pending > 0) " · Pending $pending" else "")
@@ -158,6 +154,7 @@ class MainActivity : AppCompatActivity() {
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
+            session.isManager = res.optBoolean("isManager")
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
             tvTodayLoc.text = when {
                 todayTime != null && todayAddr.isNotEmpty() -> "📍 $todayAddr"
