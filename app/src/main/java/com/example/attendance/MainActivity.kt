@@ -15,7 +15,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var session: Session
     private lateinit var tvStatus: TextView
     private lateinit var tvMonth: TextView
-    private lateinit var tvLeaveBal: TextView
+    private lateinit var tvTodayLoc: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,7 +24,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_home)
         tvStatus = findViewById(R.id.tvStatus)
         tvMonth = findViewById(R.id.tvMonth)
-        tvLeaveBal = findViewById(R.id.tvLeaveBal)
+        tvTodayLoc = findViewById(R.id.tvTodayLoc)
         findViewById<TextView>(R.id.tvName).text = session.name
         findViewById<TextView>(R.id.tvAvatar).text = session.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
         findViewById<TextView>(R.id.tvDate).text =
@@ -36,6 +36,13 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.tileNight).setOnClickListener { open(NightHoldActivity::class.java) }
         findViewById<android.view.View>(R.id.tileCalendar).setOnClickListener { open(CalendarActivity::class.java) }
         findViewById<android.view.View>(R.id.tileTeam).setOnClickListener { open(TeamActivity::class.java) }
+
+        // Bottom navigation (Home is this screen)
+        findViewById<android.view.View>(R.id.btnMark).setOnClickListener { open(AttendanceActivity::class.java) }
+        findViewById<android.view.View>(R.id.navLeave).setOnClickListener { open(LeaveActivity::class.java) }
+        findViewById<android.view.View>(R.id.navTeam).setOnClickListener { open(TeamActivity::class.java) }
+        findViewById<android.view.View>(R.id.navCalendar).setOnClickListener { open(CalendarActivity::class.java) }
+        findViewById<android.view.View>(R.id.navSettings).setOnClickListener { showMenu(it) }
     }
 
     override fun onResume() {
@@ -64,6 +71,32 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
+    /** Fills the three leave bars: the bar shows what is left (full = nothing used yet). */
+    private fun showBalance(b: org.json.JSONArray) {
+        findViewById<TextView>(R.id.tvBalHeading).text = "LEAVE BALANCE ${Calendar.getInstance().get(Calendar.YEAR)}"
+        var used = 0
+        var pending = 0
+        for (i in 0 until b.length()) {
+            val o = b.getJSONObject(i)
+            val quota = o.optInt("quota")
+            val rem = o.optInt("remaining").coerceIn(0, maxOf(quota, 0))
+            used += o.optInt("used")
+            pending += o.optInt("pending")
+            val pct = if (quota > 0) (rem * 100 / quota) else 0
+            val ids = when (o.optString("type").substringBefore(" ")) {
+                "Casual" -> Triple(R.id.pbCasual, R.id.tvCasual, R.id.tvCasualVal)
+                "Sick" -> Triple(R.id.pbSick, R.id.tvSick, R.id.tvSickVal)
+                "Earn" -> Triple(R.id.pbEarn, R.id.tvEarn, R.id.tvEarnVal)
+                else -> null
+            }
+            if (ids != null) {
+                findViewById<android.widget.ProgressBar>(ids.first).progress = pct
+                findViewById<TextView>(ids.third).text = "$rem/$quota ($pct%)"
+            }
+        }
+        findViewById<TextView>(R.id.tvBalUsed).text = "Used $used" + (if (pending > 0) " · Pending $pending" else "")
+    }
+
     // Friday is the weekly off day — never counted as absent, never shown as "not marked yet".
     // "This month" runs PERIOD_START_DAY → PERIOD_END_DAY (26th → 25th), not the calendar month —
     // keep this in sync with Code.gs's PERIOD_START_DAY/PERIOD_END_DAY if you ever change the cycle.
@@ -88,11 +121,12 @@ class MainActivity : AppCompatActivity() {
             var present = 0
             var todayTime: String? = null
             var todayLate = false
+            var todayAddr = ""
             val presentThisPeriod = HashSet<String>()
             val recs = res.getJSONArray("records")
             for (i in 0 until recs.length()) {
                 val r = recs.getJSONObject(i); val d = r.getString("date")
-                if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late") }
+                if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late"); todayAddr = r.optString("address") }
                 if (d >= periodStartKey && d <= periodEndKey) { present++; presentThisPeriod.add(d) }
             }
             val leaves = res.optJSONArray("leaves")
@@ -127,13 +161,15 @@ class MainActivity : AppCompatActivity() {
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Color.parseColor("#DC2626")) }
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
-            findViewById<android.view.View>(R.id.tileTeam).visibility =
-                if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
-            res.optJSONArray("balance")?.let { b ->
-                tvLeaveBal.text = "Leave left: " + (0 until b.length()).joinToString("  ·  ") {
-                    val o = b.getJSONObject(it); o.getString("type").substringBefore(" ") + " " + o.optInt("remaining")
-                }
+            val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
+            findViewById<android.view.View>(R.id.tileTeam).visibility = manager
+            findViewById<android.view.View>(R.id.navTeam).visibility = manager
+            tvTodayLoc.text = when {
+                todayTime != null && todayAddr.isNotEmpty() -> "📍 $todayAddr"
+                todayTime != null -> "📍 Location saved with today's attendance"
+                else -> "📍 Location is captured when you mark attendance"
             }
+            res.optJSONArray("balance")?.let { showBalance(it) }
         }
 
         // Shows the last saved answer straight away (so Home opens instantly), then refreshes it.
