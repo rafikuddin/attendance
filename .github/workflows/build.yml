@@ -6,9 +6,15 @@ on:
       - '**.md'
   workflow_dispatch:
 
+# Needed so the build can publish the APK on the repo's Releases page.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      VERSION: 1.0.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,11 +32,12 @@ jobs:
         with:
           gradle-version: 8.7
 
+      # verCode = the run number, so every build is a higher version than the one before (1.0.<run number>).
       - name: Build debug APK
         shell: bash
-        run: gradle assembleDebug --stacktrace --console=plain 2>&1 | tee build.log
+        run: gradle assembleDebug -PverCode=${{ github.run_number }} --stacktrace --console=plain 2>&1 | tee build.log
 
-      # Only when the build fails: put the REAL error at the top of the run page, so nobody has to dig through the log.
+      # Only when the build fails: put the REAL error at the top of the run page.
       - name: Show the real error
         if: failure()
         shell: bash
@@ -53,8 +60,23 @@ jobs:
           name: build-log
           path: build.log
 
+      - name: Name the APK with its version
+        run: cp app/build/outputs/apk/debug/app-debug.apk "SAM-BOND-Attendance-v${VERSION}.apk"
+
+      - name: Summary
+        run: echo "### ✅ Built version ${VERSION}" >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: SAM-BOND-Attendance-v${{ env.VERSION }}.apk
           if-no-files-found: error
+
+      # Also publishes the APK on the repo's "Releases" page - easiest place to download from a phone.
+      - name: Publish release
+        continue-on-error: true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: SAM BOND Attendance v${{ env.VERSION }}
+          files: SAM-BOND-Attendance-v${{ env.VERSION }}.apk
