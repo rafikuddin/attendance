@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
 
         findViewById<android.view.View>(R.id.cardNight).setOnClickListener { open(NightHoldActivity::class.java) }
+        findViewById<android.view.View>(R.id.cardNotice).setOnClickListener { open(NoticesActivity::class.java) }
         setupBottomNav(Tab.HOME)
         if (session.mustChangePassword) {          // signed in with a password shorter than the server now requires
             session.mustChangePassword = false     // ask once per sign-in
@@ -52,11 +53,13 @@ class MainActivity : AppCompatActivity() {
     private fun showMenu(anchor: android.view.View) {
         val menu = PopupMenu(this, anchor)
         menu.menu.add("Change Password")
+        if (AdminFlag.get(this)) menu.menu.add("Admin Panel")
         menu.menu.add("Logout")
         menu.menu.add("App version $versionName").isEnabled = false
         menu.setOnMenuItemClickListener { item ->
             when (item.title.toString()) {
                 "Change Password" -> ChangePasswordDialog.show(this, session)
+                "Admin Panel" -> open(AdminActivity::class.java)
                 "Logout" -> logout()
             }
             true
@@ -133,6 +136,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** The newest admin notice, shown as a card under Today's Status. Hidden when there are none. */
+    private fun showNotices(arr: org.json.JSONArray?) {
+        val card = findViewById<android.view.View>(R.id.cardNotice)
+        if (arr == null || arr.length() == 0) { card.visibility = android.view.View.GONE; return }
+        val first = arr.getJSONObject(0)
+        findViewById<TextView>(R.id.tvNoticeTitle).text = first.optString("title")
+        findViewById<TextView>(R.id.tvNoticeText).text = first.optString("message")
+        val more = arr.length() - 1
+        findViewById<TextView>(R.id.tvNoticeMore).text = if (more > 0) "+$more more · tap to see all" else "Tap to read"
+        card.visibility = android.view.View.VISIBLE
+    }
+
     /** Fills the three leave bars: the bar shows what is left (full = nothing used yet). */
     private fun showBalance(b: org.json.JSONArray) {
         findViewById<TextView>(R.id.tvBalHeading).text = "LEAVE BALANCE ${Calendar.getInstance().get(Calendar.YEAR)}"
@@ -159,7 +174,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvBalUsed).text = "Used $used" + (if (pending > 0) " · Pending $pending" else "")
     }
 
-    // Friday is the weekly off day — never counted as absent, never shown as "not marked yet".
+    // Friday and any admin-set holiday are days off — never counted as absent, never shown as "not marked yet".
     // "This month" runs PERIOD_START_DAY → PERIOD_END_DAY (26th → 25th), not the calendar month —
     // keep this in sync with Code.gs's PERIOD_START_DAY/PERIOD_END_DAY if you ever change the cycle.
     private fun loadStatus() {
@@ -203,13 +218,20 @@ class MainActivity : AppCompatActivity() {
             }
             val leaveType = approvedLeaveOn(today)
 
+            // Holidays added by an admin (date -> name). They count as days off, just like Friday.
+            val holidays = HashMap<String, String>()
+            res.optJSONArray("holidays")?.let { h ->
+                for (i in 0 until h.length()) { val o = h.getJSONObject(i); holidays[o.optString("date")] = o.optString("name") }
+            }
+            val holidayToday = holidays[today]
+
             // Absent = days from the start of this pay period to yesterday, that aren't Friday, present, or approved leave.
             var absent = 0
             val cursor = periodStart.clone() as Calendar
             val yesterday = (now.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, -1) }
             while (!cursor.after(yesterday)) {
                 val dKey = fmt.format(cursor.time)
-                if (cursor.get(Calendar.DAY_OF_WEEK) != Calendar.FRIDAY && !presentThisPeriod.contains(dKey) && approvedLeaveOn(dKey) == null) absent++
+                if (cursor.get(Calendar.DAY_OF_WEEK) != Calendar.FRIDAY && !holidays.containsKey(dKey) && !presentThisPeriod.contains(dKey) && approvedLeaveOn(dKey) == null) absent++
                 cursor.add(Calendar.DAY_OF_MONTH, 1)
             }
 
@@ -217,6 +239,7 @@ class MainActivity : AppCompatActivity() {
                 todayTime != null && todayLate -> { tvStatus.text = "⏰ Late Present · $todayTime"; tvStatus.setTextColor(Color.parseColor("#D97706")) }
                 todayTime != null -> { tvStatus.text = "✅ Present · $todayTime"; tvStatus.setTextColor(Color.parseColor("#16A34A")) }
                 leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Color.parseColor("#D97706")) }
+                holidayToday != null -> { tvStatus.text = "🎉 Holiday · $holidayToday"; tvStatus.setTextColor(Color.parseColor("#7C3AED")) }
                 isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Color.parseColor("#6B7280")) }
                 isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Color.parseColor("#B91C1C")) }
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Color.parseColor("#DC2626")) }
@@ -224,6 +247,8 @@ class MainActivity : AppCompatActivity() {
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
             session.isManager = res.optBoolean("isManager")
+            AdminFlag.set(this, res.optBoolean("isAdmin"))
+            showNotices(res.optJSONArray("notices"))
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
             res.optJSONArray("balance")?.let { showBalance(it) }
             showNights(res.optJSONArray("nights"), today, periodStartKey, periodEndKey)

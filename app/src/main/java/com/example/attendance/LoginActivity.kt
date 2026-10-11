@@ -38,6 +38,7 @@ class LoginActivity : AppCompatActivity() {
                     session.username = u
                     session.name = res.optString("name", u)
                     session.isManager = res.optBoolean("isManager")
+                    AdminFlag.set(this, res.optBoolean("isAdmin"))
                     session.mustChangePassword = res.optBoolean("weakPassword")
                     openMain()
                 } else tvErr.text = err

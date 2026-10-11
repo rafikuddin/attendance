@@ -13,7 +13,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **Selfie attendance** — front-camera selfie (required, JPEG only, size-limited), live GPS location (fake/mock GPS is rejected), address lookup, and a **server-side** date/time stamp (changing the phone's clock does nothing).
 - **Location is required** — a submission without a real GPS location, or with one outside Bangladesh, is rejected by the server, not just the app.
 - **Late Present** — submitting at or after **9:00 AM** is marked *⏰ Late Present* with the time.
-- **Absent** — still unmarked after **6:00 PM** counts as *Absent*; past unmarked days show as Absent too. **Friday is an automatic weekly off** and is never counted as absent.
+- **Absent** — still unmarked after **6:00 PM** counts as *Absent*; past unmarked days show as Absent too. **Friday is an automatic weekly off**, and so is any **custom holiday** an admin adds; neither is ever counted as absent.
 - **One check-in per day** — a second submission on the same day is blocked.
 - **Leave requests** — Casual, Sick or Earn leave with a from/to date picker; days are counted automatically.
 - **Leave balance** — **Casual 10 · Sick 14 · Earn 17** days per year, with *left of total · used* shown per type.
@@ -23,13 +23,22 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
   - **district → thana** pickers (all **64 districts**, with searchable lists),
   - **hotel name**,
   - **one per day**; the form can't be submitted without real data (checked again on the server).
-- **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
+- **Notices** — a notice from an admin appears as a card on Home (tap to see them all).
+- **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, 🎉 holidays, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
 
 ### For managers
 - **Unlimited levels** — everything uses one *Manager* column, so Employee → ZM/ASM → RSM/DSM → SM → Operation Manager (or any structure) works with no hardcoded roles.
 - **My Team** — each direct report's status today (Present / Late / On Leave / Absent / Off / Pending), their selfie and location, and a live roll-up for any report who manages a team.
 - **Drill down** — tap any manager to see their team, all the way to individual employees.
 - **Approve / Reject leave** — only for your **own direct reports**; higher-level views are read-only, so approvals always follow the chain of command.
+
+### For admins
+An **admin** is any user whose **Role** cell in the Users sheet says `admin` (see *Make your first admin* below). Admins get an **Admin Panel** in the 👤 menu on Home with three tabs:
+- **👥 Users** — **add a new user** (username, name, manager, optional admin role) and **reset anyone's password**. You can type a temporary password or leave it blank and the server makes one (shown once, with a Copy button). The person is signed out everywhere and must choose their own password at their next sign-in. Creating a user or resetting a password asks for **your own password** again.
+- **📢 Notices** — post a title + message to everyone (shown for 7 days by default, up to 90) and remove notices.
+- **🎉 Holidays** — pick a date and a name; that day behaves like Friday for everyone (nobody is absent, the team view shows *Off*, Calendar and Home show the holiday name). Remove a holiday and the day counts as a normal working day again.
+
+Notices appear when a phone opens or refreshes Home. They are **not push notifications** (no sound or pop-up while the app is closed); that would need Firebase.
 
 ---
 
@@ -43,8 +52,10 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 | **Team** *(managers only)* | Team status, roll-ups, drill-down, leave approvals |
 | **Calendar** | Pay-period view of attendance, leave and night holds |
 | **Night Hold** | Overnight stay report with location, district/thana and hotel |
+| **Notices** | Everything admins have posted |
+| **Admin Panel** *(admins only)* | Add users, reset passwords, post notices, add holidays |
 
-A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold) is on every screen, and every screen has a compact header that stays fixed while the content scrolls. ⟳ buttons refresh any screen, and the 👤 menu on Home has *Change Password*, *Logout* and the app version.
+A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold) is on every screen, and every screen has a compact header that stays fixed while the content scrolls. ⟳ buttons refresh any screen, and the 👤 menu on Home has *Change Password*, *Admin Panel* (admins only), *Logout* and the app version.
 
 ---
 
@@ -70,13 +81,14 @@ Speed: screens open instantly from a saved copy of the last response and then re
 2. **Extensions → Apps Script**, paste in `Code.gs`, and save.
 3. If the script is **not** opened from inside the Sheet, set `SHEET_ID` at the top of `Code.gs` to the ID in the sheet's URL (the text between `/d/` and `/edit`).
 4. Run the **`setup`** function once and approve the permission prompts. It creates:
-   - **Users** — `Username | Password | Name | Manager | TokenEpoch` (*Manager* = another user's username, blank if none; this builds the hierarchy. *Password* holds a hash after the first sign-in; *TokenEpoch* is managed by the script, leave it alone)
+   - **Users** — `Username | Password | Name | Manager | TokenEpoch | Role | MustChange` (*Manager* = another user's username, blank if none; this builds the hierarchy. *Password* holds a hash after the first sign-in. *Role* is `admin` for admins and blank for everyone else. *TokenEpoch* and *MustChange* are managed by the script, leave them alone)
    - **Attendance** — filled in as staff check in
    - **Leaves** — filled in as staff apply; the **Status** column (Pending / Approved / Rejected) is set by a manager in the app, or by hand
-   - **NightHold** — created automatically on first use
+   - **NightHold**, **Notices** and **Holidays** — created automatically on first use (admins add notices and holidays from the app; you can also read them in the Sheet)
 5. Add your staff to **Users** and link the **Manager** column. You can type a plain password for a new person; it is replaced by a hash the first time they sign in.
    - **Upgrading an existing sheet?** Make a backup copy of the Sheet, then run **`upgradeSecurity`** once. It hashes every plain-text password and creates the token secret. It is safe to run again. Delete the backup afterwards, and remember that Google Sheets *Version history* still holds the old plain-text values.
-6. **Deploy → New deployment → Web app** — *Execute as* **Me**, *Who has access* **Anyone**. Copy the URL ending in `/exec`.
+6. **Make your first admin:** open `Code.gs`, find `function makeAdmin()`, change `'manager1'` to your own username, select `makeAdmin` and press **Run** (or type `admin` into the *Role* cell yourself). Only someone who can edit the Sheet can do this, so an admin can't be created from the app by an ordinary user. After that, admins add other users from the app.
+7. **Deploy → New deployment → Web app** — *Execute as* **Me**, *Who has access* **Anyone**. Copy the URL ending in `/exec`.
 
 ### 2. Connect the app
 Open `app/src/main/java/com/example/attendance/Api.kt`, paste the URL into `Config.SCRIPT_URL`, and commit.
@@ -103,7 +115,7 @@ Releases are signed with a private key that is **never** stored in the repo.
 - The version shows on the login screen and in the 👤 menu on Home.
 - All builds are signed with **one private key** kept in GitHub Secrets (see *Signing key*), and each build has a higher version number than the last — so a new APK installs **over** the old one as a normal update.
 - ⚠️ **One-time step:** an APK signed with an older key (the previous public debug key) can't be updated in place. Android shows *"Conflicting app signatures"*. Uninstall the old app once, then install the new one. After that, updates just work. Your data is safe — it all lives in the Google Sheet.
-- The build **fails with a clear message** if the signing secrets are missing, instead of producing an APK signed with the wrong key.
+- If the four signing secrets are set, every APK is signed with your key. If they are **missing**, the build still runs but with a throw-away key: the file is named `…-TEMP-KEY.apk`, the run page shows a ⚠️ warning, and it can only be installed fresh (uninstall the old app first). If a secret is wrong the build **fails with a clear message**.
 
 ### Updating from a phone (no computer)
 1. Upload an `update.zip` to the repo's main page (**Add file → Upload files**). The **Apply Update** workflow unpacks it into the project automatically.
@@ -127,6 +139,7 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 | Weekly off | `Code.gs` → `isFridayDate` | Friday |
 | Server URL | `Api.kt` → `Config.SCRIPT_URL` | — |
 | Minimum password length, lockout, token lifetime | `Code.gs` → `MIN_PASSWORD_LENGTH`, `MAX_FAILED_LOGINS`, `LOCKOUT_MINUTES`, `TOKEN_DAYS` | 8, 5 tries, 15 min, 30 days |
+| Notice length of stay | `Code.gs` → `NOTICE_DEFAULT_DAYS`, `NOTICE_MAX_DAYS` | 7 days, 90 days |
 | Allowed check-in area | `Code.gs` → `GEO_CHECK`, `GEO_BOX` | Bangladesh + margin |
 | Districts & thanas | `app/src/main/assets/bd_locations.txt` | 64 districts |
 
@@ -145,7 +158,9 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 | *"Conflicting app signatures"* when installing | Uninstall the old app once (see **Versions & updates**). |
 | *"Too many wrong passwords"* | Wait the 15 minutes it shows; the pause ends by itself. |
 | *"Your session ended"* | Normal after a password change on another phone, a logout, or 30 days of not opening the app. Sign in again. |
-| Build fails with *"Missing repository secret"* | Add the four signing secrets (see **Signing key**). |
+| APK is named `…-TEMP-KEY.apk` or won't update the installed app | The signing secrets are missing. Add the four secrets (see **Signing key**), uninstall the old app once, install the new one. |
+| Someone forgot their password | Admin Panel → Users → **Reset password** (this also lifts a *too many wrong passwords* pause). |
+| The Admin Panel isn't in the 👤 menu | Their *Role* cell must say `admin`; then open or refresh Home once. |
 | Someone lost their phone | In the Apps Script editor run `revokeOneUser` (edit the username inside it first), or `revokeEveryone`. |
 | Build APK fails | Open the failed run's **Summary** — the *"Build failed – the real error"* box shows the exact line. The full log is saved as a `build-log` artifact. |
 | Nothing is written to the Sheet | Make sure the script is bound to the Sheet or `SHEET_ID` is set, and that `setup` was run once. |
@@ -158,6 +173,7 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 - **Brute-force protection:** 5 wrong passwords pause that account for 15 minutes. Apps Script cannot see a caller's IP address, so this is per account, not per attacker; an attacker can pause someone's account, but cannot get into it.
 - **Selfies and locations are validated on the server:** photo required, JPEG only, size-limited; coordinates must be real and inside the allowed area; the phone's "fake GPS" flag is rejected. A phone with a modified app or a rooted device can still lie about its GPS — only Play Integrity attestation would close that, and it is not included.
 - **Spreadsheet formula injection** is blocked: text typed on a phone (address, hotel, leave reason) is always stored as text.
+- **Admin actions** are checked on the server on every request (the *Role* cell is read each time, so removing `admin` takes effect at once), and adding a user or resetting a password needs the admin's own password again. A password an admin sets is temporary: the person must choose their own at first sign-in. Only someone who can edit the Sheet can create the first admin.
 - **Authorization** is enforced on the server: selfies are visible only to the person and their managers; leave can be decided only by a direct manager; team views only down your own chain.
 - **Backups are disabled** for the app, and saved data on the phone is encrypted and wiped at logout.
 - The script URL is public (anyone who has the APK has it), so assume anyone can call it. Everything above is built with that in mind.
@@ -181,6 +197,9 @@ app/
       Api.kt            Server URL, session (token), API call helper
       Security.kt       Encrypted storage, wipe-on-logout, fake-GPS check
       Cache.kt          Saved-response cache for instant screens
+      Admin.kt          Admin flag (the server decides who is an admin)
+      AdminActivity.kt  Admin Panel: users, notices, holidays
+      NoticesActivity.kt  List of notices
       Ui.kt             Shared header + bottom bar
       MainActivity.kt           Home
       AttendanceActivity.kt     Selfie + location check-in

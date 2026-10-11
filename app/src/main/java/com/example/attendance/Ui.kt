@@ -27,8 +27,8 @@ enum class Tab(val navId: Int) {
     HOME(R.id.navHome), ATTENDANCE(R.id.navAttendance), LEAVE(R.id.navLeave), TEAM(R.id.navTeam), CALENDAR(R.id.navCalendar), NIGHT(R.id.navNight)
 }
 
-/** Wires the bottom bar (layout/bottom_nav.xml) that every screen shows, and marks [active]. */
-fun AppCompatActivity.setupBottomNav(active: Tab) {
+/** Wires the bottom bar (layout/bottom_nav.xml) that every screen shows, and marks [active] (null = none, for screens like Admin that are not a tab). */
+fun AppCompatActivity.setupBottomNav(active: Tab?) {
     val manager = Session(this).isManager
     for (tab in Tab.values()) {
         val item = findViewById<LinearLayout>(tab.navId)

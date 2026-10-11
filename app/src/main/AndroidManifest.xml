@@ -21,5 +21,7 @@
         <activity android:name=".CalendarActivity" android:exported="false" />
         <activity android:name=".TeamActivity" android:exported="false" />
         <activity android:name=".NightHoldActivity" android:exported="false" />
+        <activity android:name=".NoticesActivity" android:exported="false" />
+        <activity android:name=".AdminActivity" android:exported="false" />
     </application>
 </manifest>

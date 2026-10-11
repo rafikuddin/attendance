@@ -20,6 +20,7 @@ class CalendarActivity : AppCompatActivity() {
     private val records = HashMap<String, JSONObject>()
     private val leaveDays = HashMap<String, JSONObject>()
     private val nightDays = HashMap<String, JSONObject>()   // date -> that day's night hold
+    private val holidays = HashMap<String, String>()        // date -> holiday name (added by an admin)
     // `cal` always holds the 26th that starts the currently-shown pay period. Adding/subtracting a
     // MONTH is safe here because the 26th exists in every month, so the day-of-month never drifts.
     // Keep PERIOD_START_DAY/END in sync with Code.gs's PERIOD_START_DAY/PERIOD_END_DAY if ever changed.
@@ -65,7 +66,10 @@ class CalendarActivity : AppCompatActivity() {
 
     private fun showHistory(res: JSONObject) {
         run {
-            records.clear(); leaveDays.clear(); nightDays.clear()
+            records.clear(); leaveDays.clear(); nightDays.clear(); holidays.clear()
+            res.optJSONArray("holidays")?.let { hl ->
+                for (i in 0 until hl.length()) hl.getJSONObject(i).let { holidays[it.optString("date")] = it.optString("name") }
+            }
             res.optJSONArray("nights")?.let { nl ->
                 for (i in 0 until nl.length()) nl.getJSONObject(i).let { nightDays[it.getString("date")] = it }
             }
@@ -99,7 +103,7 @@ class CalendarActivity : AppCompatActivity() {
         if (stroke) setStroke(dp(2), Color.parseColor("#FF4D6D"))
     }
 
-    // Friday is the weekly off day — never counted as absent. To add Saturday too,
+    // Friday and admin-set holidays are days off — never counted as absent. To add Saturday too,
     // also check `dow == Calendar.SATURDAY` everywhere FRIDAY is checked below.
     // A "month" here is one pay period: PERIOD_START_DAY of one calendar month through
     // PERIOD_END_DAY of the next, so the grid spans a real date range, not a calendar month.
@@ -118,7 +122,7 @@ class CalendarActivity : AppCompatActivity() {
         val now = Calendar.getInstance()
         val todayKey = String.format(Locale.US, "%04d-%02d-%02d", now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
         val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18   // matches Code.gs's ABSENT_AFTER_HOUR (6:00 PM)
-        var present = 0; var late = 0; var leave = 0; var absent = 0; var off = 0; var nightCount = 0
+        var present = 0; var late = 0; var leave = 0; var absent = 0; var off = 0; var holidayCount = 0; var nightCount = 0
 
         val cursor = periodStart.clone() as Calendar
         while (!cursor.after(periodEnd)) {
@@ -140,6 +144,11 @@ class CalendarActivity : AppCompatActivity() {
                     if (approved) leave++
                     c.setTextColor(if (approved) Color.WHITE else Color.parseColor("#78350F"))
                     c.background = circle(if (approved) "#F59E0B" else "#FDE68A", isToday)
+                    c.setOnClickListener { show(key) }
+                }
+                holidays.containsKey(key) -> {
+                    holidayCount++
+                    c.setTextColor(Color.WHITE); c.background = circle("#8B5CF6", isToday)
                     c.setOnClickListener { show(key) }
                 }
                 isFriday -> {
@@ -169,6 +178,7 @@ class CalendarActivity : AppCompatActivity() {
         }
         tvCount.text = "This period: $present present" + (if (late > 0) " ($late late)" else "") +
             " · $leave leave · $absent absent · $off Friday off" +
+            (if (holidayCount > 0) " · $holidayCount holiday" else "") +
             (if (nightCount > 0) " · $nightCount night hold" else "")
     }
 
@@ -184,6 +194,7 @@ class CalendarActivity : AppCompatActivity() {
         val dayText = when {
             r != null -> "${if (r.optBoolean("late")) "⏰ Late Present" else "✅ Present"} · $key\nTime: ${r.optString("time")}\nLocation: ${r.optString("lat")}, ${r.optString("lng")}\n${r.optString("address")}"
             lv != null -> "🌴 ${lv.optString("type")} (${lv.optString("status")})\n${lv.optString("from")} → ${lv.optString("to")} · ${lv.optString("days")} day(s)\n${lv.optString("reason")}"
+            holidays.containsKey(key) -> "🎉 Holiday · ${holidays[key]} · $key"
             isFriday -> "🗓️ Weekly Off (Friday) · $key"
             key < todayKey || (key == todayKey && isAfterCutoff) -> "❌ Absent · $key\nNo attendance was marked and no approved leave covers this day."
             else -> ""
