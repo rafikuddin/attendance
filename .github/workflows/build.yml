@@ -32,10 +32,53 @@ jobs:
         with:
           gradle-version: 8.7
 
-      # verCode = the run number, so every build is a higher version than the one before (1.0.<run number>).
-      - name: Build debug APK
+      # Signing. With the four repository secrets (README, "Signing key") the APK is signed with YOUR private key, so every
+      # new build installs over the old one as a normal update. Without them the build still runs, but with a throw-away key:
+      # that APK is named ...-TEMP-KEY.apk and can only be installed fresh (uninstall the old app first).
+      - name: Prepare signing key
         shell: bash
-        run: gradle assembleDebug -PverCode=${{ github.run_number }} --stacktrace --console=plain 2>&1 | tee build.log
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          SECRET_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SECRET_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SECRET_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          KS="$RUNNER_TEMP/signing.jks"
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$SECRET_KEYSTORE_PASSWORD" ] && [ -n "$SECRET_KEY_ALIAS" ] && [ -n "$SECRET_KEY_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KS" || { echo "::error::KEYSTORE_BASE64 is not valid base64. Re-create that secret."; exit 1; }
+            if ! keytool -list -keystore "$KS" -storepass "$SECRET_KEYSTORE_PASSWORD" -alias "$SECRET_KEY_ALIAS" > /dev/null 2>&1; then
+              echo "::error::The signing key could not be opened. Check the secrets KEYSTORE_BASE64, KEYSTORE_PASSWORD and KEY_ALIAS."
+              exit 1
+            fi
+            {
+              echo "KEYSTORE_FILE=$KS"
+              echo "KEYSTORE_PASSWORD=$SECRET_KEYSTORE_PASSWORD"
+              echo "KEY_ALIAS=$SECRET_KEY_ALIAS"
+              echo "KEY_PASSWORD=$SECRET_KEY_PASSWORD"
+              echo "APK_SUFFIX="
+            } >> "$GITHUB_ENV"
+            echo "### 🔐 Signed with your private key" >> "$GITHUB_STEP_SUMMARY"
+          else
+            keytool -genkeypair -keystore "$KS" -storepass tempbuildkey -keypass tempbuildkey -alias temp \
+              -keyalg RSA -keysize 2048 -validity 1000 -dname "CN=Temporary build key" > /dev/null 2>&1
+            {
+              echo "KEYSTORE_FILE=$KS"
+              echo "KEYSTORE_PASSWORD=tempbuildkey"
+              echo "KEY_ALIAS=temp"
+              echo "KEY_PASSWORD=tempbuildkey"
+              echo "APK_SUFFIX=-TEMP-KEY"
+            } >> "$GITHUB_ENV"
+            echo "::warning::Signing secrets are missing, so this APK uses a temporary key and cannot update an installed app. Add the four secrets (README, Signing key)."
+            {
+              echo "### ⚠️ Temporary signing key"
+              echo "The four signing secrets are not set, so this APK is signed with a throw-away key. Android will not install it over an existing copy of the app: uninstall the old app first. Add the secrets (README → Signing key) so future builds update normally."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # verCode = the run number, so every build is a higher version than the one before (1.0.<run number>).
+      - name: Build release APK
+        shell: bash
+        run: gradle assembleRelease -PverCode=${{ github.run_number }} --stacktrace --console=plain 2>&1 | tee build.log
 
       # Only when the build fails: put the REAL error at the top of the run page.
       - name: Show the real error
@@ -61,15 +104,19 @@ jobs:
           path: build.log
 
       - name: Name the APK with its version
-        run: cp app/build/outputs/apk/debug/app-debug.apk "SAM-BOND-Attendance-v${VERSION}.apk"
+        shell: bash
+        run: |
+          NAME="SAM-BOND-Attendance-v${VERSION}${APK_SUFFIX:-}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$NAME"
+          echo "APK_NAME=$NAME" >> "$GITHUB_ENV"
 
       - name: Summary
         run: echo "### ✅ Built version ${VERSION}" >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: SAM-BOND-Attendance-v${{ env.VERSION }}.apk
+          name: app-release
+          path: ${{ env.APK_NAME }}
           if-no-files-found: error
 
       # Also publishes the APK on the repo's "Releases" page - easiest place to download from a phone.
@@ -79,4 +126,5 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           name: SAM BOND Attendance v${{ env.VERSION }}
-          files: SAM-BOND-Attendance-v${{ env.VERSION }}.apk
+          prerelease: ${{ env.APK_SUFFIX != '' }}
+          files: ${{ env.APK_NAME }}
