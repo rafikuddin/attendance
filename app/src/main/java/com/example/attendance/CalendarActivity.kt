@@ -54,7 +54,7 @@ class CalendarActivity : AppCompatActivity() {
         // Draws the last saved copy immediately (if any), then replaces it with the fresh answer.
         val showedSaved = apiCached(
             cacheKey = ResponseCache.calKey(s.username),
-            body = JSONObject().put("action", "history").put("username", s.username).put("password", s.password).put("nights", true),
+            body = JSONObject().put("action", "history").put("username", s.username).put("nights", true),
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<View>(R.id.btnRefresh),
             onData = { res -> showHistory(res) },

@@ -85,7 +85,7 @@ class LeaveActivity : AppCompatActivity() {
         if (f == null || t == null) { msg("Please choose From and To dates", false); return }
         btnApply.isEnabled = false
         msg("Submitting...", true)
-        val body = JSONObject().put("action", "leave").put("username", session.username).put("password", session.password)
+        val body = JSONObject().put("action", "leave").put("username", session.username)
             .put("type", ddType.text.toString()).put("from", iso.format(f.time)).put("to", iso.format(t.time))
             .put("reason", etReason.text.toString().trim())
         api(body) { res, err ->
@@ -111,7 +111,7 @@ class LeaveActivity : AppCompatActivity() {
         // Balance and requests appear instantly from the last saved copy, then refresh.
         apiCached(
             cacheKey = ResponseCache.leavesKey(session.username),
-            body = JSONObject().put("action", "leaves").put("username", session.username).put("password", session.password),
+            body = JSONObject().put("action", "leaves").put("username", session.username),
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<View>(R.id.btnRefresh),
             onData = { res -> showLeaves(res) },

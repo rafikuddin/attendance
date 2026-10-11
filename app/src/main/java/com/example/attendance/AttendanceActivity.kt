@@ -164,6 +164,10 @@ class AttendanceActivity : AppCompatActivity() {
             .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
             .addOnSuccessListener { loc ->
                 if (loc == null) { tvLive.text = "Location unavailable. Turn on GPS and retake."; return@addOnSuccessListener }
+                if (isMockLocation(loc)) {
+                    tvLive.text = "⚠️ A fake / mock location was detected. Turn off any fake-GPS app, then tap Retake and capture again."
+                    return@addOnSuccessListener
+                }
                 location = loc
                 Thread {
                     address = try {
@@ -200,7 +204,6 @@ class AttendanceActivity : AppCompatActivity() {
 
         val selfieTimeText = "${dateFmt.format(t)} ${timeFmt.format(t)}"
         val username = session.username
-        val password = session.password
         val addr = address
 
         // Shrinking and encoding the photo is heavy, so it runs off the screen thread (no freezing).
@@ -213,9 +216,8 @@ class AttendanceActivity : AppCompatActivity() {
                 JSONObject()
                     .put("action", "submit")
                     .put("username", username)
-                    .put("password", password)
                     .put("selfieTime", selfieTimeText)
-                    .put("lat", l.latitude).put("lng", l.longitude)
+                    .put("lat", l.latitude).put("lng", l.longitude).put("mock", isMockLocation(l))
                     .put("address", addr)
                     .put("photo", photo)
             } catch (e: Exception) {
@@ -237,6 +239,7 @@ class AttendanceActivity : AppCompatActivity() {
             if (res != null) {
                 // Saved copies of Home and Calendar are now out of date.
                 ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
+                photoFile?.delete()   // the selfie now lives on the server; don't keep a copy on the phone
                 val late = res.optBoolean("late")
                 cardSummary.setCardBackgroundColor(Color.parseColor(if (late) "#FFEDD5" else "#DCFCE7"))
                 tvSummary.setTextColor(Color.parseColor(if (late) "#9A3412" else "#166534"))

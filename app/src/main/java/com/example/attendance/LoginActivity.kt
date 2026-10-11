@@ -7,6 +7,10 @@ import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 
 class LoginActivity : AppCompatActivity() {
+    companion object {
+        const val EXTRA_MESSAGE = "msg"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val session = Session(this)
@@ -18,6 +22,7 @@ class LoginActivity : AppCompatActivity() {
         val btn = findViewById<Button>(R.id.btnLogin)
         val tvErr = findViewById<TextView>(R.id.tvError)
         findViewById<TextView>(R.id.tvVersion).text = "Version " + (try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { "" })
+        intent.getStringExtra(EXTRA_MESSAGE)?.let { tvErr.text = it }
 
         btn.setOnClickListener {
             val u = etUser.text.toString().trim()
@@ -25,12 +30,15 @@ class LoginActivity : AppCompatActivity() {
             if (u.isEmpty() || p.isEmpty()) { tvErr.text = "Enter username and password"; return@setOnClickListener }
             btn.isEnabled = false
             tvErr.text = "Signing in..."
+            // The password is sent only here, once. The server answers with a token, which api() saves; the password is not kept.
             api(JSONObject().put("action", "login").put("username", u).put("password", p)) { res, err ->
                 btn.isEnabled = true
+                etPass.setText("")
                 if (res != null) {
                     session.username = u
-                    session.password = p
                     session.name = res.optString("name", u)
+                    session.isManager = res.optBoolean("isManager")
+                    session.mustChangePassword = res.optBoolean("weakPassword")
                     openMain()
                 } else tvErr.text = err
             }

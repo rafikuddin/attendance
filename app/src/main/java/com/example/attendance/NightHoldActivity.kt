@@ -111,7 +111,7 @@ class NightHoldActivity : AppCompatActivity() {
         apiCached(
             cacheKey = ResponseCache.nightKey(session.username),
             body = JSONObject().put("action", "nights").put("username", session.username)
-                .put("password", session.password).put("from", today),
+                .put("from", today),
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<View>(R.id.btnRefresh),
             onData = { res -> applyStatus(res, today) },
@@ -245,8 +245,8 @@ class NightHoldActivity : AppCompatActivity() {
         btnSubmit.isEnabled = false
         msg("Submitting…", true)
         val body = JSONObject().put("action", "nightSubmit")
-            .put("username", session.username).put("password", session.password)
-            .put("lat", loc.latitude).put("lng", loc.longitude).put("address", address)
+            .put("username", session.username)
+            .put("lat", loc.latitude).put("lng", loc.longitude).put("mock", isMock(loc)).put("address", address)
             .put("district", d).put("thana", t).put("hotel", hotel)
 
         api(body) { res, err ->

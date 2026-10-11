@@ -9,9 +9,9 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 ## ✨ Features
 
 ### For every employee
-- **Login / Logout / Change password** — usernames and passwords live in a Google Sheet; staff can change their own password from the app.
-- **Selfie attendance** — front-camera selfie, live GPS location, address lookup, and a **server-side** date/time stamp (changing the phone's clock does nothing).
-- **Location is required** — a submission without a real GPS location is rejected by the server, not just the app.
+- **Login / Logout / Change password** — usernames live in a Google Sheet and passwords are stored there only as salted hashes. The app never keeps the password: it signs in once and uses an expiring token. Staff change their own password in the app (current password required, at least 8 characters). Five wrong passwords pause an account for 15 minutes.
+- **Selfie attendance** — front-camera selfie (required, JPEG only, size-limited), live GPS location (fake/mock GPS is rejected), address lookup, and a **server-side** date/time stamp (changing the phone's clock does nothing).
+- **Location is required** — a submission without a real GPS location, or with one outside Bangladesh, is rejected by the server, not just the app.
 - **Late Present** — submitting at or after **9:00 AM** is marked *⏰ Late Present* with the time.
 - **Absent** — still unmarked after **6:00 PM** counts as *Absent*; past unmarked days show as Absent too. **Friday is an automatic weekly off** and is never counted as absent.
 - **One check-in per day** — a second submission on the same day is blocked.
@@ -57,7 +57,7 @@ A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold)
 | Location | Google Play Services (fused location) |
 | Backend | Google Apps Script web app (`Code.gs`) |
 | Data | Google Sheets (+ Google Drive for selfies) |
-| Build | GitHub Actions → debug APK |
+| Build | GitHub Actions → signed release APK |
 
 Speed: screens open instantly from a saved copy of the last response and then refresh; selfies are downloaded once and cached; uploads are shrunk before sending.
 
@@ -70,19 +70,29 @@ Speed: screens open instantly from a saved copy of the last response and then re
 2. **Extensions → Apps Script**, paste in `Code.gs`, and save.
 3. If the script is **not** opened from inside the Sheet, set `SHEET_ID` at the top of `Code.gs` to the ID in the sheet's URL (the text between `/d/` and `/edit`).
 4. Run the **`setup`** function once and approve the permission prompts. It creates:
-   - **Users** — `Username | Password | Name | Manager` (*Manager* = another user's username, blank if none; this builds the hierarchy)
+   - **Users** — `Username | Password | Name | Manager | TokenEpoch` (*Manager* = another user's username, blank if none; this builds the hierarchy. *Password* holds a hash after the first sign-in; *TokenEpoch* is managed by the script, leave it alone)
    - **Attendance** — filled in as staff check in
    - **Leaves** — filled in as staff apply; the **Status** column (Pending / Approved / Rejected) is set by a manager in the app, or by hand
    - **NightHold** — created automatically on first use
-5. Add your staff to **Users** and link the **Manager** column.
+5. Add your staff to **Users** and link the **Manager** column. You can type a plain password for a new person; it is replaced by a hash the first time they sign in.
+   - **Upgrading an existing sheet?** Make a backup copy of the Sheet, then run **`upgradeSecurity`** once. It hashes every plain-text password and creates the token secret. It is safe to run again. Delete the backup afterwards, and remember that Google Sheets *Version history* still holds the old plain-text values.
 6. **Deploy → New deployment → Web app** — *Execute as* **Me**, *Who has access* **Anyone**. Copy the URL ending in `/exec`.
 
 ### 2. Connect the app
 Open `app/src/main/java/com/example/attendance/Api.kt`, paste the URL into `Config.SCRIPT_URL`, and commit.
 
-### 3. Build the APK
+### 3. Signing key (one-time)
+Releases are signed with a private key that is **never** stored in the repo.
+1. On a computer with Java, create the key (keep the file and both passwords somewhere safe — **if you lose it you can never update the app again**, everyone would have to uninstall and reinstall):
+   ```
+   keytool -genkeypair -v -keystore sambond-release.jks -alias sambond -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. Turn it into text: `base64 -w0 sambond-release.jks` (Linux), `base64 -i sambond-release.jks | tr -d '\n'` (macOS), or in PowerShell `[Convert]::ToBase64String([IO.File]::ReadAllBytes("sambond-release.jks"))`.
+3. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**, add four secrets: `KEYSTORE_BASE64` (the text from step 2), `KEYSTORE_PASSWORD`, `KEY_ALIAS` (`sambond` above) and `KEY_PASSWORD`.
+
+### 4. Build the APK
 - Push to the repo or run **Actions → Build APK → Run workflow**.
-- Download the APK from the run's **`app-debug`** artifact, or from the repo's **Releases** page (easiest on a phone).
+- Download the APK from the run's **`app-release`** artifact, or from the repo's **Releases** page (easiest on a phone).
 - Install it on an Android phone (Android 7.0+).
 
 ---
@@ -91,9 +101,9 @@ Open `app/src/main/java/com/example/attendance/Api.kt`, paste the URL into `Conf
 
 - Every build is numbered **`1.0.<run number>`** (for example `1.0.56`). The APK is named `SAM-BOND-Attendance-v1.0.56.apk` and is also published on the **Releases** page.
 - The version shows on the login screen and in the 👤 menu on Home.
-- All builds are signed with **one fixed key** (`app/debug.keystore`), and each build has a higher version number than the last — so a new APK installs **over** the old one as a normal update.
-- ⚠️ **One-time step:** if you installed an APK built *before* the fixed key was added, Android shows *"Conflicting app signatures"*. Uninstall the old app once, then install the new one. After that, updates just work. Your data is safe — it all lives in the Google Sheet.
-- The keystore is a **debug/test key** with a published password. Fine for internal distribution; use a private release key if you ever publish to the Play Store.
+- All builds are signed with **one private key** kept in GitHub Secrets (see *Signing key*), and each build has a higher version number than the last — so a new APK installs **over** the old one as a normal update.
+- ⚠️ **One-time step:** an APK signed with an older key (the previous public debug key) can't be updated in place. Android shows *"Conflicting app signatures"*. Uninstall the old app once, then install the new one. After that, updates just work. Your data is safe — it all lives in the Google Sheet.
+- The build **fails with a clear message** if the signing secrets are missing, instead of producing an APK signed with the wrong key.
 
 ### Updating from a phone (no computer)
 1. Upload an `update.zip` to the repo's main page (**Add file → Upload files**). The **Apply Update** workflow unpacks it into the project automatically.
@@ -116,6 +126,8 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 | Pay period | `Code.gs` → `PERIOD_START_DAY` / `PERIOD_END_DAY` | 26 → 25 |
 | Weekly off | `Code.gs` → `isFridayDate` | Friday |
 | Server URL | `Api.kt` → `Config.SCRIPT_URL` | — |
+| Minimum password length, lockout, token lifetime | `Code.gs` → `MIN_PASSWORD_LENGTH`, `MAX_FAILED_LOGINS`, `LOCKOUT_MINUTES`, `TOKEN_DAYS` | 8, 5 tries, 15 min, 30 days |
+| Allowed check-in area | `Code.gs` → `GEO_CHECK`, `GEO_BOX` | Bangladesh + margin |
 | Districts & thanas | `app/src/main/assets/bd_locations.txt` | 64 districts |
 
 > **After any change to `Code.gs`:** saving isn't enough. Go to **Deploy → Manage deployments → ✏️ → Version: New version → Deploy**, or the live URL keeps running the old code.
@@ -131,18 +143,26 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 | *"Network or server error"* in the app | Check the phone's internet and that `Config.SCRIPT_URL` is the latest `/exec` URL. |
 | App shows old behaviour after editing `Code.gs` | Deploy a **New version** (see above). |
 | *"Conflicting app signatures"* when installing | Uninstall the old app once (see **Versions & updates**). |
+| *"Too many wrong passwords"* | Wait the 15 minutes it shows; the pause ends by itself. |
+| *"Your session ended"* | Normal after a password change on another phone, a logout, or 30 days of not opening the app. Sign in again. |
+| Build fails with *"Missing repository secret"* | Add the four signing secrets (see **Signing key**). |
+| Someone lost their phone | In the Apps Script editor run `revokeOneUser` (edit the username inside it first), or `revokeEveryone`. |
 | Build APK fails | Open the failed run's **Summary** — the *"Build failed – the real error"* box shows the exact line. The full log is saved as a `build-log` artifact. |
 | Nothing is written to the Sheet | Make sure the script is bound to the Sheet or `SHEET_ID` is set, and that `setup` was run once. |
 
 ---
 
-## 🔒 Notes
+## 🔒 Security notes
 
-- Passwords are stored as plain text in the **Users** sheet — fine for a small trusted team, not for sensitive use without extra hardening.
-- Attendance time is stamped by Google's server and location is validated server-side, so neither can be faked from the app alone.
-- Selfies are saved in a Google Drive folder named **AttendanceSelfies**; a manager can only view selfies of people below them in the hierarchy.
-- Leave balances reset each calendar year and count **Approved + Pending** requests.
-- A manager is anyone who appears in another user's **Manager** column — no separate role flag.
+- **Passwords** are stored only as salted PBKDF2-SHA256 hashes. The app never saves your password; it keeps a signed token (encrypted with the Android Keystore) that expires after 30 days, is renewed while you keep using the app, and stops working the moment you change your password, log out, or an admin revokes it.
+- **Brute-force protection:** 5 wrong passwords pause that account for 15 minutes. Apps Script cannot see a caller's IP address, so this is per account, not per attacker; an attacker can pause someone's account, but cannot get into it.
+- **Selfies and locations are validated on the server:** photo required, JPEG only, size-limited; coordinates must be real and inside the allowed area; the phone's "fake GPS" flag is rejected. A phone with a modified app or a rooted device can still lie about its GPS — only Play Integrity attestation would close that, and it is not included.
+- **Spreadsheet formula injection** is blocked: text typed on a phone (address, hotel, leave reason) is always stored as text.
+- **Authorization** is enforced on the server: selfies are visible only to the person and their managers; leave can be decided only by a direct manager; team views only down your own chain.
+- **Backups are disabled** for the app, and saved data on the phone is encrypted and wiped at logout.
+- The script URL is public (anyone who has the APK has it), so assume anyone can call it. Everything above is built with that in mind.
+- Attendance time is stamped by Google's server. Leave balances reset each calendar year and count **Approved + Pending** requests. A manager is anyone who appears in another user's **Manager** column.
+- Keep the repository **private** or limit who has write access: anyone who can push can change the app, and the *Apply Update* workflow applies uploaded zips automatically.
 
 ---
 
@@ -153,13 +173,13 @@ The late/absent hours and pay period are also used by the app screens (Home and 
   build.yml            Builds the APK, numbers it, publishes it
   apply-update.yml     Unpacks an uploaded update.zip into the project
 app/
-  debug.keystore       Fixed signing key (debug/test)
   build.gradle
   src/main/
     AndroidManifest.xml
     assets/bd_locations.txt     64 districts → thanas
     java/com/example/attendance/
-      Api.kt            Server URL, session, API call helper
+      Api.kt            Server URL, session (token), API call helper
+      Security.kt       Encrypted storage, wipe-on-logout, fake-GPS check
       Cache.kt          Saved-response cache for instant screens
       Ui.kt             Shared header + bottom bar
       MainActivity.kt           Home

@@ -44,7 +44,7 @@ class TeamActivity : AppCompatActivity() {
     }
 
     private fun body(): JSONObject {
-        val b = JSONObject().put("username", session.username).put("password", session.password)
+        val b = JSONObject().put("username", session.username)
         of?.let { b.put("of", it) }
         return b
     }

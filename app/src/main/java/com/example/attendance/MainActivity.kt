@@ -32,6 +32,11 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<android.view.View>(R.id.cardNight).setOnClickListener { open(NightHoldActivity::class.java) }
         setupBottomNav(Tab.HOME)
+        if (session.mustChangePassword) {          // signed in with a password shorter than the server now requires
+            session.mustChangePassword = false     // ask once per sign-in
+            android.widget.Toast.makeText(this, "Your password is short. Please choose a longer one.", android.widget.Toast.LENGTH_LONG).show()
+            ChangePasswordDialog.show(this, session)
+        }
     }
 
     override fun onResume() {
@@ -52,11 +57,19 @@ class MainActivity : AppCompatActivity() {
         menu.setOnMenuItemClickListener { item ->
             when (item.title.toString()) {
                 "Change Password" -> ChangePasswordDialog.show(this, session)
-                "Logout" -> { ResponseCache.clear(this); session.clear(); goLogin() }
+                "Logout" -> logout()
             }
             true
         }
         menu.show()
+    }
+
+    /** Tells the server to end this sign-in (best effort, in the background), then wipes everything kept on the phone. */
+    private fun logout() {
+        val token = session.token
+        Thread { try { postJsonRaw(JSONObject().put("action", "logout"), token) } catch (e: Exception) { } }.start()
+        Wipe.signOutLocally(this)
+        goLogin()
     }
 
     private fun goLogin() {
@@ -221,7 +234,7 @@ class MainActivity : AppCompatActivity() {
         apiCached(
             cacheKey = ResponseCache.homeKey(session.username),
             body = JSONObject().put("action", "history").put("username", session.username)
-                .put("password", session.password).put("from", periodStartKey).put("nights", true),
+                .put("from", periodStartKey).put("nights", true),
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<android.view.View>(R.id.btnRefresh),
             onData = { res -> render(res) },

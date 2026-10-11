@@ -4,12 +4,10 @@ import android.content.Context
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 /** Last good server response per screen, kept on the phone so screens can open instantly. */
 object ResponseCache {
-    private fun prefs(ctx: Context) = ctx.getSharedPreferences("response_cache", Context.MODE_PRIVATE)
+    private fun prefs(ctx: Context) = SecureStore.prefs(ctx, "response_cache_secure")
 
     /** Saved response if it is younger than maxAgeMs, otherwise null. */
     fun get(ctx: Context, key: String, maxAgeMs: Long): JSONObject? {
@@ -73,17 +71,4 @@ fun AppCompatActivity.apiCached(
         }
     }
     return cached != null
-}
-
-/** Plain blocking call to the backend. Only for use on a background thread. */
-fun postJson(body: JSONObject): JSONObject {
-    val c = URL(Config.SCRIPT_URL).openConnection() as HttpURLConnection
-    c.requestMethod = "POST"
-    c.doOutput = true
-    c.connectTimeout = 20000
-    c.readTimeout = 60000
-    c.setRequestProperty("Content-Type", "text/plain; charset=utf-8")
-    c.outputStream.use { it.write(body.toString().toByteArray()) }
-    val stream = if (c.responseCode < 400) c.inputStream else c.errorStream
-    return JSONObject(stream.bufferedReader().readText())
 }

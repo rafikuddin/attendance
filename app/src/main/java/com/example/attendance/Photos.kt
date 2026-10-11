@@ -16,12 +16,13 @@ import java.io.File
 object PhotoLoader {
     private val memory = LruCache<String, Bitmap>(48)
 
+    fun clearMemory() = memory.evictAll()
+
     fun load(activity: AppCompatActivity, session: Session, fileId: String, target: ImageView) {
         target.tag = fileId
         memory.get(fileId)?.let { target.setImageBitmap(it); return }
 
-        val username = session.username
-        val password = session.password
+        val appContext = activity.applicationContext
         val safeName = fileId.filter { it.isLetterOrDigit() || it == '_' || it == '-' }.take(80)
         val file = File(activity.cacheDir, "selfie_$safeName.jpg")
 
@@ -29,10 +30,7 @@ object PhotoLoader {
             var bmp = decode(file)
             if (bmp == null) {
                 try {
-                    val res = postJson(
-                        JSONObject().put("action", "photo")
-                            .put("username", username).put("password", password).put("id", fileId)
-                    )
+                    val res = postJson(appContext, JSONObject().put("action", "photo").put("id", fileId))
                     if (res.optBoolean("ok")) {
                         file.writeBytes(Base64.decode(res.getString("data"), Base64.DEFAULT))
                         bmp = decode(file)
