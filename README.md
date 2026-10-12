@@ -17,6 +17,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **Today's selfie on Home** — once you've checked in, the *Today's Status* circle shows your selfie as a small round picture (tap it to see it bigger) with where it was taken underneath.
 - **One check-in per day** — a second submission on the same day is blocked.
 - **Leave requests** — Casual, Sick, Earn or Paternity leave with a from/to date picker; days are counted automatically.
+- **Leave application picture** — attach a photo of your signed leave application (📷 *Take photo* or 🖼 *Choose picture*). **A request needs a picture or a written reason (3+ characters) — it can't be sent with neither**, and both are allowed. The picture is shrunk on the phone and stored privately in the Drive folder with the selfies; you, your manager and every supervisor above you can open it from the leave request (*📎 View leave application*).
 - **Leave balance** — **Casual 10 · Sick 14 · Earn 17 · Paternity 3** days per year, with *left of total · used* shown per type.
 - **Attendance ↔ leave conflict checks** — you can't mark attendance on an approved-leave day, or apply for leave on a day you already marked present.
 - **Night Hold** — staying away overnight? Report it with:
@@ -84,7 +85,7 @@ Speed: screens open instantly from a saved copy of the last response and then re
 4. Run the **`setup`** function once and approve the permission prompts. It creates:
    - **Users** — `Username | Password | Name | Manager | TokenEpoch | Role | MustChange` (*Manager* = another user's username, blank if none; this builds the hierarchy. *Password* holds a hash after the first sign-in. *Role* is `admin` for admins and blank for everyone else. *TokenEpoch* and *MustChange* are managed by the script, leave them alone)
    - **Attendance** — filled in as staff check in
-   - **Leaves** — filled in as staff apply; the **Status** column (Pending / Approved / Rejected) is set by a manager in the app, or by hand
+   - **Leaves** — filled in as staff apply; the **Status** column (Pending / Approved / Rejected) is set by a manager in the app, or by hand. The **Application** column (added automatically) holds the Drive file id of the attached leave-application picture
    - **NightHold**, **Notices** and **Holidays** — created automatically on first use (admins add notices and holidays from the app; you can also read them in the Sheet)
 5. Add your staff to **Users** and link the **Manager** column. You can type a plain password for a new person; it is replaced by a hash the first time they sign in.
    - **Upgrading an existing sheet?** Make a backup copy of the Sheet, then run **`upgradeSecurity`** once. It hashes every plain-text password and creates the token secret. It is safe to run again. Delete the backup afterwards, and remember that Google Sheets *Version history* still holds the old plain-text values.

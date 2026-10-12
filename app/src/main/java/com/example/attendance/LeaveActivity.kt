@@ -1,6 +1,20 @@
 package com.example.attendance
 
+import android.Manifest
 import android.app.DatePickerDialog
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.util.Base64
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStream
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -33,6 +47,24 @@ class LeaveActivity : AppCompatActivity() {
     private lateinit var btnApply: MaterialButton
     private lateinit var list: LinearLayout
 
+    // The leave-application picture (already shrunk to a JPEG), if the person attached one.
+    private var applicationJpeg: ByteArray? = null
+    private var cameraFile: File? = null
+    private lateinit var appPreviewBox: View
+    private lateinit var imgApp: ImageView
+    private lateinit var tvAppInfo: TextView
+
+    private val pickPicture = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) loadPicture { contentResolver.openInputStream(uri) }
+    }
+    private val takePicture = registerForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val f = cameraFile
+        if (saved && f != null) loadPicture { FileInputStream(f) }
+    }
+    private val cameraPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) launchCamera() else msg("Camera permission is needed to take a photo. You can choose a picture instead.", false)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_leave)
@@ -55,6 +87,14 @@ class LeaveActivity : AppCompatActivity() {
             pick(to ?: from, from) { c -> to = c; refresh() }
         }
         btnApply.setOnClickListener { apply() }
+        appPreviewBox = findViewById(R.id.appPreviewBox); imgApp = findViewById(R.id.imgApp); tvAppInfo = findViewById(R.id.tvAppInfo)
+        findViewById<View>(R.id.btnPickApp).setOnClickListener { pickPicture.launch("image/*") }
+        findViewById<View>(R.id.btnTakeApp).setOnClickListener {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCamera()
+            else cameraPermission.launch(Manifest.permission.CAMERA)
+        }
+        findViewById<View>(R.id.btnRemoveApp).setOnClickListener { clearPicture() }
+        imgApp.setOnClickListener { applicationJpeg?.let { showPreviewDialog(it) } }
         refresh()
         loadList()
     }
@@ -83,11 +123,16 @@ class LeaveActivity : AppCompatActivity() {
     private fun apply() {
         val f = from; val t = to
         if (f == null || t == null) { msg("Please choose From and To dates", false); return }
+        // A reason or a picture of the application is required (either one, or both). The server checks this too.
+        val reason = etReason.text.toString().trim()
+        val pic = applicationJpeg
+        if (pic == null && reason.length < 3) { msg("Please attach your leave application picture or write a reason.", false); return }
         btnApply.isEnabled = false
         msg("Submitting...", true)
         val body = JSONObject().put("action", "leave").put("username", session.username)
             .put("type", ddType.text.toString()).put("from", iso.format(f.time)).put("to", iso.format(t.time))
-            .put("reason", etReason.text.toString().trim())
+            .put("reason", reason)
+        if (pic != null) body.put("application", Base64.encodeToString(pic, Base64.NO_WRAP))
         api(body) { res, err ->
             btnApply.isEnabled = true
             if (res != null) {
@@ -95,9 +140,83 @@ class LeaveActivity : AppCompatActivity() {
                 // Saved copies of Home / Calendar / Leave are now out of date.
                 ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username),
                     ResponseCache.leavesKey(session.username))
-                from = null; to = null; etReason.setText(""); refresh(); loadList()
+                from = null; to = null; etReason.setText(""); clearPicture(); refresh(); loadList()
             } else msg("❌ $err", false)
         }
+    }
+
+    private fun launchCamera() {
+        try {
+            val dir = File(cacheDir, "images").apply { mkdirs() }
+            val f = File(dir, "leave_application.jpg")
+            cameraFile = f
+            takePicture.launch(FileProvider.getUriForFile(this, "$packageName.fileprovider", f))
+        } catch (e: Exception) {
+            msg("The camera could not be opened. Please choose a picture instead.", false)
+        }
+    }
+
+    /** Reads the picture, turns it upright, shrinks it (longest side 1400 px) and keeps it as a JPEG under about 1 MB. */
+    private fun loadPicture(open: () -> InputStream?) {
+        msg("Preparing the picture...", true)
+        Thread {
+            val bytes: ByteArray? = try {
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                open()?.use { BitmapFactory.decodeStream(it, null, bounds) }
+                var sample = 1
+                while (bounds.outWidth / sample > 2800 || bounds.outHeight / sample > 2800) sample *= 2
+                val raw = open()?.use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample }) }
+                if (raw == null) null else {
+                    val orientation = open()?.use { ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, 1) } ?: 1
+                    val deg = when (orientation) {
+                        ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                        ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                        ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                        else -> 0
+                    }
+                    val m = Matrix()
+                    if (deg != 0) m.postRotate(deg.toFloat())
+                    val scale = minOf(1f, 1400f / maxOf(raw.width, raw.height))
+                    m.postScale(scale, scale)
+                    val bmp = Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, m, true)
+                    var quality = 75
+                    var out = ByteArray(0)
+                    do {
+                        val bo = ByteArrayOutputStream()
+                        bmp.compress(Bitmap.CompressFormat.JPEG, quality, bo)
+                        out = bo.toByteArray()
+                        quality -= 12
+                    } while (out.size > 1000000 && quality > 25)
+                    out
+                }
+            } catch (e: Exception) { null } catch (e: OutOfMemoryError) { null }
+            runOnUiThread {
+                if (bytes == null) msg("❌ That picture could not be read. Please try another one.", false)
+                else { applicationJpeg = bytes; showPreview(bytes); msg("", true) }
+            }
+        }.start()
+    }
+
+    private fun showPreview(bytes: ByteArray) {
+        imgApp.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
+        tvAppInfo.text = "📎 Leave application attached (${bytes.size / 1024} KB)\nTap the picture to see it bigger."
+        appPreviewBox.visibility = View.VISIBLE
+    }
+
+    private fun clearPicture() {
+        applicationJpeg = null
+        imgApp.setImageDrawable(null)
+        appPreviewBox.visibility = View.GONE
+    }
+
+    private fun showPreviewDialog(bytes: ByteArray) {
+        val img = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundColor(Color.parseColor("#111827"))
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.7).toInt())
+            setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this).setView(img).setPositiveButton("Close", null).show()
     }
 
     private fun msg(m: String, ok: Boolean) {
@@ -178,6 +297,7 @@ class LeaveActivity : AppCompatActivity() {
         })
         col.addView(TextView(this).apply { text = "${fmt(o.optString("from"))}  →  ${fmt(o.optString("to"))}"; setTextColor(Color.parseColor("#6B7280")) })
         if (o.optString("reason").isNotEmpty()) col.addView(TextView(this).apply { text = o.optString("reason"); setTextColor(Color.parseColor("#6B7280")) })
+        if (o.optString("application").isNotEmpty()) col.addView(applicationLink(session, o.optString("application")))
         col.addView(TextView(this).apply {
             text = status; setTextColor(Color.parseColor(fg)); setTypeface(null, android.graphics.Typeface.BOLD)
             setPadding(dp(12), dp(4), dp(12), dp(4))

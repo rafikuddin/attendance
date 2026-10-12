@@ -2,9 +2,12 @@ package com.example.attendance
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.view.ViewGroup
 import android.util.Base64
 import android.util.LruCache
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 import java.io.File
@@ -43,7 +46,7 @@ object PhotoLoader {
             }
             val result = bmp
             if (result != null) {
-                memory.put(memKey, result)
+                if (minSide <= 400) memory.put(memKey, result)     // big pictures (leave applications) are not kept in memory
                 activity.runOnUiThread { if (target.tag == fileId) target.setImageBitmap(result) }
             }
         }.start()
@@ -60,4 +63,24 @@ object PhotoLoader {
         if (bmp == null) f.delete()
         return bmp
     }
+}
+
+/** Opens a stored picture (for example a leave application) full size in a pop-up. Only people allowed by the server can load it. */
+fun AppCompatActivity.showPhotoDialog(session: Session, fileId: String) {
+    val h = (resources.displayMetrics.heightPixels * 0.7).toInt()
+    val img = ImageView(this).apply {
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        setBackgroundColor(Color.parseColor("#111827"))
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, h)
+    }
+    PhotoLoader.load(this, session, fileId, img, 1000)
+    androidx.appcompat.app.AlertDialog.Builder(this).setView(img).setPositiveButton("Close", null).show()
+}
+
+/** A tappable "📎 View leave application" line, added under a leave request that has a picture. */
+fun AppCompatActivity.applicationLink(session: Session, fileId: String): TextView = TextView(this).apply {
+    text = "📎 View leave application"
+    textSize = 13f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Color.parseColor("#2563EB"))
+    setPadding(0, (6 * resources.displayMetrics.density).toInt(), 0, (2 * resources.displayMetrics.density).toInt())
+    setOnClickListener { showPhotoDialog(session, fileId) }
 }

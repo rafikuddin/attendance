@@ -246,6 +246,7 @@ class TeamActivity : AppCompatActivity() {
         })
         if (o.optString("reason").isNotEmpty())
             col.addView(TextView(this).apply { text = o.optString("reason"); textSize = 13f; setTextColor(Color.parseColor("#6B7280")) })
+        if (o.optString("application").isNotEmpty()) col.addView(applicationLink(session, o.optString("application")))
 
         if (status == "Pending" && canDecide) {
             val btnRow = LinearLayout(this).apply {
