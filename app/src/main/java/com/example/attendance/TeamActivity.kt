@@ -27,7 +27,7 @@ class TeamActivity : AppCompatActivity() {
     private lateinit var listTeam: LinearLayout
     private lateinit var listLeaves: LinearLayout
     private var of: String? = null          // null = viewing my own team
-    private var canDecide = false           // only true for your own direct team
+    private var canDecide = false           // true for anyone below you, at any depth (server re-checks every decision)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,7 +83,7 @@ class TeamActivity : AppCompatActivity() {
         if (reports.length() == 0) listTeam.addView(note("No one reports here yet."))
         else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
 
-        canDecide = res.optBoolean("isOwn")
+        canDecide = res.optBoolean("canDecide", res.optBoolean("isOwn"))
         val leaves = res.getJSONArray("leaves")
         if (leaves.length() == 0) listLeaves.addView(note("No leave requests here."))
         else for (i in 0 until leaves.length()) listLeaves.addView(leaveCard(leaves.getJSONObject(i)))

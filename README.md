@@ -31,7 +31,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **Unlimited levels** — everything uses one *Manager* column, so Employee → ZM/ASM → RSM/DSM → SM → Operation Manager (or any structure) works with no hardcoded roles.
 - **My Team** — each direct report's status today (Present / Late / On Leave / Absent / Off / Pending), their selfie and location, and a live roll-up for any report who manages a team.
 - **Drill down** — tap any manager to see their team, all the way to individual employees.
-- **Approve / Reject leave** — only for your **own direct reports**; higher-level views are read-only, so approvals always follow the chain of command.
+- **Approve / Reject leave** — a supervisor can decide leave for **everyone below them**, direct reports and people further down the chain. Your Team screen lists all of their requests (tap a sub-manager to see just that team). Nobody can approve their own leave, and people outside your chain are refused by the server.
 
 ### For admins
 An **admin** is any user whose **Role** cell in the Users sheet says `admin` (see *Make your first admin* below). Admins get an **Admin Panel** in the 👤 menu on Home with three tabs:
@@ -176,7 +176,7 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 - **Selfies and locations are validated on the server:** photo required, JPEG only, size-limited; coordinates must be real and inside the allowed area; the phone's "fake GPS" flag is rejected. A phone with a modified app or a rooted device can still lie about its GPS — only Play Integrity attestation would close that, and it is not included.
 - **Spreadsheet formula injection** is blocked: text typed on a phone (address, hotel, leave reason) is always stored as text.
 - **Admin actions** are checked on the server on every request (the *Role* cell is read each time, so removing `admin` takes effect at once), and adding a user or resetting a password needs the admin's own password again. A password an admin sets is temporary: the person must choose their own at first sign-in. Only someone who can edit the Sheet can create the first admin.
-- **Authorization** is enforced on the server: selfies are visible only to the person and their managers; leave can be decided only by a direct manager; team views only down your own chain.
+- **Authorization** is enforced on the server: selfies are visible only to the person and their managers; leave can be decided only by a supervisor above that person in the chain (never for yourself); team views only down your own chain.
 - **Backups are disabled** for the app, and saved data on the phone is encrypted and wiped at logout.
 - The script URL is public (anyone who has the APK has it), so assume anyone can call it. Everything above is built with that in mind.
 - Attendance time is stamped by Google's server. Leave balances reset each calendar year and count **Approved + Pending** requests. A manager is anyone who appears in another user's **Manager** column.
