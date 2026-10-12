@@ -18,7 +18,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **One check-in per day** — a second submission on the same day is blocked.
 - **Leave requests** — Casual, Sick, Earn or Paternity leave with a from/to date picker; days are counted automatically.
 - **Leave application picture + reason (both required)** — attach a photo of your signed leave application (📷 *Take photo* or 🖼 *Choose picture*) **and** write a reason (3+ characters). A request can't be sent without both; the server refuses it too. The picture is shrunk on the phone and stored privately in the Drive folder with the selfies; you, your manager and every supervisor above you can open it from the leave request (*📎 View leave application*).
-- **Leave balance** — **Casual 10 · Sick 14 · Earn 17 · Paternity 3** days per year, with *left of total · used* shown per type.
+- **Leave balance** — **Casual 10 · Sick 14 · Earn 17 · Paternity 3** days per year, with *left of total · used* shown per type. (The app has no gender field, so every employee gets the Paternity balance.)
 - **Attendance ↔ leave conflict checks** — you can't mark attendance on an approved-leave day, or apply for leave on a day you already marked present.
 - **Night Hold** — staying away overnight? Report it with:
   - live GPS (fake/mock locations are rejected),
@@ -48,9 +48,9 @@ The notice pop-up is shown by the app when it is open. It is **not a phone push 
 
 | Screen | What it does |
 |---|---|
-| **Home** | Fixed header with clock, today's status, leave-balance bars, and this month's night holds |
+| **Home** | Fixed header with clock and a 🔔 notice bell, today's status (with your round selfie), notices, leave-balance bars, and this month's night holds |
 | **Attendance** | Selfie + location capture and submit |
-| **Leave** | Apply for leave, see balances and request history |
+| **Leave** | Apply for leave (reason + application picture), see balances and request history |
 | **Team** *(managers only)* | Team status, roll-ups, drill-down, leave approvals |
 | **Calendar** | Pay-period view of attendance, leave and night holds |
 | **Night Hold** | Overnight stay report with location, district/thana and hotel |
@@ -69,10 +69,10 @@ A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold)
 | Camera | CameraX |
 | Location | Google Play Services (fused location) |
 | Backend | Google Apps Script web app (`Code.gs`) |
-| Data | Google Sheets (+ Google Drive for selfies) |
+| Data | Google Sheets (+ Google Drive for selfies and leave-application pictures) |
 | Build | GitHub Actions → signed release APK |
 
-Speed: screens open instantly from a saved copy of the last response and then refresh; selfies are downloaded once and cached; uploads are shrunk before sending.
+Speed: screens open instantly from a saved copy of the last response and then refresh; selfies are downloaded once and cached; selfies and leave-application pictures are shrunk before sending.
 
 ---
 
@@ -106,7 +106,7 @@ Releases are signed with a private key that is **never** stored in the repo.
 
 ### 4. Build the APK
 - Push to the repo or run **Actions → Build APK → Run workflow**.
-- Download the APK from the run's **`app-release`** artifact, or from the repo's **Releases** page (easiest on a phone).
+- Download the APK from the run's **`app-release`** artifact (a zip containing the APK), or from the repo's **Releases** page (easiest on a phone). Builds signed with your own key are published as normal releases; temporary-key builds are saved as a **draft** release that only you can see, because repositories with *immutable releases* refuse files on a pre-release.
 - Install it on an Android phone (Android 7.0+).
 
 ---
@@ -124,7 +124,7 @@ Releases are signed with a private key that is **never** stored in the repo.
 2. Run **Actions → Build APK → Run workflow**.
 3. Download the new APK.
 
-Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit those directly on GitHub.
+Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit those directly on GitHub (paste the new `build.yml` over the old one). Backend changes (`Code.gs`) are not part of the zip either: paste them into Apps Script and deploy a **New version**.
 
 ---
 
@@ -142,6 +142,7 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 | Server URL | `Api.kt` → `Config.SCRIPT_URL` | — |
 | Short sign-in length (box unticked) | `Code.gs` → `SHORT_SESSION_HOURS` | 12 hours |
 | Minimum password length, lockout, token lifetime | `Code.gs` → `MIN_PASSWORD_LENGTH`, `MAX_FAILED_LOGINS`, `LOCKOUT_MINUTES`, `TOKEN_DAYS` | 8, 5 tries, 15 min, 30 days |
+| Shortest reason for a leave request | `Code.gs` → `MIN_REASON_LENGTH` | 3 characters (a picture is also required) |
 | Notice length of stay | `Code.gs` → `NOTICE_DEFAULT_DAYS`, `NOTICE_MAX_DAYS` | 7 days, 90 days |
 | Allowed check-in area | `Code.gs` → `GEO_CHECK`, `GEO_BOX` | Bangladesh + margin |
 | Districts & thanas | `app/src/main/assets/bd_locations.txt` | 64 districts |
@@ -162,6 +163,9 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 | *"Too many wrong passwords"* | Wait the 15 minutes it shows; the pause ends by itself. |
 | *"Your session ended"* | Normal after a password change on another phone, a logout, or 30 days of not opening the app. Sign in again. |
 | APK is named `…-TEMP-KEY.apk` or won't update the installed app | The signing secrets are missing. Add the four secrets (see **Signing key**), uninstall the old app once, install the new one. |
+| A leave request is refused with *"write the reason"* or *"attach a picture"* | Both are required: a reason of 3+ characters and a picture of the leave application. |
+| *Take photo* does nothing on the Leave screen | Allow the Camera permission when Android asks (or in Settings → Apps), or use *Choose picture* instead. |
+| The build is green but the *Publish release* step shows a red error | A pre-release with files was refused by GitHub (immutable releases). The APK is still in the run's **Artifacts**; the current `build.yml` saves such builds as a draft release instead. |
 | Someone forgot their password | Admin Panel → Users → **Reset password** (this also lifts a *too many wrong passwords* pause). |
 | The Admin Panel isn't in the 👤 menu | Their *Role* cell must say `admin`; then open or refresh Home once. |
 | Someone lost their phone | In the Apps Script editor run `revokeOneUser` (edit the username inside it first), or `revokeEveryone`. |
@@ -174,10 +178,10 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 
 - **Passwords** are stored only as salted PBKDF2-SHA256 hashes. The app never saves your password; it keeps a signed token (encrypted with the Android Keystore) that expires after 30 days, is renewed while you keep using the app, and stops working the moment you change your password, log out, or an admin revokes it.
 - **Brute-force protection:** 5 wrong passwords pause that account for 15 minutes. Apps Script cannot see a caller's IP address, so this is per account, not per attacker; an attacker can pause someone's account, but cannot get into it.
-- **Selfies and locations are validated on the server:** photo required, JPEG only, size-limited; coordinates must be real and inside the allowed area; the phone's "fake GPS" flag is rejected. A phone with a modified app or a rooted device can still lie about its GPS — only Play Integrity attestation would close that, and it is not included.
+- **Selfies, leave applications and locations are validated on the server:** photo required, JPEG only, size-limited; coordinates must be real and inside the allowed area; the phone's "fake GPS" flag is rejected. A phone with a modified app or a rooted device can still lie about its GPS — only Play Integrity attestation would close that, and it is not included.
 - **Spreadsheet formula injection** is blocked: text typed on a phone (address, hotel, leave reason) is always stored as text.
 - **Admin actions** are checked on the server on every request (the *Role* cell is read each time, so removing `admin` takes effect at once), and adding a user or resetting a password needs the admin's own password again. A password an admin sets is temporary: the person must choose their own at first sign-in. Only someone who can edit the Sheet can create the first admin.
-- **Authorization** is enforced on the server: selfies are visible only to the person and their managers; leave can be decided only by a supervisor above that person in the chain (never for yourself); team views only down your own chain.
+- **Authorization** is enforced on the server: selfies and leave-application pictures are visible only to the person and the supervisors above them; leave can be decided only by a supervisor above that person in the chain (never for yourself); team views only down your own chain.
 - **Backups are disabled** for the app, and saved data on the phone is encrypted and wiped at logout.
 - The script URL is public (anyone who has the APK has it), so assume anyone can call it. Everything above is built with that in mind.
 - Attendance time is stamped by Google's server. Leave balances reset each calendar year and count **Approved + Pending** requests. A manager is anyone who appears in another user's **Manager** column.
@@ -189,7 +193,7 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 
 ```
 .github/workflows/
-  build.yml            Builds the APK, numbers it, publishes it
+  build.yml            Builds the APK, numbers it, signs it, publishes it
   apply-update.yml     Unpacks an uploaded update.zip into the project
 app/
   build.gradle
@@ -204,15 +208,16 @@ app/
       AdminActivity.kt  Admin Panel: users, notices, holidays
       NoticesActivity.kt  List of notices
       NoticeAlerts.kt   Bell count and the sign-in notice pop-up
+      Photos.kt         Selfie / leave-application picture loader and viewer
       Ui.kt             Shared header + bottom bar
       MainActivity.kt           Home
       AttendanceActivity.kt     Selfie + location check-in
-      LeaveActivity.kt          Leave + balances
+      LeaveActivity.kt          Leave + balances + application picture
       NightHoldActivity.kt      Night hold
       CalendarActivity.kt       Calendar
       TeamActivity.kt           Manager team view + approvals
       …                         Login, photos, pickers, dialogs
-    res/                Layouts, colors, themes, drawables
+    res/                Layouts, colors, themes, drawables, xml/file_paths.xml (camera photo sharing)
 ```
 
 ---
