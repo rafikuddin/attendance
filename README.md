@@ -26,6 +26,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
   - **hotel name**,
   - **one per day**; the form can't be submitted without real data (checked again on the server).
 - **Notices** — a notice from an admin appears as a card on Home, behind a 🔔 **bell** at the top (a red number shows how many you haven't opened), and as a **pop-up on Home every time you sign in** or open the app fresh. *Got it* closes it; *View all notices* opens the list.
+- **Update from inside the app** — when an admin publishes a newer version, a blue **⬆️ Update available** card appears on Home (and an *Update app* item in the 👤 menu). Tap **Update**, the app downloads the new version (with a progress bar), checks it isn't damaged, and opens Android's installer. The first time, Android asks you to allow *Install from this source* for this app. Your data is not affected.
 - **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, 🎉 holidays, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
 
 ### For managers
@@ -35,10 +36,11 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **Approve / Reject leave** — a supervisor can decide leave for **everyone below them**, direct reports and people further down the chain. Your Team screen lists all of their requests (tap a sub-manager to see just that team). Nobody can approve their own leave, and people outside your chain are refused by the server.
 
 ### For admins
-An **admin** is any user whose **Role** cell in the Users sheet says `admin` (see *Make your first admin* below). Admins get an **Admin Panel** in the 👤 menu on Home with three tabs:
+An **admin** is any user whose **Role** cell in the Users sheet says `admin` (see *Make your first admin* below). Admins get an **Admin Panel** in the 👤 menu on Home with four tabs:
 - **👥 Users** — a **search box** finds people by name, username or manager. **Add a new user** (username, name, manager, optional admin role) and **reset anyone's password**. You can type a temporary password or leave it blank and the server makes one (shown once, with a Copy button). The person is signed out everywhere and must choose their own password at their next sign-in. Creating a user or resetting a password asks for **your own password** again.
 - **📢 Notices** — post a title + message to everyone (shown for 7 days by default, up to 90) and remove notices.
-- **🎉 Holidays** — pick a date and a name; that day behaves like Friday for everyone (nobody is absent, the team view shows *Off*, Calendar and Home show the holiday name). Remove a holiday and the day counts as a normal working day again.
+- **🎉 Holiday** — pick a date and a name; that day behaves like Friday for everyone (nobody is absent, the team view shows *Off*, Calendar and Home show the holiday name). Remove a holiday and the day counts as a normal working day again.
+- **📲 App** — **publish a new app version for everyone.** Download the new APK from GitHub onto your phone, tap *Upload new version (APK)*, pick the file, add a short *What's new* note, confirm with your own password, and wait for the progress bar. The app reads the version out of the APK itself and refuses a file that isn't this app. Everyone signed in is then offered the update on Home. *Stop offering this update* withdraws it.
 
 The notice pop-up is shown by the app when it is open. It is **not a phone push notification** (no sound or banner while the app is closed); that would need Firebase.
 
@@ -55,7 +57,7 @@ The notice pop-up is shown by the app when it is open. It is **not a phone push 
 | **Calendar** | Pay-period view of attendance, leave and night holds |
 | **Night Hold** | Overnight stay report with location, district/thana and hotel |
 | **Notices** | Everything admins have posted |
-| **Admin Panel** *(admins only)* | Add users, reset passwords, post notices, add holidays |
+| **Admin Panel** *(admins only)* | Add users, reset passwords, post notices, add holidays, publish app updates |
 
 A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold) is on every screen, and every screen has a compact header that stays fixed while the content scrolls. ⟳ buttons refresh any screen, and the 👤 menu on Home has *Change Password*, *Admin Panel* (admins only), *Logout* and the app version.
 
@@ -69,7 +71,7 @@ A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold)
 | Camera | CameraX |
 | Location | Google Play Services (fused location) |
 | Backend | Google Apps Script web app (`Code.gs`) |
-| Data | Google Sheets (+ Google Drive for selfies and leave-application pictures) |
+| Data | Google Sheets (+ Google Drive for selfies, leave-application pictures and the published app update) |
 | Build | GitHub Actions → signed release APK |
 
 Speed: screens open instantly from a saved copy of the last response and then refresh; selfies are downloaded once and cached; selfies and leave-application pictures are shrunk before sending.
@@ -119,7 +121,18 @@ Releases are signed with a private key that is **never** stored in the repo.
 - ⚠️ **One-time step:** an APK signed with an older key (the previous public debug key) can't be updated in place. Android shows *"Conflicting app signatures"*. Uninstall the old app once, then install the new one. After that, updates just work. Your data is safe — it all lives in the Google Sheet.
 - If the four signing secrets are set, every APK is signed with your key. If they are **missing**, the build still runs but with a throw-away key: the file is named `…-TEMP-KEY.apk`, the run page shows a ⚠️ warning, and it can only be installed fresh (uninstall the old app first). If a secret is wrong the build **fails with a clear message**.
 
-### Updating from a phone (no computer)
+### Updating the app for everyone (in-app update)
+1. Build the new APK (**Actions → Build APK → Run workflow**) and download it to your phone from the **Releases** page.
+2. In the app: 👤 menu → **Admin Panel → 📲 App → Upload new version (APK)**, pick the downloaded file, confirm.
+3. Everyone who opens the app sees **⬆️ Update available** on Home and installs it in two taps.
+
+Requirements and limits:
+- The APK must be signed with **the same key** as the installed app (the four signing secrets). Android refuses anything else, so a wrong or tampered file can never replace the app. A `…-TEMP-KEY.apk` cannot update a normally-signed app.
+- The update only reaches phones that already run a build **with this feature**. A phone with an older build must install the new APK once by hand; after that, updates come through the app.
+- Each phone needs the Android setting **Install unknown apps → allow for SAM BOND Attendance** (the app opens that screen the first time).
+- The file is stored in Drive (folder `AppUpdates`) in 512 KB pieces; only signed-in users can download it. Uploading a newer version deletes the older file. The biggest APK accepted is 40 MB.
+
+### Updating the project from a phone (no computer)
 1. Upload an `update.zip` to the repo's main page (**Add file → Upload files**). The **Apply Update** workflow unpacks it into the project automatically.
 2. Run **Actions → Build APK → Run workflow**.
 3. Download the new APK.
@@ -143,6 +156,7 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 | Short sign-in length (box unticked) | `Code.gs` → `SHORT_SESSION_HOURS` | 12 hours |
 | Minimum password length, lockout, token lifetime | `Code.gs` → `MIN_PASSWORD_LENGTH`, `MAX_FAILED_LOGINS`, `LOCKOUT_MINUTES`, `TOKEN_DAYS` | 8, 5 tries, 15 min, 30 days |
 | Shortest reason for a leave request | `Code.gs` → `MIN_REASON_LENGTH` | 3 characters (a picture is also required) |
+| Biggest in-app update accepted | `Code.gs` → `UPDATE_MAX_BYTES` | 40 MB |
 | Notice length of stay | `Code.gs` → `NOTICE_DEFAULT_DAYS`, `NOTICE_MAX_DAYS` | 7 days, 90 days |
 | Allowed check-in area | `Code.gs` → `GEO_CHECK`, `GEO_BOX` | Bangladesh + margin |
 | Districts & thanas | `app/src/main/assets/bd_locations.txt` | 64 districts |
@@ -166,6 +180,9 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 | A leave request is refused with *"write the reason"* or *"attach a picture"* | Both are required: a reason of 3+ characters and a picture of the leave application. |
 | *Take photo* does nothing on the Leave screen | Allow the Camera permission when Android asks (or in Settings → Apps), or use *Choose picture* instead. |
 | The build is green but the *Publish release* step shows a red error | A pre-release with files was refused by GitHub (immutable releases). The APK is still in the run's **Artifacts**; the current `build.yml` saves such builds as a draft release instead. |
+| No **Update** card on Home although I published a version | The published *build number* must be higher than the installed one (shown in Admin → App). Refresh Home (⟳). |
+| *"App not installed as package conflicts"* when updating | The new APK was signed with a different key (for example a `…-TEMP-KEY.apk`). Add the four signing secrets, rebuild, uninstall the app once, install, and publish updates from then on. |
+| Update download fails or says *damaged* | Check the internet and tap Update again. If it keeps failing, upload the APK again from Admin → App. |
 | Someone forgot their password | Admin Panel → Users → **Reset password** (this also lifts a *too many wrong passwords* pause). |
 | The Admin Panel isn't in the 👤 menu | Their *Role* cell must say `admin`; then open or refresh Home once. |
 | Someone lost their phone | In the Apps Script editor run `revokeOneUser` (edit the username inside it first), or `revokeEveryone`. |
@@ -182,6 +199,7 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 - **Spreadsheet formula injection** is blocked: text typed on a phone (address, hotel, leave reason) is always stored as text.
 - **Admin actions** are checked on the server on every request (the *Role* cell is read each time, so removing `admin` takes effect at once), and adding a user or resetting a password needs the admin's own password again. A password an admin sets is temporary: the person must choose their own at first sign-in. Only someone who can edit the Sheet can create the first admin.
 - **Authorization** is enforced on the server: selfies and leave-application pictures are visible only to the person and the supervisors above them; leave can be decided only by a supervisor above that person in the chain (never for yourself); team views only down your own chain.
+- **App updates** are published only by an admin, who must confirm with their own password. Phones download them only when signed in, verify a SHA-256 fingerprint, and Android installs them only if they carry the same signing key as the installed app.
 - **Backups are disabled** for the app, and saved data on the phone is encrypted and wiped at logout.
 - The script URL is public (anyone who has the APK has it), so assume anyone can call it. Everything above is built with that in mind.
 - Attendance time is stamped by Google's server. Leave balances reset each calendar year and count **Approved + Pending** requests. A manager is anyone who appears in another user's **Manager** column.
@@ -205,10 +223,11 @@ app/
       Security.kt       Encrypted storage, wipe-on-logout, fake-GPS check
       Cache.kt          Saved-response cache for instant screens
       Admin.kt          Admin flag (the server decides who is an admin)
-      AdminActivity.kt  Admin Panel: users, notices, holidays
+      AdminActivity.kt  Admin Panel: users, notices, holidays, publish app update
       NoticesActivity.kt  List of notices
       NoticeAlerts.kt   Bell count and the sign-in notice pop-up
       Photos.kt         Selfie / leave-application picture loader and viewer
+      AppUpdate.kt      In-app update: download, verify, install
       Ui.kt             Shared header + bottom bar
       MainActivity.kt           Home
       AttendanceActivity.kt     Selfie + location check-in

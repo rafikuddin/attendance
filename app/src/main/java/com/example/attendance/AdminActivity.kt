@@ -19,6 +19,12 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import android.util.Base64
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.security.MessageDigest
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -40,6 +46,11 @@ class AdminActivity : AppCompatActivity() {
     private var users: List<JSONObject> = emptyList()
     private var pickedHolidayDate: String = ""
 
+    // The APK the admin picks to publish as the new version.
+    private val pickApk = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) prepareApk(uri)
+    }
+
     private val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private val nice = SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault())
 
@@ -51,7 +62,7 @@ class AdminActivity : AppCompatActivity() {
         setupHeader("Admin") { load() }
         setupBottomNav(null)
         content = findViewById(R.id.adminContent)
-        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays))
+        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabApp))
         tabs.forEachIndexed { i, t -> t.setOnClickListener { select(i) } }
         select(0)
     }
@@ -73,7 +84,8 @@ class AdminActivity : AppCompatActivity() {
         when (current) {
             0 -> loadUsers()
             1 -> loadNotices()
-            else -> loadHolidays()
+            2 -> loadHolidays()
+            else -> loadApp()
         }
     }
 
@@ -479,5 +491,200 @@ class AdminActivity : AppCompatActivity() {
             }
         })
         return cardOf(row)
+    }
+
+    // ---------- APP (publish a new version for everyone) ----------
+
+    private fun loadApp() {
+        val id = ++loadId
+        content.removeAllViews()
+        content.addView(heading("THIS PHONE"))
+        content.addView(cardOf(column().apply {
+            addView(label("Installed: ${AppUpdate.installedName(this@AdminActivity)}  (build ${AppUpdate.installedCode(this@AdminActivity)})", 15f, "#111827", true))
+        }))
+        content.addView(heading("OFFERED TO EVERYONE"))
+        val holder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(holder)
+        holder.addView(note("Loading…"))
+        content.addView(bigButton("⬆️  Upload new version (APK)") { pickApk.launch("*/*") })
+        content.addView(note("How it works: build the APK on GitHub and download it to this phone, then upload it here. Everyone signed in sees an Update button on Home and installs it from inside the app. The file must be signed with the same key as the installed app."))
+        api(JSONObject().put("action", "appInfo")) { res, err ->
+            if (id != loadId) return@api
+            holder.removeAllViews()
+            if (res == null) { holder.addView(note(err ?: "Could not load the published version.")); return@api }
+            val u = res.optJSONObject("update")
+            if (u == null) { holder.addView(note("Nothing is published yet.")); return@api }
+            val col = column()
+            col.addView(label("Version ${u.optString("versionName")}  (build ${u.optLong("versionCode")})", 16f, "#111827", true))
+            col.addView(label("%.1f MB · uploaded ${u.optString("uploadedOn")}".format(u.optLong("size") / 1048576.0), 13f, "#6B7280", false))
+            if (u.optString("notes").isNotEmpty()) col.addView(label(u.optString("notes"), 13f, "#374151", false).apply { setPadding(0, dp(6), 0, 0) })
+            col.addView(chipButton("Stop offering this update") { removeUpdateDialog() })
+            holder.addView(cardOf(col))
+        }
+    }
+
+    /** Copies the chosen file into the app's cache while computing its fingerprint, then reads the version out of the APK itself. */
+    private fun prepareApk(uri: android.net.Uri) {
+        toast("Reading the file…")
+        val app = applicationContext
+        Thread {
+            var problem: String? = null
+            var sha = ""
+            var size = 0L
+            var name = ""
+            var code = 0L
+            try {
+                AppUpdate.cleanUp(app)
+                val f = AppUpdate.uploadFile(app)
+                val digest = MessageDigest.getInstance("SHA-256")
+                val limit = 40L * 1024 * 1024
+                contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(f).use { out ->
+                        val buf = ByteArray(65536)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            size += n
+                            if (size > limit) { problem = "That file is too big to be the app."; break }
+                            out.write(buf, 0, n)
+                            digest.update(buf, 0, n)
+                        }
+                    }
+                } ?: run { problem = "That file could not be opened." }
+                if (problem == null) {
+                    @Suppress("DEPRECATION")
+                    val pi = packageManager.getPackageArchiveInfo(f.absolutePath, 0)
+                    when {
+                        pi == null -> problem = "That file is not an Android app (APK)."
+                        pi.packageName != packageName -> problem = "That APK is not the SAM BOND Attendance app."
+                        else -> { name = pi.versionName ?: ""; code = AppUpdate.codeOf(pi); sha = AppUpdate.hex(digest.digest()) }
+                    }
+                }
+            } catch (e: Exception) {
+                problem = "That file could not be read."
+            }
+            val p = problem
+            runOnUiThread {
+                if (p != null) { AppUpdate.cleanUp(app); AlertDialog.Builder(this).setTitle("Cannot use this file").setMessage(p).setPositiveButton("OK", null).show() }
+                else confirmUpload(name, code, size, sha)
+            }
+        }.start()
+    }
+
+    private fun confirmUpload(name: String, code: Long, size: Long, sha: String) {
+        val installed = AppUpdate.installedCode(this)
+        val warn = when {
+            code < installed -> "\n\n⚠️ This is OLDER than the version on this phone (build $installed). Phones that already have a newer build will not be offered it."
+            code == installed -> "\n\n⚠️ This is the same build as the one on this phone, so nobody will be offered an update unless their phone has an older build."
+            else -> ""
+        }
+        val info = label("Version $name (build $code)\n%.1f MB".format(size / 1048576.0) + "\n\nEveryone on an older build will be offered this update." + warn, 14f, "#374151", false)
+        val etNotes = field("What's new? (optional, shown to users)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
+        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val error = label("", 14f, "#DC2626", false)
+        val dialog = AlertDialog.Builder(this).setTitle("Publish this version?")
+            .setView(scrollable(info, etNotes, etPw, error))
+            .setPositiveButton("Publish", null)
+            .setNegativeButton("Cancel") { _, _ -> AppUpdate.cleanUp(applicationContext) }
+            .setCancelable(false)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val pw = etPw.text.toString()
+                if (pw.isEmpty()) { error.text = "Enter your own password to confirm"; return@setOnClickListener }
+                dialog.dismiss()
+                upload(name, code, size, sha, etNotes.text.toString().trim(), pw)
+            }
+        }
+        dialog.show()
+    }
+
+    /** Uploads the picked APK in 512 KB pieces, then publishes it. Runs in the background with a progress bar. */
+    private fun upload(name: String, code: Long, size: Long, sha: String, notes: String, adminPw: String) {
+        val chunks = ((size + AppUpdate.PIECE - 1) / AppUpdate.PIECE).toInt()
+        var cancelled = false
+        val box = AppUpdate.ProgressBox(this, "Publishing update", chunks + 1) { cancelled = true }
+        box.set(0, "Starting…")
+        val app = applicationContext
+        Thread {
+            var error: String? = null
+            var ended = false
+            // One call with up to 3 tries on network trouble. A server answer (even an error) is final.
+            fun send(body: JSONObject): JSONObject? {
+                for (attempt in 1..3) {
+                    try {
+                        val r = postJson(app, JSONObject(body.toString()))
+                        if (r.optBoolean("auth")) { ended = true; error = "Your session ended. Please sign in again."; return null }
+                        if (!r.optBoolean("ok")) { error = r.optString("error", "The server refused the upload."); return null }
+                        return r
+                    } catch (e: Exception) { /* try again */ }
+                }
+                error = "Upload failed. Check your internet and try again."
+                return null
+            }
+            try {
+                val begin = send(JSONObject().put("action", "adminAppBegin").put("versionCode", code).put("versionName", name)
+                    .put("notes", notes).put("size", size).put("chunks", chunks).put("sha256", sha).put("adminPassword", adminPw))
+                if (begin != null) {
+                    val uploadId = begin.getString("uploadId")
+                    FileInputStream(AppUpdate.uploadFile(app)).use { input ->
+                        val buf = ByteArray(AppUpdate.PIECE)
+                        for (i in 0 until chunks) {
+                            if (cancelled) { error = "cancelled"; break }
+                            var filled = 0
+                            while (filled < buf.size) {
+                                val n = input.read(buf, filled, buf.size - filled)
+                                if (n < 0) break
+                                filled += n
+                            }
+                            val piece = Base64.encodeToString(buf, 0, filled, Base64.NO_WRAP)
+                            if (send(JSONObject().put("action", "adminAppChunk").put("uploadId", uploadId).put("index", i).put("data", piece)) == null) break
+                            box.set(i + 1, "Uploading… ${i + 1} of $chunks")
+                        }
+                    }
+                    if (error == null) {
+                        box.set(chunks, "Publishing…")
+                        send(JSONObject().put("action", "adminAppFinish").put("uploadId", uploadId))
+                    }
+                }
+            } catch (e: Exception) {
+                if (error == null) error = "Upload failed. Please try again."
+            }
+            AppUpdate.cleanUp(app)
+            val e = error
+            box.close()
+            runOnUiThread {
+                when {
+                    ended -> endSession()
+                    e == "cancelled" -> toast("Upload cancelled. Nothing was published.")
+                    e != null -> AlertDialog.Builder(this).setTitle("Upload failed").setMessage(e).setPositiveButton("OK", null).show()
+                    else -> {
+                        AlertDialog.Builder(this).setTitle("Published ✅")
+                            .setMessage("Version $name is now offered to everyone. They see an Update button on Home next time they open or refresh the app.")
+                            .setPositiveButton("OK", null).show()
+                        loadApp()
+                    }
+                }
+            }
+        }.start()
+    }
+
+    private fun removeUpdateDialog() {
+        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val error = label("", 14f, "#DC2626", false)
+        val dialog = AlertDialog.Builder(this).setTitle("Stop offering this update?")
+            .setView(scrollable(label("Phones will no longer be offered this version. The uploaded file is deleted.", 14f, "#6C7293", false), etPw, error))
+            .setPositiveButton("Stop offering", null).setNegativeButton("Cancel", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val pw = etPw.text.toString()
+                if (pw.isEmpty()) { error.text = "Enter your own password to confirm"; return@setOnClickListener }
+                error.text = "Working…"
+                api(JSONObject().put("action", "adminAppRemove").put("adminPassword", pw)) { res, err ->
+                    if (res != null) { dialog.dismiss(); toast("No update is offered now."); loadApp() } else error.text = err
+                }
+            }
+        }
+        dialog.show()
     }
 }

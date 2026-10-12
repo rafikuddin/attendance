@@ -15,6 +15,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var session: Session
     private lateinit var tvStatus: TextView
     private lateinit var tvMonth: TextView
+    private var pendingUpdate: JSONObject? = null           // the newer app version the server offers, if any
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +34,8 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<android.view.View>(R.id.cardNight).setOnClickListener { open(NightHoldActivity::class.java) }
         findViewById<android.view.View>(R.id.cardNotice).setOnClickListener { open(NoticesActivity::class.java) }
+        findViewById<android.view.View>(R.id.cardUpdate).setOnClickListener { pendingUpdate?.let { AppUpdate.offer(this, it) } }
+        Thread { AppUpdate.cleanUp(applicationContext) }.start()     // a downloaded APK from an earlier update is no longer needed
         setupBottomNav(Tab.HOME)
         maybeShowNoticePopup()
         if (session.mustChangePassword) {          // signed in with a password shorter than the server now requires
@@ -55,6 +58,7 @@ class MainActivity : AppCompatActivity() {
     private fun showMenu(anchor: android.view.View) {
         val menu = PopupMenu(this, anchor)
         menu.menu.add("Change Password")
+        pendingUpdate?.let { menu.menu.add("⬆️ Update app (v${it.optString("versionName")})") }
         if (AdminFlag.get(this)) menu.menu.add("Admin Panel")
         menu.menu.add("Logout")
         menu.menu.add("App version $versionName").isEnabled = false
@@ -63,6 +67,7 @@ class MainActivity : AppCompatActivity() {
                 "Change Password" -> ChangePasswordDialog.show(this, session)
                 "Admin Panel" -> open(AdminActivity::class.java)
                 "Logout" -> logout()
+                else -> if (item.title.toString().startsWith("⬆️")) pendingUpdate?.let { AppUpdate.offer(this, it) }
             }
             true
         }
@@ -174,6 +179,17 @@ class MainActivity : AppCompatActivity() {
         }
         PhotoLoader.load(this, session, fileId, img, 640)
         androidx.appcompat.app.AlertDialog.Builder(this).setView(img).setPositiveButton("Close", null).show()
+    }
+
+    /** A banner when the server offers a newer app version than the one installed. Hidden when this phone is up to date. */
+    private fun showUpdate(info: JSONObject?) {
+        val card = findViewById<android.view.View>(R.id.cardUpdate)
+        if (!AppUpdate.isNewer(this, info) || info == null) { pendingUpdate = null; card.visibility = android.view.View.GONE; return }
+        pendingUpdate = info
+        findViewById<TextView>(R.id.tvUpdateTitle).text = "Update available · v${info.optString("versionName")}"
+        val notes = info.optString("notes")
+        findViewById<TextView>(R.id.tvUpdateText).text = if (notes.isNotEmpty()) notes else "A new version of the app is ready. Tap Update."
+        card.visibility = android.view.View.VISIBLE
     }
 
     /** Bell badge: how many notices have not been opened yet. */
@@ -310,6 +326,7 @@ class MainActivity : AppCompatActivity() {
             session.isManager = res.optBoolean("isManager")
             AdminFlag.set(this, res.optBoolean("isAdmin"))
             showNotices(res.optJSONArray("notices"))
+            showUpdate(res.optJSONObject("appUpdate"))
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
             showTodayDetail(todayRecord)
             res.optJSONArray("balance")?.let { showBalance(it) }
