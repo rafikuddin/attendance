@@ -17,7 +17,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **Today's selfie on Home** — once you've checked in, the *Today's Status* circle shows your selfie as a small round picture (tap it to see it bigger) with where it was taken underneath.
 - **One check-in per day** — a second submission on the same day is blocked.
 - **Leave requests** — Casual, Sick, Earn or Paternity leave with a from/to date picker; days are counted automatically.
-- **Leave application picture** — attach a photo of your signed leave application (📷 *Take photo* or 🖼 *Choose picture*). **A request needs a picture or a written reason (3+ characters) — it can't be sent with neither**, and both are allowed. The picture is shrunk on the phone and stored privately in the Drive folder with the selfies; you, your manager and every supervisor above you can open it from the leave request (*📎 View leave application*).
+- **Leave application picture + reason (both required)** — attach a photo of your signed leave application (📷 *Take photo* or 🖼 *Choose picture*) **and** write a reason (3+ characters). A request can't be sent without both; the server refuses it too. The picture is shrunk on the phone and stored privately in the Drive folder with the selfies; you, your manager and every supervisor above you can open it from the leave request (*📎 View leave application*).
 - **Leave balance** — **Casual 10 · Sick 14 · Earn 17 · Paternity 3** days per year, with *left of total · used* shown per type.
 - **Attendance ↔ leave conflict checks** — you can't mark attendance on an approved-leave day, or apply for leave on a day you already marked present.
 - **Night Hold** — staying away overnight? Report it with:

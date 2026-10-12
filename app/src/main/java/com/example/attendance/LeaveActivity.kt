@@ -123,16 +123,17 @@ class LeaveActivity : AppCompatActivity() {
     private fun apply() {
         val f = from; val t = to
         if (f == null || t == null) { msg("Please choose From and To dates", false); return }
-        // A reason or a picture of the application is required (either one, or both). The server checks this too.
+        // BOTH a reason and a picture of the leave application are required. The server checks this too.
         val reason = etReason.text.toString().trim()
         val pic = applicationJpeg
-        if (pic == null && reason.length < 3) { msg("Please attach your leave application picture or write a reason.", false); return }
+        if (reason.length < 3) { msg("Please write the reason for your leave.", false); return }
+        if (pic == null) { msg("Please attach a picture of your leave application.", false); return }
         btnApply.isEnabled = false
         msg("Submitting...", true)
         val body = JSONObject().put("action", "leave").put("username", session.username)
             .put("type", ddType.text.toString()).put("from", iso.format(f.time)).put("to", iso.format(t.time))
             .put("reason", reason)
-        if (pic != null) body.put("application", Base64.encodeToString(pic, Base64.NO_WRAP))
+        body.put("application", Base64.encodeToString(pic, Base64.NO_WRAP))
         api(body) { res, err ->
             btnApply.isEnabled = true
             if (res != null) {
