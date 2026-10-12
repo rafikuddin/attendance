@@ -12,7 +12,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **Login / Logout / Change password** — usernames live in a Google Sheet and passwords are stored there only as salted hashes. The app never keeps the password: it signs in once and uses an expiring token. Staff change their own password in the app (current password required, at least 8 characters). Five wrong passwords pause an account for 15 minutes. The login screen has **Keep me signed in on this device** (ticked by default): ticked, you stay signed in for 30 days and the sign-in renews itself every time you use the app; unticked, the sign-in ends after 12 hours (use this on a shared phone).
 - **Selfie attendance** — front-camera selfie (required, JPEG only, size-limited), live GPS location (fake/mock GPS is rejected), address lookup, and a **server-side** date/time stamp (changing the phone's clock does nothing).
 - **Location is required** — a submission without a real GPS location, or with one outside Bangladesh, is rejected by the server, not just the app.
-- **Late Present** — submitting at or after **9:00 AM** is marked *⏰ Late Present* with the time.
+- **Late Present** — there is a **10-minute grace period**: submitting up to 9:09 AM is on time, and at or after **9:10 AM** is marked *⏰ Late Present* with the time.
 - **Absent** — still unmarked after **6:00 PM** counts as *Absent*; past unmarked days show as Absent too. **Friday is an automatic weekly off**, and so is any **custom holiday** an admin adds; neither is ever counted as absent.
 - **Today's selfie on Home** — once you've checked in, the *Today's Status* card shows your selfie and where it was taken.
 - **One check-in per day** — a second submission on the same day is blocked.
@@ -134,7 +134,7 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 | Sheet ID | `Code.gs` → `SHEET_ID` | your sheet |
 | Timezone | `Code.gs` → `TZ` | `Asia/Dhaka` |
 | Leave quotas | `Code.gs` → `QUOTA` | Casual 10, Sick 14, Earn 17 (days/year) |
-| Late cutoff | `Code.gs` → `LATE_HOUR` | `9` (9:00 AM) |
+| Late cutoff | `Code.gs` → `LATE_HOUR`, `LATE_GRACE_MINUTES` | `9` and `10` (late from 9:10 AM) |
 | Absent cutoff | `Code.gs` → `ABSENT_AFTER_HOUR` | `18` (6:00 PM) |
 | Pay period | `Code.gs` → `PERIOD_START_DAY` / `PERIOD_END_DAY` | 26 → 25 |
 | Weekly off | `Code.gs` → `isFridayDate` | Friday |
