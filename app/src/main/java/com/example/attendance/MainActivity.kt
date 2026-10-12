@@ -136,6 +136,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Today's selfie and where it was taken, inside the Today's Status card. Hidden until attendance is marked. */
+    private fun showTodayDetail(rec: JSONObject?) {
+        val box = findViewById<android.view.View>(R.id.todayDetail)
+        if (rec == null) { box.visibility = android.view.View.GONE; return }
+        box.visibility = android.view.View.VISIBLE
+        val selfie = rec.optString("selfie")
+        val photoCard = findViewById<android.view.View>(R.id.cardTodayPhoto)
+        if (selfie.isNotEmpty()) {
+            photoCard.visibility = android.view.View.VISIBLE
+            PhotoLoader.load(this, session, selfie, findViewById<android.widget.ImageView>(R.id.imgToday), 640)
+        } else {
+            photoCard.visibility = android.view.View.GONE     // an older saved copy has no photo id until the refresh arrives
+        }
+        val address = rec.optString("address")
+        val coords = "${rec.optString("lat")}, ${rec.optString("lng")}"
+        findViewById<TextView>(R.id.tvTodayLoc).text = "📍 " + (if (address.isNotEmpty() && address != "Address unavailable") "$address\n$coords" else coords)
+    }
+
     /** The newest admin notice, shown as a card under Today's Status. Hidden when there are none. */
     private fun showNotices(arr: org.json.JSONArray?) {
         val card = findViewById<android.view.View>(R.id.cardNotice)
@@ -198,11 +216,12 @@ class MainActivity : AppCompatActivity() {
             var present = 0
             var todayTime: String? = null
             var todayLate = false
+            var todayRecord: JSONObject? = null
             val presentThisPeriod = HashSet<String>()
             val recs = res.getJSONArray("records")
             for (i in 0 until recs.length()) {
                 val r = recs.getJSONObject(i); val d = r.getString("date")
-                if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late") }
+                if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late"); todayRecord = r }
                 if (d >= periodStartKey && d <= periodEndKey) { present++; presentThisPeriod.add(d) }
             }
             val leaves = res.optJSONArray("leaves")
@@ -250,6 +269,7 @@ class MainActivity : AppCompatActivity() {
             AdminFlag.set(this, res.optBoolean("isAdmin"))
             showNotices(res.optJSONArray("notices"))
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
+            showTodayDetail(todayRecord)
             res.optJSONArray("balance")?.let { showBalance(it) }
             showNights(res.optJSONArray("nights"), today, periodStartKey, periodEndKey)
         }

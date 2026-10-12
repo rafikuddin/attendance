@@ -21,6 +21,7 @@ class LoginActivity : AppCompatActivity() {
         val etPass = findViewById<EditText>(R.id.etPass)
         val btn = findViewById<Button>(R.id.btnLogin)
         val tvErr = findViewById<TextView>(R.id.tvError)
+        val cbRemember = findViewById<CheckBox>(R.id.cbRemember)
         findViewById<TextView>(R.id.tvVersion).text = "Version " + (try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { "" })
         intent.getStringExtra(EXTRA_MESSAGE)?.let { tvErr.text = it }
 
@@ -31,7 +32,7 @@ class LoginActivity : AppCompatActivity() {
             btn.isEnabled = false
             tvErr.text = "Signing in..."
             // The password is sent only here, once. The server answers with a token, which api() saves; the password is not kept.
-            api(JSONObject().put("action", "login").put("username", u).put("password", p)) { res, err ->
+            api(JSONObject().put("action", "login").put("username", u).put("password", p).put("remember", cbRemember.isChecked)) { res, err ->
                 btn.isEnabled = true
                 etPass.setText("")
                 if (res != null) {
