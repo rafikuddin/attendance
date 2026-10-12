@@ -14,17 +14,17 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **Location is required** — a submission without a real GPS location, or with one outside Bangladesh, is rejected by the server, not just the app.
 - **Late Present** — there is a **10-minute grace period**: submitting up to 9:09 AM is on time, and at or after **9:10 AM** is marked *⏰ Late Present* with the time.
 - **Absent** — still unmarked after **6:00 PM** counts as *Absent*; past unmarked days show as Absent too. **Friday is an automatic weekly off**, and so is any **custom holiday** an admin adds; neither is ever counted as absent.
-- **Today's selfie on Home** — once you've checked in, the *Today's Status* card shows your selfie and where it was taken.
+- **Today's selfie on Home** — once you've checked in, the *Today's Status* circle shows your selfie as a small round picture (tap it to see it bigger) with where it was taken underneath.
 - **One check-in per day** — a second submission on the same day is blocked.
-- **Leave requests** — Casual, Sick or Earn leave with a from/to date picker; days are counted automatically.
-- **Leave balance** — **Casual 10 · Sick 14 · Earn 17** days per year, with *left of total · used* shown per type.
+- **Leave requests** — Casual, Sick, Earn or Paternity leave with a from/to date picker; days are counted automatically.
+- **Leave balance** — **Casual 10 · Sick 14 · Earn 17 · Paternity 3** days per year, with *left of total · used* shown per type.
 - **Attendance ↔ leave conflict checks** — you can't mark attendance on an approved-leave day, or apply for leave on a day you already marked present.
 - **Night Hold** — staying away overnight? Report it with:
   - live GPS (fake/mock locations are rejected),
   - **district → thana** pickers (all **64 districts**, with searchable lists),
   - **hotel name**,
   - **one per day**; the form can't be submitted without real data (checked again on the server).
-- **Notices** — a notice from an admin appears as a card on Home (tap to see them all).
+- **Notices** — a notice from an admin appears as a card on Home, behind a 🔔 **bell** at the top (a red number shows how many you haven't opened), and as a **pop-up on Home every time you sign in** or open the app fresh. *Got it* closes it; *View all notices* opens the list.
 - **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, 🎉 holidays, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
 
 ### For managers
@@ -35,11 +35,11 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 
 ### For admins
 An **admin** is any user whose **Role** cell in the Users sheet says `admin` (see *Make your first admin* below). Admins get an **Admin Panel** in the 👤 menu on Home with three tabs:
-- **👥 Users** — **add a new user** (username, name, manager, optional admin role) and **reset anyone's password**. You can type a temporary password or leave it blank and the server makes one (shown once, with a Copy button). The person is signed out everywhere and must choose their own password at their next sign-in. Creating a user or resetting a password asks for **your own password** again.
+- **👥 Users** — a **search box** finds people by name, username or manager. **Add a new user** (username, name, manager, optional admin role) and **reset anyone's password**. You can type a temporary password or leave it blank and the server makes one (shown once, with a Copy button). The person is signed out everywhere and must choose their own password at their next sign-in. Creating a user or resetting a password asks for **your own password** again.
 - **📢 Notices** — post a title + message to everyone (shown for 7 days by default, up to 90) and remove notices.
 - **🎉 Holidays** — pick a date and a name; that day behaves like Friday for everyone (nobody is absent, the team view shows *Off*, Calendar and Home show the holiday name). Remove a holiday and the day counts as a normal working day again.
 
-Notices appear when a phone opens or refreshes Home. They are **not push notifications** (no sound or pop-up while the app is closed); that would need Firebase.
+The notice pop-up is shown by the app when it is open. It is **not a phone push notification** (no sound or banner while the app is closed); that would need Firebase.
 
 ---
 
@@ -133,7 +133,7 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 |---|---|---|
 | Sheet ID | `Code.gs` → `SHEET_ID` | your sheet |
 | Timezone | `Code.gs` → `TZ` | `Asia/Dhaka` |
-| Leave quotas | `Code.gs` → `QUOTA` | Casual 10, Sick 14, Earn 17 (days/year) |
+| Leave quotas | `Code.gs` → `QUOTA` | Casual 10, Sick 14, Earn 17, Paternity 3 (days/year) |
 | Late cutoff | `Code.gs` → `LATE_HOUR`, `LATE_GRACE_MINUTES` | `9` and `10` (late from 9:10 AM) |
 | Absent cutoff | `Code.gs` → `ABSENT_AFTER_HOUR` | `18` (6:00 PM) |
 | Pay period | `Code.gs` → `PERIOD_START_DAY` / `PERIOD_END_DAY` | 26 → 25 |
@@ -202,6 +202,7 @@ app/
       Admin.kt          Admin flag (the server decides who is an admin)
       AdminActivity.kt  Admin Panel: users, notices, holidays
       NoticesActivity.kt  List of notices
+      NoticeAlerts.kt   Bell count and the sign-in notice pop-up
       Ui.kt             Shared header + bottom bar
       MainActivity.kt           Home
       AttendanceActivity.kt     Selfie + location check-in

@@ -20,7 +20,7 @@ import java.util.*
 class LeaveActivity : AppCompatActivity() {
     private val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private val nice = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-    private val types = listOf("Casual Leave", "Sick Leave", "Earn Leave")
+    private val types = listOf("Casual Leave", "Sick Leave", "Earn Leave", "Paternity Leave")
     private var from: Calendar? = null
     private var to: Calendar? = null
     private lateinit var session: Session

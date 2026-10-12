@@ -37,6 +37,7 @@ class NoticesActivity : AppCompatActivity() {
             list.removeAllViews()
             if (res == null) { list.addView(note(err ?: "Could not load notices.")); return@api }
             val arr = res.optJSONArray("notices")
+            NoticeState.markSeen(this, arr)          // opening the list clears the bell's red count
             if (arr == null || arr.length() == 0) { list.addView(note("No notices right now.")); return@api }
             for (i in 0 until arr.length()) list.addView(card(arr.getJSONObject(i)))
         }

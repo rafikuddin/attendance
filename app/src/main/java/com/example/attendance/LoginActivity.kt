@@ -41,6 +41,7 @@ class LoginActivity : AppCompatActivity() {
                     session.isManager = res.optBoolean("isManager")
                     AdminFlag.set(this, res.optBoolean("isAdmin"))
                     session.mustChangePassword = res.optBoolean("weakPassword")
+                    NoticePopup.arm()                      // show the notices pop-up on Home after every sign-in
                     openMain()
                 } else tvErr.text = err
             }

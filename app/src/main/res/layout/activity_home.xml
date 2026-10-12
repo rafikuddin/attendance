@@ -22,6 +22,19 @@
             <TextView android:text="SAM BOND" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="26sp"
                 android:letterSpacing="0.03" android:layout_marginStart="12dp"
                 android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
+            <FrameLayout android:layout_width="42dp" android:layout_height="42dp" android:layout_marginEnd="8dp">
+                <TextView android:id="@+id/btnBell" android:text="🔔" android:textSize="18sp"
+                    android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
+                    android:gravity="center" android:clickable="true" android:focusable="true"
+                    android:contentDescription="Notifications"
+                    android:layout_width="42dp" android:layout_height="42dp" />
+                <TextView android:id="@+id/tvBellBadge" android:visibility="gone" android:text="1"
+                    android:textColor="#FFFFFF" android:textSize="10sp" android:textStyle="bold" android:gravity="center"
+                    android:background="@drawable/bg_badge"
+                    android:layout_gravity="top|end"
+                    android:minWidth="18dp" android:layout_width="wrap_content" android:layout_height="18dp"
+                    android:paddingStart="4dp" android:paddingEnd="4dp" />
+            </FrameLayout>
             <TextView android:id="@+id/btnRefresh" android:text="⟳" android:textSize="22sp"
                 android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
                 android:gravity="center" android:clickable="true" android:focusable="true"
@@ -71,10 +84,13 @@
                     android:orientation="vertical">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical" android:padding="18dp">
-                    <com.google.android.material.card.MaterialCardView
-                        app:cardCornerRadius="26dp" app:cardElevation="0dp" app:cardBackgroundColor="@color/accent_soft"
-                        android:layout_width="52dp" android:layout_height="52dp">
-                        <TextView android:text="📍" android:textSize="24sp" android:gravity="center"
+                    <com.google.android.material.card.MaterialCardView android:id="@+id/cardTodayMini"
+                        app:cardCornerRadius="28dp" app:cardElevation="0dp" app:cardBackgroundColor="@color/accent_soft"
+                        android:layout_width="56dp" android:layout_height="56dp">
+                        <TextView android:id="@+id/tvTodayPin" android:text="📍" android:textSize="24sp" android:gravity="center"
+                            android:layout_width="match_parent" android:layout_height="match_parent" />
+                        <ImageView android:id="@+id/imgTodayMini" android:visibility="gone" android:scaleType="centerCrop"
+                            android:contentDescription="Today's attendance selfie"
                             android:layout_width="match_parent" android:layout_height="match_parent" />
                     </com.google.android.material.card.MaterialCardView>
                     <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
@@ -94,15 +110,8 @@
                 <LinearLayout android:id="@+id/todayDetail" android:visibility="gone"
                     android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:paddingBottom="18dp">
-                    <com.google.android.material.card.MaterialCardView android:id="@+id/cardTodayPhoto"
-                        android:layout_width="match_parent" android:layout_height="220dp"
-                        app:cardCornerRadius="18dp" app:cardElevation="0dp" app:cardBackgroundColor="@color/chip">
-                        <ImageView android:id="@+id/imgToday" android:scaleType="centerCrop"
-                            android:contentDescription="Today's attendance selfie"
-                            android:layout_width="match_parent" android:layout_height="match_parent" />
-                    </com.google.android.material.card.MaterialCardView>
                     <TextView android:id="@+id/tvTodayLoc" android:textSize="13sp" android:textColor="@color/muted"
-                        android:layout_marginTop="10dp"
+                        android:layout_marginTop="0dp"
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </LinearLayout>
                 </LinearLayout>
@@ -182,6 +191,18 @@
                         android:layout_gravity="center_vertical|start" android:layout_marginStart="16dp"
                         android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     <TextView android:id="@+id/tvEarnVal" android:text="-" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/ink"
+                        android:layout_gravity="center_vertical|end" android:layout_marginEnd="16dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                </FrameLayout>
+                <FrameLayout android:layout_width="match_parent" android:layout_height="40dp" android:layout_marginTop="10dp">
+                    <ProgressBar android:id="@+id/pbPaternity" style="?android:attr/progressBarStyleHorizontal"
+                        android:indeterminate="false" android:max="100" android:progress="0"
+                        android:progressDrawable="@drawable/bar_paternity"
+                        android:layout_width="match_parent" android:layout_height="40dp" />
+                    <TextView android:id="@+id/tvPaternity" android:text="Paternity" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/ink"
+                        android:layout_gravity="center_vertical|start" android:layout_marginStart="16dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    <TextView android:id="@+id/tvPaternityVal" android:text="-" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/ink"
                         android:layout_gravity="center_vertical|end" android:layout_marginEnd="16dp"
                         android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 </FrameLayout>

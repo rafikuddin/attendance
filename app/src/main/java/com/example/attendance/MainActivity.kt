@@ -29,10 +29,12 @@ class MainActivity : AppCompatActivity() {
             SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date())
         findViewById<TextView>(R.id.btnRefresh).setOnClickListener { loadStatus() }
         findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
+        findViewById<TextView>(R.id.btnBell).setOnClickListener { open(NoticesActivity::class.java) }
 
         findViewById<android.view.View>(R.id.cardNight).setOnClickListener { open(NightHoldActivity::class.java) }
         findViewById<android.view.View>(R.id.cardNotice).setOnClickListener { open(NoticesActivity::class.java) }
         setupBottomNav(Tab.HOME)
+        maybeShowNoticePopup()
         if (session.mustChangePassword) {          // signed in with a password shorter than the server now requires
             session.mustChangePassword = false     // ask once per sign-in
             android.widget.Toast.makeText(this, "Your password is short. Please choose a longer one.", android.widget.Toast.LENGTH_LONG).show()
@@ -136,26 +138,65 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Today's selfie and where it was taken, inside the Today's Status card. Hidden until attendance is marked. */
+    /** Today's selfie as a small round picture in the status circle, and where it was taken. Back to the pin until attendance is marked. */
     private fun showTodayDetail(rec: JSONObject?) {
         val box = findViewById<android.view.View>(R.id.todayDetail)
-        if (rec == null) { box.visibility = android.view.View.GONE; return }
+        val mini = findViewById<android.widget.ImageView>(R.id.imgTodayMini)
+        val pin = findViewById<android.view.View>(R.id.tvTodayPin)
+        val miniCard = findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardTodayMini)
+        miniCard.clipToOutline = true
+        if (rec == null) {
+            box.visibility = android.view.View.GONE
+            mini.visibility = android.view.View.GONE; pin.visibility = android.view.View.VISIBLE
+            miniCard.setOnClickListener(null); miniCard.isClickable = false
+            return
+        }
         box.visibility = android.view.View.VISIBLE
         val selfie = rec.optString("selfie")
-        val photoCard = findViewById<android.view.View>(R.id.cardTodayPhoto)
         if (selfie.isNotEmpty()) {
-            photoCard.visibility = android.view.View.VISIBLE
-            PhotoLoader.load(this, session, selfie, findViewById<android.widget.ImageView>(R.id.imgToday), 640)
+            pin.visibility = android.view.View.GONE; mini.visibility = android.view.View.VISIBLE
+            PhotoLoader.load(this, session, selfie, mini, 200)
+            miniCard.isClickable = true
+            miniCard.setOnClickListener { showBigSelfie(selfie) }     // tap the small picture to see it full size
         } else {
-            photoCard.visibility = android.view.View.GONE     // an older saved copy has no photo id until the refresh arrives
+            mini.visibility = android.view.View.GONE; pin.visibility = android.view.View.VISIBLE   // an older saved copy has no photo id until the refresh arrives
         }
         val address = rec.optString("address")
         val coords = "${rec.optString("lat")}, ${rec.optString("lng")}"
         findViewById<TextView>(R.id.tvTodayLoc).text = "📍 " + (if (address.isNotEmpty() && address != "Address unavailable") "$address\n$coords" else coords)
     }
 
+    private fun showBigSelfie(fileId: String) {
+        val img = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            minimumHeight = (320 * resources.displayMetrics.density).toInt()
+            layoutParams = android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, (320 * resources.displayMetrics.density).toInt())
+        }
+        PhotoLoader.load(this, session, fileId, img, 640)
+        androidx.appcompat.app.AlertDialog.Builder(this).setView(img).setPositiveButton("Close", null).show()
+    }
+
+    /** Bell badge: how many notices have not been opened yet. */
+    fun refreshBell(arr: org.json.JSONArray?) {
+        val badge = findViewById<TextView>(R.id.tvBellBadge)
+        val n = NoticeState.unread(this, arr)
+        if (n > 0) { badge.text = if (n > 9) "9+" else n.toString(); badge.visibility = android.view.View.VISIBLE }
+        else badge.visibility = android.view.View.GONE
+    }
+
+    /** Once per sign-in / app start: fetch the current notices fresh and show them in a pop-up. */
+    private fun maybeShowNoticePopup() {
+        if (!NoticePopup.isDue()) return
+        api(JSONObject().put("action", "notices")) { res, _ ->
+            val arr = res?.optJSONArray("notices") ?: return@api
+            refreshBell(arr)
+            NoticePopup.show(this, arr)
+        }
+    }
+
     /** The newest admin notice, shown as a card under Today's Status. Hidden when there are none. */
     private fun showNotices(arr: org.json.JSONArray?) {
+        refreshBell(arr)
         val card = findViewById<android.view.View>(R.id.cardNotice)
         if (arr == null || arr.length() == 0) { card.visibility = android.view.View.GONE; return }
         val first = arr.getJSONObject(0)
@@ -182,6 +223,7 @@ class MainActivity : AppCompatActivity() {
                 "Casual" -> Triple(R.id.pbCasual, R.id.tvCasual, R.id.tvCasualVal)
                 "Sick" -> Triple(R.id.pbSick, R.id.tvSick, R.id.tvSickVal)
                 "Earn" -> Triple(R.id.pbEarn, R.id.tvEarn, R.id.tvEarnVal)
+                "Paternity" -> Triple(R.id.pbPaternity, R.id.tvPaternity, R.id.tvPaternityVal)
                 else -> null
             }
             if (ids != null) {

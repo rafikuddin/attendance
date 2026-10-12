@@ -161,8 +161,37 @@ class AdminActivity : AppCompatActivity() {
             val list = ArrayList<JSONObject>()
             if (arr != null) for (i in 0 until arr.length()) list.add(arr.getJSONObject(i))
             users = list
-            content.addView(heading("${list.size} USERS"))
-            list.forEach { content.addView(userCard(it)) }
+            // Search by name, username or manager. The list below is rebuilt on every keystroke.
+            val search = EditText(this).apply {
+                hint = "🔍  Search name, username or manager"
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                maxLines = 1; isSingleLine = true; textSize = 15f
+                imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor("#E6E9F7")) }
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+            }
+            val countLine = heading("")
+            val results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            content.addView(search); content.addView(countLine); content.addView(results)
+            fun show(q: String) {
+                val needle = q.trim().lowercase(Locale.getDefault())
+                val shown = if (needle.isEmpty()) list else list.filter {
+                    it.optString("name").lowercase(Locale.getDefault()).contains(needle) ||
+                        it.optString("username").lowercase(Locale.getDefault()).contains(needle) ||
+                        it.optString("manager").lowercase(Locale.getDefault()).contains(needle)
+                }
+                countLine.text = if (needle.isEmpty()) "${list.size} USERS" else "${shown.size} OF ${list.size} USERS"
+                results.removeAllViews()
+                if (shown.isEmpty()) results.addView(note("No user matches \"${q.trim()}\"."))
+                else shown.forEach { results.addView(userCard(it)) }
+            }
+            search.addTextChangedListener(object : android.text.TextWatcher {
+                override fun afterTextChanged(e: android.text.Editable?) { show(e?.toString() ?: "") }
+                override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+                override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
+            })
+            show("")
         }
     }
 
