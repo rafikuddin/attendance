@@ -120,11 +120,13 @@ jobs:
           if-no-files-found: error
 
       # Also publishes the APK on the repo's "Releases" page - easiest place to download from a phone.
+      # Temporary-key builds are saved as a DRAFT release (only you can see it): GitHub repos with immutable releases
+      # refuse files on a pre-release, but accept them on a draft.
       - name: Publish release
         continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
-          name: SAM BOND Attendance v${{ env.VERSION }}
-          prerelease: ${{ env.APK_SUFFIX != '' }}
+          name: SAM BOND Attendance v${{ env.VERSION }}${{ env.APK_SUFFIX != '' && ' (temporary key)' || '' }}
+          draft: ${{ env.APK_SUFFIX != '' }}
           files: ${{ env.APK_NAME }}
