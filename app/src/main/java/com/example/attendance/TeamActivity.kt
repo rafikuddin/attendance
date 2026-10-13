@@ -118,27 +118,51 @@ class TeamActivity : AppCompatActivity() {
         return card
     }
 
+    /** A title line, then six equal coloured tiles in two rows of three. Nothing scrolls sideways, so no label is ever cut off. */
     private fun renderCounts(c: JSONObject) {
         countsBox.removeAllViews()
+        // label, number, text colour, tile colour, symbol
         val items = listOf(
-            Triple("Present", c.optInt("present"), "#16A34A"),
-            Triple("Late", c.optInt("late"), "#D97706"),
-            Triple("On Leave", c.optInt("onLeave"), "#EA580C"),
-            Triple("Off", c.optInt("off"), "#6B7280"),
-            Triple("Absent", c.optInt("absent"), "#B91C1C"),
-            Triple("Pending", c.optInt("pending"), "#DC2626")
+            listOf("Present", c.optInt("present"), "#15803D", "#E6F6EC", "✅"),
+            listOf("Late", c.optInt("late"), "#B45309", "#FEF3C7", "⏰"),
+            listOf("On Leave", c.optInt("onLeave"), "#C2410C", "#FFEDD5", "🌴"),
+            listOf("Off", c.optInt("off"), "#4B5563", "#EEF0F5", "🗓"),
+            listOf("Absent", c.optInt("absent"), "#B91C1C", "#FDE8E8", "❌"),
+            listOf("Pending", c.optInt("pending"), "#4338CA", "#E8EAFF", "⏳")
         )
-        for ((label, value, color) in items) {
-            val col = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        val total = c.optInt("total", items.sumOf { v -> v[1] as Int })
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        head.addView(TextView(this).apply {
+            text = "TEAM TODAY"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#1E2247")); letterSpacing = 0.06f
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        head.addView(pill("$total member" + (if (total == 1) "" else "s"), "#1E2247", "#E6E9F7"))
+        countsBox.addView(head)
+        for (rowStart in listOf(0, 3)) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
             }
-            col.addView(TextView(this).apply {
-                text = value.toString(); textSize = 26f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor(color))
-            })
-            col.addView(TextView(this).apply { text = label; textSize = 12f; setTextColor(Color.parseColor("#6B7280")) })
-            countsBox.addView(col)
+            for (k in 0 until 3) {
+                val item = items[rowStart + k]
+                val tile = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                    setPadding(dp(4), dp(12), dp(4), dp(10))
+                    background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Color.parseColor(item[3] as String)) }
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        if (k > 0) marginStart = dp(5); if (k < 2) marginEnd = dp(5)
+                    }
+                }
+                tile.addView(TextView(this).apply {
+                    text = (item[1] as Int).toString(); textSize = 28f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor(item[2] as String))
+                })
+                tile.addView(TextView(this).apply {
+                    text = (item[4] as String) + " " + (item[0] as String); textSize = 12f; setTypeface(null, Typeface.BOLD)
+                    setTextColor(Color.parseColor(item[2] as String)); maxLines = 1
+                })
+                row.addView(tile)
+            }
+            countsBox.addView(row)
         }
     }
 

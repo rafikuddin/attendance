@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.graphics.Typeface
 import android.media.ExifInterface
 import android.util.Base64
 import androidx.activity.result.contract.ActivityResultContracts
@@ -249,37 +250,70 @@ class LeaveActivity : AppCompatActivity() {
         for (i in 0 until arr.length()) list.addView(card(arr.getJSONObject(i)))
     }
 
+    /** Four balance tiles in a 2 x 2 grid: type, days left (big), a bar of what is left, and used / pending. */
     private fun renderBalance(res: JSONObject) {
         findViewById<TextView>(R.id.tvBalTitle).text = "Leave Balance · ${res.optString("year")}"
         val box = findViewById<LinearLayout>(R.id.balBox)
         box.removeAllViews()
         val arr = res.optJSONArray("balance") ?: return
         var tQuota = 0; var tUsed = 0; var tRem = 0
+        var row: LinearLayout? = null
         for (i in 0 until arr.length()) {
             val b = arr.getJSONObject(i)
             val quota = b.optInt("quota"); val used = b.optInt("used"); val pend = b.optInt("pending"); val rem = b.optInt("remaining")
             tQuota += quota; tUsed += used; tRem += rem
-            val col = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-                setPadding(dp(4), dp(8), dp(4), dp(8))
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            val type = b.optString("type").substringBefore(" ")
+            // accent colour, soft tile colour, symbol
+            val look = when (type) {
+                "Casual" -> Triple("#0D9488", "#E6F7F4", "🌴")
+                "Sick" -> Triple("#4F46E5", "#ECEEFF", "🤒")
+                "Earn" -> Triple("#D97706", "#FEF3D6", "💰")
+                else -> Triple("#0284C7", "#E3F3FC", "👶")
             }
-            col.addView(TextView(this).apply { text = b.optString("type").substringBefore(" "); textSize = 13f; setTextColor(Color.parseColor("#6B7280")) })
-            col.addView(TextView(this).apply {
-                text = rem.toString(); textSize = 32f; setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.parseColor(if (rem <= 0) "#DC2626" else "#1E2247"))
+            val accent = Color.parseColor(if (rem <= 0) "#DC2626" else look.first)
+            if (i % 2 == 0) {
+                row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = if (i == 0) dp(8) else dp(10) }
+                }
+                box.addView(row)
+            }
+            val tile = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(14), dp(12), dp(14), dp(12))
+                background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Color.parseColor(look.second)) }
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    if (i % 2 == 0) marginEnd = dp(5) else marginStart = dp(5)
+                }
+            }
+            tile.addView(TextView(this).apply {
+                text = "${look.third}  $type"; textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(accent)
             })
-            col.addView(TextView(this).apply { text = "of $quota left"; textSize = 12f; setTextColor(Color.parseColor("#6B7280")) })
-            col.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-                max = quota; progress = (used + pend).coerceIn(0, quota)
-                progressTintList = ColorStateList.valueOf(Color.parseColor(if (rem <= 0) "#DC2626" else "#FF4D6D"))
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(6)).apply { topMargin = dp(6); marginStart = dp(8); marginEnd = dp(8) }
+            val big = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.BOTTOM }
+            big.addView(TextView(this).apply { text = rem.toString(); textSize = 34f; setTypeface(null, Typeface.BOLD); setTextColor(accent) })
+            big.addView(TextView(this).apply {
+                text = "  of $quota left"; textSize = 12f; setTextColor(Color.parseColor("#6B7280"))
+                setPadding(0, 0, 0, dp(7))
             })
-            col.addView(TextView(this).apply {
-                text = "Used $used" + if (pend > 0) " · Pending $pend" else ""
-                textSize = 11f; gravity = Gravity.CENTER; setTextColor(Color.parseColor("#6B7280"))
+            tile.addView(big)
+            // the bar: coloured part = days still left
+            val track = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                background = GradientDrawable().apply { cornerRadius = dp(4).toFloat(); setColor(Color.argb(40, 0, 0, 0)) }
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(7)).apply { topMargin = dp(6) }
+            }
+            val leftPart = rem.coerceIn(0, maxOf(quota, 1)).toFloat()
+            track.addView(View(this).apply {
+                background = GradientDrawable().apply { cornerRadius = dp(4).toFloat(); setColor(accent) }
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, leftPart)
             })
-            box.addView(col)
+            track.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, maxOf(quota, 1) - leftPart) })
+            tile.addView(track)
+            tile.addView(TextView(this).apply {
+                text = "Used $used" + if (pend > 0) "  ·  Pending $pend" else ""
+                textSize = 11f; setTextColor(Color.parseColor("#6B7280")); setPadding(0, dp(6), 0, 0)
+            })
+            row?.addView(tile)
         }
         findViewById<TextView>(R.id.tvBalTotal).text = "Total: $tUsed used · $tRem remaining of $tQuota days"
     }

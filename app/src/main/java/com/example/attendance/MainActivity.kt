@@ -3,7 +3,6 @@ package com.example.attendance
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
@@ -57,24 +56,15 @@ class MainActivity : AppCompatActivity() {
     private fun open(c: Class<*>) = startActivity(Intent(this, c))
 
     private fun showMenu(anchor: android.view.View) {
-        val menu = PopupMenu(this, anchor)
-        menu.menu.add("My Profile")
-        menu.menu.add("Change Password")
-        pendingUpdate?.let { menu.menu.add("⬆️ Update app (v${it.optString("versionName")})") }
-        if (AdminFlag.get(this)) menu.menu.add("Admin Panel")
-        menu.menu.add("Logout")
-        menu.menu.add("App version $versionName").isEnabled = false
-        menu.setOnMenuItemClickListener { item ->
-            when (item.title.toString()) {
-                "My Profile" -> open(ProfileActivity::class.java)
-                "Change Password" -> ChangePasswordDialog.show(this, session)
-                "Admin Panel" -> open(AdminActivity::class.java)
-                "Logout" -> logout()
-                else -> if (item.title.toString().startsWith("⬆️")) pendingUpdate?.let { AppUpdate.offer(this, it) }
-            }
-            true
+        val items = ArrayList<MenuEntry>()
+        items.add(MenuEntry("👤", "My Profile", "#1E2247") { open(ProfileActivity::class.java) })
+        items.add(MenuEntry("🔑", "Change Password", "#1E2247") { ChangePasswordDialog.show(this, session) })
+        pendingUpdate?.let { u ->
+            items.add(MenuEntry("⬆️", "Update app (v${u.optString("versionName")})", "#2563EB", true) { AppUpdate.offer(this, u) })
         }
-        menu.show()
+        if (AdminFlag.get(this)) items.add(MenuEntry("🛠", "Admin Panel", "#1E2247") { open(AdminActivity::class.java) })
+        items.add(MenuEntry("🚪", "Logout", "#DC2626", true) { logout() })
+        showHomeMenu(anchor, items, "SAM BOND · App version $versionName")
     }
 
     /** Tells the server to end this sign-in (best effort, in the background), then wipes everything kept on the phone. */

@@ -16,7 +16,7 @@
                 <TextView android:id="@+id/tvBalTitle" android:text="Leave Balance" android:textSize="16sp" android:textStyle="bold"
                     android:textColor="@color/ink" android:layout_marginStart="6dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <LinearLayout android:id="@+id/balBox" android:orientation="horizontal" android:layout_marginTop="6dp"
+                <LinearLayout android:id="@+id/balBox" android:orientation="vertical" android:layout_marginTop="6dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
                 <TextView android:id="@+id/tvBalTotal" android:textSize="13sp" android:textColor="@color/muted" android:gravity="center"
                     android:background="@drawable/bg_chip" android:padding="8dp" android:layout_marginTop="8dp"
