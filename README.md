@@ -27,6 +27,13 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
   - **one per day**; the form can't be submitted without real data (checked again on the server).
 - **Notices** — a notice from an admin appears as a card on Home, behind a 🔔 **bell** at the top (a red number shows how many you haven't opened), and as a **pop-up on Home every time you sign in** or open the app fresh. *Got it* closes it; *View all notices* opens the list.
 - **Update from inside the app** — when an admin publishes a newer version, a blue **⬆️ Update available** card appears on Home (and an *Update app* item in the 👤 menu). Tap **Update**, the app downloads the new version (with a progress bar), checks it isn't damaged, and opens Android's installer. The first time, Android asks you to allow *Install from this source* for this app. Your data is not affected.
+- **My Profile** — open it from the round photo at the top-left of Home, or from the 👤 menu → *My Profile*. You can:
+  - **change your profile photo** (📷 *Take photo* or 🖼 *Choose picture*) — this is separate from your daily attendance selfie, and it replaces the letter in the round avatar on Home;
+  - keep your **official phone**, **personal phone** and **email address**;
+  - set an **emergency contact**: phone number plus **relation** from a drop-down (*Wife, Son, Brother, Mother, Father, Daughter, Other*). Choose **Other** and a box appears where you write the relation yourself;
+  - add your **bike number**, and — **for managers only** — your **laptop model**.
+  
+  Every field is optional (an emergency phone and its relation go together). Phone numbers are checked (digits, 8–15, optional `+`) and email addresses too. Only you can change your own profile.
 - **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, 🎉 holidays, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
 
 ### For managers
@@ -56,10 +63,11 @@ The notice pop-up is shown by the app when it is open. It is **not a phone push 
 | **Team** *(managers only)* | Team status, roll-ups, drill-down, leave approvals |
 | **Calendar** | Pay-period view of attendance, leave and night holds |
 | **Night Hold** | Overnight stay report with location, district/thana and hotel |
+| **My Profile** | Change your photo; phones, email, emergency contact + relation, bike number, laptop model (managers) |
 | **Notices** | Everything admins have posted |
 | **Admin Panel** *(admins only)* | Add users, reset passwords, post notices, add holidays, publish app updates |
 
-A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold) is on every screen, and every screen has a compact header that stays fixed while the content scrolls. ⟳ buttons refresh any screen, and the 👤 menu on Home has *Change Password*, *Admin Panel* (admins only), *Logout* and the app version.
+A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold) is on every screen, and every screen has a compact header that stays fixed while the content scrolls. ⟳ buttons refresh any screen, and the 👤 menu on Home has *My Profile*, *Change Password*, *Admin Panel* (admins only), *Logout* and the app version.
 
 ---
 
@@ -156,6 +164,8 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 | Short sign-in length (box unticked) | `Code.gs` → `SHORT_SESSION_HOURS` | 12 hours |
 | Minimum password length, lockout, token lifetime | `Code.gs` → `MIN_PASSWORD_LENGTH`, `MAX_FAILED_LOGINS`, `LOCKOUT_MINUTES`, `TOKEN_DAYS` | 8, 5 tries, 15 min, 30 days |
 | Shortest reason for a leave request | `Code.gs` → `MIN_REASON_LENGTH` | 3 characters (a picture is also required) |
+| Laptop model for managers only (set `false` to give it to everyone) | `Code.gs` → `LAPTOP_FOR_MANAGERS_ONLY` | `true` |
+| Relations in the emergency-contact drop-down ("Other" is added by the app) | `Code.gs` → `RELATIONS` | Wife, Son, Brother, Mother, Father, Daughter |
 | Biggest in-app update accepted | `Code.gs` → `UPDATE_MAX_BYTES` | 40 MB |
 | Notice length of stay | `Code.gs` → `NOTICE_DEFAULT_DAYS`, `NOTICE_MAX_DAYS` | 7 days, 90 days |
 | Allowed check-in area | `Code.gs` → `GEO_CHECK`, `GEO_BOX` | Bangladesh + margin |
@@ -196,6 +206,7 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 - **Passwords** are stored only as salted PBKDF2-SHA256 hashes. The app never saves your password; it keeps a signed token (encrypted with the Android Keystore) that expires after 30 days, is renewed while you keep using the app, and stops working the moment you change your password, log out, or an admin revokes it.
 - **Brute-force protection:** 5 wrong passwords pause that account for 15 minutes. Apps Script cannot see a caller's IP address, so this is per account, not per attacker; an attacker can pause someone's account, but cannot get into it.
 - **Selfies, leave applications and locations are validated on the server:** photo required, JPEG only, size-limited; coordinates must be real and inside the allowed area; the phone's "fake GPS" flag is rejected. A phone with a modified app or a rooted device can still lie about its GPS — only Play Integrity attestation would close that, and it is not included.
+- **Profiles** are stored on a **Profiles** tab (created automatically, one row per person, plain-text cells). A profile can be changed only by its owner; a profile photo is visible only to that person and the supervisors above them, like selfies.
 - **Spreadsheet formula injection** is blocked: text typed on a phone (address, hotel, leave reason) is always stored as text.
 - **Admin actions** are checked on the server on every request (the *Role* cell is read each time, so removing `admin` takes effect at once), and adding a user or resetting a password needs the admin's own password again. A password an admin sets is temporary: the person must choose their own at first sign-in. Only someone who can edit the Sheet can create the first admin.
 - **Authorization** is enforced on the server: selfies and leave-application pictures are visible only to the person and the supervisors above them; leave can be decided only by a supervisor above that person in the chain (never for yourself); team views only down your own chain.
@@ -226,7 +237,8 @@ app/
       AdminActivity.kt  Admin Panel: users, notices, holidays, publish app update
       NoticesActivity.kt  List of notices
       NoticeAlerts.kt   Bell count and the sign-in notice pop-up
-      Photos.kt         Selfie / leave-application picture loader and viewer
+      Photos.kt         Selfie / leave-application / profile picture loader and viewer
+      ProfileActivity.kt  My Profile: photo, phones, email, emergency contact, bike, laptop
       AppUpdate.kt      In-app update: download, verify, install
       Ui.kt             Shared header + bottom bar
       MainActivity.kt           Home

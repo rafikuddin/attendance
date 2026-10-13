@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
             SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date())
         findViewById<TextView>(R.id.btnRefresh).setOnClickListener { loadStatus() }
         findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
+        findViewById<android.view.View>(R.id.cardAvatar).setOnClickListener { open(ProfileActivity::class.java) }
         findViewById<TextView>(R.id.btnBell).setOnClickListener { open(NoticesActivity::class.java) }
 
         findViewById<android.view.View>(R.id.cardNight).setOnClickListener { open(NightHoldActivity::class.java) }
@@ -57,6 +58,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showMenu(anchor: android.view.View) {
         val menu = PopupMenu(this, anchor)
+        menu.menu.add("My Profile")
         menu.menu.add("Change Password")
         pendingUpdate?.let { menu.menu.add("⬆️ Update app (v${it.optString("versionName")})") }
         if (AdminFlag.get(this)) menu.menu.add("Admin Panel")
@@ -64,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         menu.menu.add("App version $versionName").isEnabled = false
         menu.setOnMenuItemClickListener { item ->
             when (item.title.toString()) {
+                "My Profile" -> open(ProfileActivity::class.java)
                 "Change Password" -> ChangePasswordDialog.show(this, session)
                 "Admin Panel" -> open(AdminActivity::class.java)
                 "Logout" -> logout()
@@ -253,6 +256,14 @@ class MainActivity : AppCompatActivity() {
     // Friday and any admin-set holiday are days off — never counted as absent, never shown as "not marked yet".
     // "This month" runs PERIOD_START_DAY → PERIOD_END_DAY (26th → 25th), not the calendar month —
     // keep this in sync with Code.gs's PERIOD_START_DAY/PERIOD_END_DAY if you ever change the cycle.
+    /** The profile photo in the round avatar at the top; the initial letter stays when there is no photo. */
+    private fun showAvatar(photoId: String) {
+        val img = findViewById<android.widget.ImageView>(R.id.imgAvatar)
+        if (photoId.isEmpty()) { img.visibility = android.view.View.GONE; return }
+        img.visibility = android.view.View.VISIBLE
+        if (img.tag != photoId) PhotoLoader.load(this, session, photoId, img, 200)
+    }
+
     private fun loadStatus() {
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val now = Calendar.getInstance()
@@ -325,6 +336,7 @@ class MainActivity : AppCompatActivity() {
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
             session.isManager = res.optBoolean("isManager")
             AdminFlag.set(this, res.optBoolean("isAdmin"))
+            showAvatar(res.optString("myPhoto"))
             showNotices(res.optJSONArray("notices"))
             showUpdate(res.optJSONObject("appUpdate"))
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
