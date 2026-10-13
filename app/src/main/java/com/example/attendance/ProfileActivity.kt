@@ -48,8 +48,8 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tilLaptop: TextInputLayout
     private lateinit var etLaptop: EditText
     private lateinit var btnSave: MaterialButton
-    private lateinit var btnTake: MaterialButton
-    private lateinit var btnPick: MaterialButton
+    private lateinit var btnTake: View
+    private lateinit var btnPick: View
 
     private var relations: List<String> = listOf("Wife", "Son", "Brother", "Mother", "Father", "Daughter")
     private var canLaptop = false
@@ -220,7 +220,10 @@ class ProfileActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun setPhotoButtons(on: Boolean) { btnTake.isEnabled = on; btnPick.isEnabled = on }
+    private fun setPhotoButtons(on: Boolean) {
+        btnTake.isEnabled = on; btnPick.isEnabled = on
+        btnTake.alpha = if (on) 1f else 0.5f; btnPick.alpha = if (on) 1f else 0.5f
+    }
 
     private fun photoMsg(m: String, ok: Boolean) {
         tvPhotoMsg.text = m
