@@ -260,14 +260,16 @@ class AdminActivity : AppCompatActivity() {
         var manager = ""
         val btnManager = chipButton("Manager: none  ▾") {}
         btnManager.setOnClickListener {
-            val items = ArrayList<String>()
-            items.add("— No manager —")
-            users.forEach { items.add("${it.optString("name")}  (${it.optString("username")})") }
-            AlertDialog.Builder(this).setTitle("Choose the manager")
-                .setItems(items.toTypedArray()) { _, which ->
-                    manager = if (which == 0) "" else users[which - 1].optString("username")
-                    btnManager.text = if (which == 0) "Manager: none  ▾" else "Manager: $manager  ▾"
-                }.show()
+            // A pick-one list with a search box: type part of a name or username to narrow it down.
+            val none = "— No manager —"
+            val labels = ArrayList<String>()
+            labels.add(none)
+            users.forEach { labels.add("${it.optString("name")}  (${it.optString("username")})") }
+            PickerDialog.show(this, "Choose the manager", labels) { picked ->
+                val which = labels.indexOf(picked)
+                manager = if (which <= 0) "" else users[which - 1].optString("username")
+                btnManager.text = if (which <= 0) "Manager: none  ▾" else "Manager: $manager  ▾"
+            }
         }
         val etPass = field("Temporary password (blank = make one for me)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
         val cbAdmin = CheckBox(this).apply { text = "Make this person an admin" }

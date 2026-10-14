@@ -18,6 +18,24 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content" />
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Shown outside the 9 PM - 6 AM window (when tonight's night hold has not been submitted) -->
+        <com.google.android.material.card.MaterialCardView android:id="@+id/cardClosed" android:visibility="gone"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="0dp"
+            app:cardBackgroundColor="#FEF3C7" app:cardCornerRadius="24dp" app:cardElevation="6dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:gravity="center_horizontal" android:padding="22dp">
+                <TextView android:text="🌙" android:textSize="44sp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <TextView android:text="Night hold is closed right now" android:textSize="18sp" android:textStyle="bold"
+                    android:textColor="#78350F" android:layout_marginTop="6dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <TextView android:id="@+id/tvClosed" android:textSize="14sp" android:textColor="#92400E" android:gravity="center"
+                    android:lineSpacingExtra="4dp" android:layout_marginTop="8dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <com.google.android.material.card.MaterialCardView android:id="@+id/cardForm"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="0dp"
@@ -27,7 +45,7 @@
 
                 <TextView android:text="🌙  Night hold" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/ink"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <TextView android:text="Staying away overnight? Every field and your live location are required."
+                <TextView android:text="Open every night from 9:00 PM to 6:00 AM. Every field and your live location are required."
                     android:textSize="13sp" android:textColor="@color/muted" android:layout_marginTop="2dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
 

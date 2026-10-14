@@ -107,7 +107,7 @@ class MainActivity : AppCompatActivity() {
             tvToday.text = "✅ Submitted · ${tonight.optString("time")}"
             tvToday.setTextColor(Color.parseColor("#16A34A"))
         } else {
-            tvToday.text = "Not submitted today"
+            tvToday.text = "Not submitted tonight"
             tvToday.setTextColor(Color.parseColor("#6C7293"))
         }
 
@@ -332,7 +332,9 @@ class MainActivity : AppCompatActivity() {
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
             showTodayDetail(todayRecord)
             res.optJSONArray("balance")?.let { showBalance(it) }
-            showNights(res.optJSONArray("nights"), today, periodStartKey, periodEndKey)
+            // A night is named by the date its evening started, so between midnight and 6 AM "tonight" is still yesterday's date.
+            val tonightKey = fmt.format((now.clone() as Calendar).apply { if (get(Calendar.HOUR_OF_DAY) < 6) add(Calendar.DAY_OF_MONTH, -1) }.time)
+            showNights(res.optJSONArray("nights"), tonightKey, periodStartKey, periodEndKey)
         }
 
         // Shows the last saved answer straight away (so Home opens instantly), then refreshes it.

@@ -24,7 +24,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
   - live GPS (fake/mock locations are rejected),
   - **district → thana** pickers (all **64 districts**, with searchable lists),
   - **hotel name**,
-  - **one per day**; the form can't be submitted without real data (checked again on the server).
+  - **only between 9:00 PM and 6:00 AM** — outside those hours the Night Hold screen shows a *closed* notice and the server refuses a submission. It is **one per night**: a night is named by the date its evening started, so a 2:00 AM submission counts for the night before. The form can't be submitted without real data (checked again on the server).
 - **Notices** — a notice from an admin appears as a card on Home, behind a 🔔 **bell** at the top (a red number shows how many you haven't opened), and as a **pop-up on Home every time you sign in** or open the app fresh. *Got it* closes it; *View all notices* opens the list.
 - **Update from inside the app** — when an admin publishes a newer version, a blue **⬆️ Update available** card appears on Home (and an *Update app* item in the 👤 menu). Tap **Update**, the app downloads the new version (with a progress bar), checks it isn't damaged, and opens Android's installer. The first time, Android asks you to allow *Install from this source* for this app. Your data is not affected.
 - **My Profile** — open it from the round photo at the top-left of Home, or from the 👤 menu → *My Profile*. You can:
@@ -167,6 +167,7 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 | Shortest reason for a leave request | `Code.gs` → `MIN_REASON_LENGTH` | 3 characters (a picture is also required) |
 | Laptop model for managers only (set `false` to give it to everyone) | `Code.gs` → `LAPTOP_FOR_MANAGERS_ONLY` | `true` |
 | Relations in the emergency-contact drop-down ("Other" is added by the app) | `Code.gs` → `RELATIONS` | Wife, Son, Brother, Mother, Father, Daughter |
+| Night-hold window | `Code.gs` → `NIGHT_OPEN_HOUR`, `NIGHT_CLOSE_HOUR` (and `OPEN_HOUR` / `CLOSE_HOUR` in `NightHoldActivity.kt`) | `21` and `6` (9 PM to 6 AM) |
 | Biggest in-app update accepted | `Code.gs` → `UPDATE_MAX_BYTES` | 40 MB |
 | Notice length of stay | `Code.gs` → `NOTICE_DEFAULT_DAYS`, `NOTICE_MAX_DAYS` | 7 days, 90 days |
 | Allowed check-in area | `Code.gs` → `GEO_CHECK`, `GEO_BOX` | Bangladesh + margin |

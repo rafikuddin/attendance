@@ -22,6 +22,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.material.button.MaterialButton
 import org.json.JSONObject
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -41,13 +42,21 @@ class NightHoldActivity : AppCompatActivity() {
     private lateinit var cardDone: View
     private lateinit var cardForm: View
     private lateinit var tvDone: TextView
+    private lateinit var cardClosed: View
+    private lateinit var tvClosed: TextView
 
     private var location: Location? = null
     private var locAt = 0L
     private var address = ""
     private var district: String? = null
     private var thana: String? = null
-    private var submittedToday = false
+    private var submittedToday = false           // tonight's night hold is already in
+    private var record: JSONObject? = null         // tonight's night hold, if any
+    private var statusKnown = false                // false until the first answer (saved or fresh) has arrived
+    private val clock = android.os.Handler(android.os.Looper.getMainLooper())
+    // Night hold is open from 9:00 PM to 6:00 AM. The server enforces this too (and is the final judge of the clock).
+    private val OPEN_HOUR = 21
+    private val CLOSE_HOUR = 6
 
     private val permLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) fetchLocation()
@@ -59,7 +68,7 @@ class NightHoldActivity : AppCompatActivity() {
         setContentView(R.layout.activity_night)
         session = Session(this)
         if (!session.loggedIn) { finish(); return }
-        setupHeader("Night Hold") { loadStatus(); startLocation() }
+        setupHeader("Night Hold") { loadStatus(); if (cardForm.visibility == View.VISIBLE) startLocation() }
         setupBottomNav(Tab.NIGHT)
 
         tvLoc = findViewById(R.id.tvLoc)
@@ -72,6 +81,7 @@ class NightHoldActivity : AppCompatActivity() {
         cardDone = findViewById(R.id.cardDone)
         cardForm = findViewById(R.id.cardForm)
         tvDone = findViewById(R.id.tvDone)
+        cardClosed = findViewById(R.id.cardClosed); tvClosed = findViewById(R.id.tvClosed)
 
         etDistrict.setOnClickListener {
             PickerDialog.show(this, "Select district", BdLocations.districts(this)) { picked ->
@@ -100,54 +110,106 @@ class NightHoldActivity : AppCompatActivity() {
         btnRetry.setOnClickListener { startLocation() }
         btnSubmit.setOnClickListener { submit() }
 
-        loadStatus()      // may switch to the "already submitted" card straight away from saved data
-        startLocation()   // skipped automatically when today's night hold is already in
+        loadStatus()      // shows the right card (form / submitted / closed) from saved data at once, then refreshes it
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (statusKnown) renderState()
+        clock.postDelayed(object : Runnable {            // notice 9:00 PM / 6:00 AM arriving while the screen is open
+            override fun run() { if (statusKnown) renderState(); clock.postDelayed(this, 30000) }
+        }, 30000)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        clock.removeCallbacksAndMessages(null)
+    }
+
+    // ---- which night is it, and is the window open? ----
+
+    private fun isoDay(c: Calendar) = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(c.time)
+
+    private fun windowOpen(): Boolean {
+        val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        return h >= OPEN_HOUR || h < CLOSE_HOUR
+    }
+
+    /** A night is named by the date its evening started: after midnight (before 6 AM) it is still last evening's night. */
+    private fun nightKey(): String {
+        val c = Calendar.getInstance()
+        if (c.get(Calendar.HOUR_OF_DAY) < CLOSE_HOUR) c.add(Calendar.DAY_OF_MONTH, -1)
+        return isoDay(c)
     }
 
     // ---- today's status ----
 
     private fun loadStatus() {
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val yesterday = isoDay(Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1) })   // after midnight tonight's record is dated yesterday
         apiCached(
             cacheKey = ResponseCache.nightKey(session.username),
             body = JSONObject().put("action", "nights").put("username", session.username)
-                .put("from", today),
+                .put("from", yesterday),
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<View>(R.id.btnRefresh),
-            onData = { res -> applyStatus(res, today) },
-            onError = { err, hadSaved -> if (!hadSaved) msg("Couldn't check today's status: ${err ?: "no connection"}", false) }
+            onData = { res -> applyStatus(res) },
+            onError = { err, hadSaved -> if (!hadSaved) msg("Couldn't check tonight's status: ${err ?: "no connection"}", false) }
         )
     }
 
-    private fun applyStatus(res: JSONObject, today: String) {
+    private fun applyStatus(res: JSONObject) {
+        val tonight = nightKey()
         val arr = res.optJSONArray("nights")
-        var record: JSONObject? = null
+        var found: JSONObject? = null
         if (arr != null) {
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
-                if (o.optString("date") == today) record = o
+                if (o.optString("date") == tonight) found = o
             }
         }
+        record = found
+        statusKnown = true
+        renderState()
+    }
+
+    /** Decides which card to show: submitted, the form (window open) or the closed notice. */
+    private fun renderState() {
         val rec = record
-        if (rec != null) showDone(rec) else showForm()
+        when {
+            rec != null -> showDone(rec)
+            windowOpen() -> showForm()
+            else -> showClosed()
+        }
+    }
+
+    private fun showClosed() {
+        submittedToday = false
+        cardForm.visibility = View.GONE
+        cardDone.visibility = View.GONE
+        cardClosed.visibility = View.VISIBLE
+        tvClosed.text = "Night hold can be submitted every night from 9:00 PM to 6:00 AM.\n\nCome back at 9:00 PM tonight."
     }
 
     private fun showDone(rec: JSONObject) {
         submittedToday = true
         cardForm.visibility = View.GONE
+        cardClosed.visibility = View.GONE
         cardDone.visibility = View.VISIBLE
         val addr = rec.optString("address")
-        tvDone.text = "🌙 Night hold submitted for today\n\n🏨 ${rec.optString("hotel")}\n" +
+        tvDone.text = "🌙 Night hold submitted for tonight\n\n🏨 ${rec.optString("hotel")}\n" +
             "📍 ${rec.optString("thana")}, ${rec.optString("district")}\n🕒 ${rec.optString("time")}" +
             (if (addr.isNotEmpty()) "\n$addr" else "") +
-            "\n\nOnly one night hold can be submitted per day."
+            "\n\nOnly one night hold can be submitted per night."
     }
 
     private fun showForm() {
+        val wasForm = cardForm.visibility == View.VISIBLE
         submittedToday = false
         cardDone.visibility = View.GONE
+        cardClosed.visibility = View.GONE
         cardForm.visibility = View.VISIBLE
         updateButton()
+        if (!wasForm && location == null) startLocation()        // the window just opened (or the screen just appeared): get the GPS fix
     }
 
     // ---- live location ----
@@ -254,13 +316,14 @@ class NightHoldActivity : AppCompatActivity() {
                 // Saved copies of the Calendar and this screen are now out of date.
                 ResponseCache.remove(this, ResponseCache.calKey(session.username), ResponseCache.nightKey(session.username), ResponseCache.homeKey(session.username))
                 msg("", true)
-                showDone(
-                    JSONObject().put("date", res.optString("date")).put("time", res.optString("time"))
+                val saved = JSONObject().put("date", res.optString("date")).put("time", res.optString("time"))
                         .put("hotel", hotel).put("thana", t).put("district", d).put("address", address)
-                )
+                record = saved
+                showDone(saved)
             } else {
                 msg("❌ $err", false)
                 updateButton()
+                if (res == null && err?.contains("9:00 PM") == true) { record = null; statusKnown = true; renderState() }   // the server says the window is closed
             }
         }
     }
