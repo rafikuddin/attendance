@@ -60,9 +60,9 @@ fun AppCompatActivity.apiCached(
 ): Boolean {
     val cached = ResponseCache.get(this, cacheKey, maxAgeMs)
     if (cached != null) onData(cached)
-    busy?.alpha = 0.4f
+    busy?.let { Spin.start(it, true) }          // the ⟳ button spins until the answer arrives
     api(body) { res, err ->
-        busy?.alpha = 1f
+        busy?.let { Spin.stop(it) }
         if (res != null) {
             ResponseCache.put(this, cacheKey, res)
             onData(res)

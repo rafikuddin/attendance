@@ -1,8 +1,13 @@
 package com.example.attendance
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Typeface
 import android.view.View
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.LinearInterpolator
+import java.util.WeakHashMap
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -14,7 +19,12 @@ fun AppCompatActivity.setupHeader(title: String, onRefresh: (() -> Unit)? = null
     val refresh = findViewById<TextView>(R.id.btnRefresh)
     if (onRefresh != null) {
         refresh.visibility = android.view.View.VISIBLE
-        refresh.setOnClickListener { onRefresh() }
+        refresh.setOnClickListener {
+            Spin.start(refresh)
+            onRefresh()
+            // Screens that report when they finish (see apiCached) stop the spin themselves; for any other, one turn is enough.
+            refresh.postDelayed({ if (!Spin.isTied(refresh)) Spin.stop(refresh) }, 900)
+        }
     } else {
         refresh.visibility = android.view.View.GONE
     }
@@ -58,5 +68,42 @@ fun AppCompatActivity.setupBottomNav(active: Tab?) {
                 if (this !is MainActivity) finish()
             }
         }
+    }
+}
+
+/**
+ * The ⟳ refresh button spins while a screen is loading and glides to a stop on the upright position when it is done.
+ * [start] with tied = true means the caller will call [stop] itself when its data arrives.
+ */
+object Spin {
+    private class State(val anim: ObjectAnimator, var tied: Boolean)
+    private val running = WeakHashMap<View, State>()
+
+    fun isTied(v: View): Boolean = running[v]?.tied == true
+
+    fun start(v: View, tied: Boolean = false) {
+        val existing = running[v]
+        if (existing != null) { if (tied) existing.tied = true; return }
+        v.animate().cancel()
+        val a = ObjectAnimator.ofFloat(v, View.ROTATION, 0f, 360f).apply {
+            duration = 700; interpolator = LinearInterpolator(); repeatCount = ValueAnimator.INFINITE
+        }
+        running[v] = State(a, tied)
+        v.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(x: View) {}
+            override fun onViewDetachedFromWindow(x: View) { running.remove(x)?.anim?.cancel(); x.removeOnAttachStateChangeListener(this) }
+        })
+        a.start()
+    }
+
+    /** Finishes the turn it is in (slowing down) and rests at 0 degrees. */
+    fun stop(v: View) {
+        val s = running.remove(v) ?: return
+        val cur = v.rotation % 360f
+        s.anim.cancel()
+        val left = 360f - cur
+        v.rotation = cur
+        v.animate().rotation(360f).setDuration((700f * left / 360f).toLong().coerceAtLeast(150L))
+            .setInterpolator(DecelerateInterpolator()).withEndAction { v.rotation = 0f }.start()
     }
 }
