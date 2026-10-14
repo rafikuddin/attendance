@@ -1,8 +1,10 @@
 package com.example.attendance
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -16,6 +18,12 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class CalendarActivity : AppCompatActivity() {
+    companion object {
+        /** Set by the Admin Panel: show this person's calendar (read-only) instead of my own. */
+        const val EXTRA_USER = "targetUser"
+        const val EXTRA_NAME = "targetName"
+    }
+    private var target: String? = null
     private val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private val records = HashMap<String, JSONObject>()
     private val leaveDays = HashMap<String, JSONObject>()
@@ -38,12 +46,15 @@ class CalendarActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_calendar)
-        setupHeader("My Attendance") { loadData() }
-        setupBottomNav(Tab.CALENDAR)
+        target = intent.getStringExtra(EXTRA_USER)?.takeIf { it.isNotBlank() }
+        val shownName = intent.getStringExtra(EXTRA_NAME) ?: target ?: ""
+        setupHeader(if (target == null) "My Attendance" else shownName) { loadData() }
+        setupBottomNav(if (target == null) Tab.CALENDAR else null)
         grid = findViewById(R.id.grid)
         tvMonth = findViewById(R.id.tvMonth)
         tvCount = findViewById(R.id.tvCount)
         tvDetail = findViewById(R.id.tvDetail)
+        if (target != null) tvDetail.text = "Viewing $shownName (@$target). Tap any date to see the time and location."
         findViewById<TextView>(R.id.btnPrev).setOnClickListener { cal.add(Calendar.MONTH, -1); render() }
         findViewById<TextView>(R.id.btnNext).setOnClickListener { cal.add(Calendar.MONTH, 1); render() }
         render()
@@ -51,6 +62,17 @@ class CalendarActivity : AppCompatActivity() {
     }
 
     private fun loadData() {
+        val t = target
+        if (t != null) {                      // an admin looking at someone else: always fresh, nothing is saved on the phone
+            tvCount.text = "Loading..."
+            val refresh = findViewById<View>(R.id.btnRefresh)
+            Spin.start(refresh, true)
+            api(JSONObject().put("action", "adminHistory").put("targetUsername", t)) { res, err ->
+                Spin.stop(refresh)
+                if (res != null) showHistory(res) else tvCount.text = err ?: "Could not load."
+            }
+            return
+        }
         val s = Session(this)
         // Draws the last saved copy immediately (if any), then replaces it with the fresh answer.
         val showedSaved = apiCached(
@@ -182,8 +204,24 @@ class CalendarActivity : AppCompatActivity() {
             (if (nightCount > 0) " · $nightCount night hold" else "")
     }
 
+    /** A tappable line that opens a map at these coordinates (hidden when the date has no usable coordinates). */
+    private fun mapLink(view: TextView, lat: String?, lng: String?) {
+        val la = lat?.toDoubleOrNull(); val lo = lng?.toDoubleOrNull()
+        if (la == null || lo == null) { view.visibility = View.GONE; view.setOnClickListener(null); return }
+        view.visibility = View.VISIBLE
+        view.setOnClickListener {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/?api=1&query=$la,$lo")))
+            } catch (e: Exception) {
+                Toast.makeText(this, "No app could open the map.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun show(key: String) {
         val r = records[key]
+        mapLink(findViewById(R.id.btnMapDay), r?.optString("lat"), r?.optString("lng"))
+        mapLink(findViewById(R.id.btnMapNight), nightDays[key]?.optString("lat"), nightDays[key]?.optString("lng"))
         val lv = leaveDays[key]
         val now = Calendar.getInstance()
         val todayKey = String.format(Locale.US, "%04d-%02d-%02d", now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))

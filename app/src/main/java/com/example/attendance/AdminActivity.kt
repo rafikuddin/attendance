@@ -223,14 +223,27 @@ class AdminActivity : AppCompatActivity() {
         col.addView(top)
         if (!o.optBoolean("active", true)) col.addView(label("⛔ No password set — this account cannot sign in", 12f, "#B91C1C", false).apply { setPadding(0, dp(6), 0, 0) })
         else if (o.optBoolean("mustChange")) col.addView(label("⏳ Has not chosen their own password yet", 12f, "#B45309", false).apply { setPadding(0, dp(6), 0, 0) })
-        col.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
-            text = "👤  View / edit profile"
+        val viewRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+        }
+        viewRow.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = "👤 Profile"
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(4) }
             setOnClickListener {
                 startActivity(android.content.Intent(this@AdminActivity, ProfileActivity::class.java)
                     .putExtra(ProfileActivity.EXTRA_USER, username).putExtra(ProfileActivity.EXTRA_NAME, o.optString("name")))
             }
         })
+        viewRow.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = "📅 Calendar"
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(4) }
+            setOnClickListener {
+                startActivity(android.content.Intent(this@AdminActivity, CalendarActivity::class.java)
+                    .putExtra(CalendarActivity.EXTRA_USER, username).putExtra(CalendarActivity.EXTRA_NAME, o.optString("name")))
+            }
+        })
+        col.addView(viewRow)
         if (!username.equals(session.username, ignoreCase = true)) {
             col.addView(MaterialButton(this).apply {
                 text = "🔑  Reset password"
