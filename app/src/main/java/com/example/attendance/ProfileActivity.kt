@@ -32,6 +32,13 @@ import java.io.InputStream
  * and (for managers) laptop model. Everyone edits only their own profile; the server enforces that.
  */
 class ProfileActivity : AppCompatActivity() {
+    companion object {
+        /** Set by the Admin Panel: the username whose profile the admin is viewing / editing. Absent = the signed-in person's own profile. */
+        const val EXTRA_USER = "targetUser"
+        const val EXTRA_NAME = "targetName"
+    }
+
+    private var target: String? = null               // null = my own profile; otherwise an admin is editing this person
     private lateinit var session: Session
     private lateinit var imgProfile: ImageView
     private lateinit var tvInitial: TextView
@@ -70,9 +77,11 @@ class ProfileActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
-        setupHeader("My Profile") { loadProfile() }
+        target = intent.getStringExtra(EXTRA_USER)?.takeIf { it.isNotBlank() }
+        setupHeader(if (target == null) "My Profile" else "Edit Profile") { loadProfile() }
         setupBottomNav(null)
         session = Session(this)
+        val shownName = if (target == null) session.name else (intent.getStringExtra(EXTRA_NAME) ?: target!!)
         imgProfile = findViewById(R.id.imgProfile); tvInitial = findViewById(R.id.tvPhotoInitial)
         tvPhotoMsg = findViewById(R.id.tvPhotoMsg); tvMsg = findViewById(R.id.tvProfileMsg)
         etOfficial = findViewById(R.id.etOfficial); etPersonal = findViewById(R.id.etPersonal); etEmail = findViewById(R.id.etEmail)
@@ -81,9 +90,9 @@ class ProfileActivity : AppCompatActivity() {
         etBike = findViewById(R.id.etBike); tilLaptop = findViewById(R.id.tilLaptop); etLaptop = findViewById(R.id.etLaptop)
         btnSave = findViewById(R.id.btnSaveProfile); btnTake = findViewById(R.id.btnTakePhoto); btnPick = findViewById(R.id.btnPickPhoto)
 
-        findViewById<TextView>(R.id.tvProfileName).text = session.name
-        findViewById<TextView>(R.id.tvProfileUser).text = "@${session.username}"
-        tvInitial.text = session.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+        findViewById<TextView>(R.id.tvProfileName).text = shownName
+        findViewById<TextView>(R.id.tvProfileUser).text = if (target == null) "@${session.username}" else "@$target  ·  editing as admin"
+        tvInitial.text = shownName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
         setRelationChoices()
         ddRelation.setOnItemClickListener { _, _, _, _ -> updateOtherBox() }
@@ -96,6 +105,12 @@ class ProfileActivity : AppCompatActivity() {
         loadProfile()
     }
 
+    /** Own profile: profile / saveProfile / saveProfilePhoto. Admin editing someone: adminProfile / adminSaveProfile / adminSaveProfilePhoto + the username. */
+    private fun request(action: String): JSONObject {
+        val t = target ?: return JSONObject().put("action", action)
+        return JSONObject().put("action", "admin" + action.replaceFirstChar { it.uppercaseChar() }).put("targetUsername", t)
+    }
+
     private fun setRelationChoices() {
         ddRelation.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, relations + "Other"))
     }
@@ -106,7 +121,7 @@ class ProfileActivity : AppCompatActivity() {
 
     private fun loadProfile() {
         msg("Loading...", true)
-        api(JSONObject().put("action", "profile")) { res, err ->
+        api(request("profile")) { res, err ->
             if (res == null) { msg("❌ $err", false); return@api }
             msg("", true)
             val list = res.optJSONArray("relations")
@@ -142,7 +157,7 @@ class ProfileActivity : AppCompatActivity() {
         if (choice == "Other" && relation.length < 2) { msg("Please write the relation in the box.", false); return }
         if (emergency.isNotEmpty() && relation.isEmpty()) { msg("Please choose who the emergency contact is.", false); return }
         if (emergency.isEmpty() && relation.isNotEmpty()) { msg("Please enter the emergency phone number.", false); return }
-        val body = JSONObject().put("action", "saveProfile")
+        val body = request("saveProfile")
             .put("officialPhone", etOfficial.text.toString().trim()).put("personalPhone", etPersonal.text.toString().trim())
             .put("email", etEmail.text.toString().trim()).put("emergencyPhone", emergency).put("relation", relation)
             .put("bike", etBike.text.toString().trim()).put("laptop", etLaptop.text.toString().trim())
@@ -205,14 +220,14 @@ class ProfileActivity : AppCompatActivity() {
                     setPhotoButtons(true); photoMsg("❌ That picture could not be read. Please try another one.", false)
                 } else {
                     photoMsg("Uploading...", true)
-                    val body = JSONObject().put("action", "saveProfilePhoto").put("photo", Base64.encodeToString(bytes, Base64.NO_WRAP))
+                    val body = request("saveProfilePhoto").put("photo", Base64.encodeToString(bytes, Base64.NO_WRAP))
                     api(body) { res, err ->
                         setPhotoButtons(true)
                         if (res != null) {
                             imgProfile.visibility = View.VISIBLE
                             imgProfile.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
                             photoMsg("✅ Photo updated", true)
-                            ResponseCache.remove(this, ResponseCache.homeKey(session.username))   // Home shows the new photo next time
+                            if (target == null) ResponseCache.remove(this, ResponseCache.homeKey(session.username))   // Home shows the new photo next time
                         } else photoMsg("❌ $err", false)
                     }
                 }

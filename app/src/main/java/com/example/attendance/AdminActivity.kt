@@ -223,6 +223,14 @@ class AdminActivity : AppCompatActivity() {
         col.addView(top)
         if (!o.optBoolean("active", true)) col.addView(label("⛔ No password set — this account cannot sign in", 12f, "#B91C1C", false).apply { setPadding(0, dp(6), 0, 0) })
         else if (o.optBoolean("mustChange")) col.addView(label("⏳ Has not chosen their own password yet", 12f, "#B45309", false).apply { setPadding(0, dp(6), 0, 0) })
+        col.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = "👤  View / edit profile"
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+            setOnClickListener {
+                startActivity(android.content.Intent(this@AdminActivity, ProfileActivity::class.java)
+                    .putExtra(ProfileActivity.EXTRA_USER, username).putExtra(ProfileActivity.EXTRA_NAME, o.optString("name")))
+            }
+        })
         if (!username.equals(session.username, ignoreCase = true)) {
             col.addView(MaterialButton(this).apply {
                 text = "🔑  Reset password"
