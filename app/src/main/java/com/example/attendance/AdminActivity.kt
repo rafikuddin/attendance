@@ -173,6 +173,8 @@ class AdminActivity : AppCompatActivity() {
             val list = ArrayList<JSONObject>()
             if (arr != null) for (i in 0 until arr.length()) list.add(arr.getJSONObject(i))
             users = list
+            latestCode = res.optJSONObject("latest")?.optLong("versionCode") ?: 0L
+            latestName = res.optJSONObject("latest")?.optString("versionName") ?: ""
             // Search by name, username or manager. The list below is rebuilt on every keystroke.
             val search = EditText(this).apply {
                 hint = "🔍  Search name, username or manager"
@@ -207,6 +209,27 @@ class AdminActivity : AppCompatActivity() {
         }
     }
 
+    private var latestCode = 0L        // the app version currently offered to everyone (0 = none published)
+    private var latestName = ""
+
+    /** "📱 v1.0.71 · seen 14 Oct" in green when up to date, orange when older than the published version, grey when never reported. */
+    private fun versionLine(o: JSONObject): View {
+        val v = o.optString("appVersion")
+        val code = o.optLong("appCode")
+        val seen = o.optString("lastSeen").take(10).let { d ->
+            try {
+                val p = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(d)
+                if (p == null) "" else "  ·  seen " + java.text.SimpleDateFormat("d MMM", Locale.getDefault()).format(p)
+            } catch (e: Exception) { "" }
+        }
+        return when {
+            v.isEmpty() -> label("📱 App version not reported yet (old version, or never opened)", 12f, "#6B7280", false)
+            latestCode > 0 && code in 1 until latestCode ->
+                label("📱 v$v$seen  ·  ⬆ needs update (latest v$latestName)", 12f, "#B45309", true)
+            else -> label("📱 v$v$seen" + if (latestCode > 0 && code >= latestCode) "  ·  ✓ up to date" else "", 12f, "#15803D", true)
+        }.apply { setPadding(0, dp(6), 0, 0) }
+    }
+
     private fun userCard(o: JSONObject): View {
         val username = o.optString("username")
         val col = column()
@@ -221,6 +244,7 @@ class AdminActivity : AppCompatActivity() {
         top.addView(names)
         if (o.optBoolean("isAdmin")) top.addView(pill("Admin", "#5B21B6", "#EDE9FE"))
         col.addView(top)
+        col.addView(versionLine(o))
         if (!o.optBoolean("active", true)) col.addView(label("⛔ No password set — this account cannot sign in", 12f, "#B91C1C", false).apply { setPadding(0, dp(6), 0, 0) })
         else if (o.optBoolean("mustChange")) col.addView(label("⏳ Has not chosen their own password yet", 12f, "#B45309", false).apply { setPadding(0, dp(6), 0, 0) })
         val viewRow = LinearLayout(this).apply {

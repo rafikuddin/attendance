@@ -342,7 +342,8 @@ class MainActivity : AppCompatActivity() {
         apiCached(
             cacheKey = ResponseCache.homeKey(session.username),
             body = JSONObject().put("action", "history").put("username", session.username)
-                .put("from", periodStartKey).put("nights", true),
+                .put("from", periodStartKey).put("nights", true)
+                .put("appVersion", AppUpdate.installedName(this)).put("appCode", AppUpdate.installedCode(this)),   // lets admins see who has which version
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<android.view.View>(R.id.btnRefresh),
             onData = { res -> render(res) },
