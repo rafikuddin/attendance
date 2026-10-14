@@ -57,6 +57,7 @@ object Wipe {
 
     fun signOutLocally(ctx: Context) {
         cachedData(ctx)
+        Reminders.stop(ctx)                  // no more reminders for someone who is signed out
         Session(ctx).clear()
     }
 }

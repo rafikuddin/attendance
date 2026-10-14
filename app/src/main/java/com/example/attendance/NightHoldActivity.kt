@@ -54,9 +54,13 @@ class NightHoldActivity : AppCompatActivity() {
     private var record: JSONObject? = null         // tonight's night hold, if any
     private var statusKnown = false                // false until the first answer (saved or fresh) has arrived
     private val clock = android.os.Handler(android.os.Looper.getMainLooper())
-    // Night hold is open from 9:00 PM to 6:00 AM. The server enforces this too (and is the final judge of the clock).
-    private val OPEN_HOUR = 21
-    private val CLOSE_HOUR = 6
+    // The night hold hours are set by an admin (default 9:00 PM to 6:00 AM) and arrive with every answer from the server,
+    // which also enforces them and is the final judge of the clock.
+    private var openHour = 21
+    private var closeHour = 6
+    private var forDate: String? = null            // set when an admin opened a past night for this person (manual entry)
+
+    private fun hourText(h: Int) = "${if (h % 12 == 0) 12 else h % 12}:00 ${if (h < 12) "AM" else "PM"}"
 
     private val permLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) fetchLocation()
@@ -68,7 +72,8 @@ class NightHoldActivity : AppCompatActivity() {
         setContentView(R.layout.activity_night)
         session = Session(this)
         if (!session.loggedIn) { finish(); return }
-        setupHeader("Night Hold") { loadStatus(); if (cardForm.visibility == View.VISIBLE) startLocation() }
+        forDate = intent.getStringExtra(EXTRA_FOR_DATE)?.takeIf { it.isNotBlank() }
+        setupHeader(if (forDate != null) "Manual Night Hold" else "Night Hold") { loadStatus(); if (cardForm.visibility == View.VISIBLE) startLocation() }
         setupBottomNav(Tab.NIGHT)
 
         tvLoc = findViewById(R.id.tvLoc)
@@ -110,7 +115,8 @@ class NightHoldActivity : AppCompatActivity() {
         btnRetry.setOnClickListener { startLocation() }
         btnSubmit.setOnClickListener { submit() }
 
-        loadStatus()      // shows the right card (form / submitted / closed) from saved data at once, then refreshes it
+        if (forDate != null) { statusKnown = true; renderState(); msg("📝 Manual night hold for $forDate. An admin opened this night for you.", true) }
+        else loadStatus()      // shows the right card (form / submitted / closed) from saved data at once, then refreshes it
     }
 
     override fun onResume() {
@@ -132,19 +138,20 @@ class NightHoldActivity : AppCompatActivity() {
 
     private fun windowOpen(): Boolean {
         val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        return h >= OPEN_HOUR || h < CLOSE_HOUR
+        return if (openHour > closeHour) (h >= openHour || h < closeHour) else (h >= openHour && h < closeHour)
     }
 
     /** A night is named by the date its evening started: after midnight (before 6 AM) it is still last evening's night. */
     private fun nightKey(): String {
         val c = Calendar.getInstance()
-        if (c.get(Calendar.HOUR_OF_DAY) < CLOSE_HOUR) c.add(Calendar.DAY_OF_MONTH, -1)
+        if (openHour > closeHour && c.get(Calendar.HOUR_OF_DAY) < closeHour) c.add(Calendar.DAY_OF_MONTH, -1)
         return isoDay(c)
     }
 
     // ---- today's status ----
 
     private fun loadStatus() {
+        if (forDate != null) return
         val yesterday = isoDay(Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1) })   // after midnight tonight's record is dated yesterday
         apiCached(
             cacheKey = ResponseCache.nightKey(session.username),
@@ -158,6 +165,7 @@ class NightHoldActivity : AppCompatActivity() {
     }
 
     private fun applyStatus(res: JSONObject) {
+        res.optJSONObject("window")?.let { openHour = it.optInt("openHour", 21); closeHour = it.optInt("closeHour", 6) }
         val tonight = nightKey()
         val arr = res.optJSONArray("nights")
         var found: JSONObject? = null
@@ -177,7 +185,7 @@ class NightHoldActivity : AppCompatActivity() {
         val rec = record
         when {
             rec != null -> showDone(rec)
-            windowOpen() -> showForm()
+            forDate != null || windowOpen() -> showForm()
             else -> showClosed()
         }
     }
@@ -187,7 +195,7 @@ class NightHoldActivity : AppCompatActivity() {
         cardForm.visibility = View.GONE
         cardDone.visibility = View.GONE
         cardClosed.visibility = View.VISIBLE
-        tvClosed.text = "Night hold can be submitted every night from 9:00 PM to 6:00 AM.\n\nCome back at 9:00 PM tonight."
+        tvClosed.text = "Night hold can be submitted every night from ${hourText(openHour)} to ${hourText(closeHour)}.\n\nCome back at ${hourText(openHour)}."
     }
 
     private fun showDone(rec: JSONObject) {
@@ -196,7 +204,7 @@ class NightHoldActivity : AppCompatActivity() {
         cardClosed.visibility = View.GONE
         cardDone.visibility = View.VISIBLE
         val addr = rec.optString("address")
-        tvDone.text = "🌙 Night hold submitted for tonight\n\n🏨 ${rec.optString("hotel")}\n" +
+        tvDone.text = "🌙 Night hold submitted for ${forDate ?: "tonight"}\n\n🏨 ${rec.optString("hotel")}\n" +
             "📍 ${rec.optString("thana")}, ${rec.optString("district")}\n🕒 ${rec.optString("time")}" +
             (if (addr.isNotEmpty()) "\n$addr" else "") +
             "\n\nOnly one night hold can be submitted per night."
@@ -310,6 +318,7 @@ class NightHoldActivity : AppCompatActivity() {
             .put("username", session.username)
             .put("lat", loc.latitude).put("lng", loc.longitude).put("mock", isMock(loc)).put("address", address)
             .put("district", d).put("thana", t).put("hotel", hotel)
+        forDate?.let { body.put("forDate", it) }
 
         api(body) { res, err ->
             if (res != null) {
@@ -323,7 +332,7 @@ class NightHoldActivity : AppCompatActivity() {
             } else {
                 msg("❌ $err", false)
                 updateButton()
-                if (res == null && err?.contains("9:00 PM") == true) { record = null; statusKnown = true; renderState() }   // the server says the window is closed
+                if (res == null && err?.contains("only between") == true) { record = null; statusKnown = true; renderState() }   // the server says the window is closed
             }
         }
     }

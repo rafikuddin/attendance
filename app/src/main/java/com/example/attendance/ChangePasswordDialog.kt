@@ -13,7 +13,14 @@ import org.json.JSONObject
 object ChangePasswordDialog {
     private const val MIN_LENGTH = 8   // keep in step with MIN_PASSWORD_LENGTH in Code.gs (the server enforces it too)
 
-    fun show(activity: AppCompatActivity, session: Session) {
+    @Volatile private var forcedShowing = false
+
+    /**
+     * [forced] = the server will not do anything else until the password is changed (a weak password, or a temporary one from an admin):
+     * the pop-up can't be dismissed, and the only other choice is to sign out.
+     */
+    fun show(activity: AppCompatActivity, session: Session, forced: Boolean = false) {
+        if (forced) { if (forcedShowing) return; forcedShowing = true }
         val ctx: Context = activity
         val pad = (16 * ctx.resources.displayMetrics.density).toInt()
 
@@ -29,6 +36,10 @@ object ChangePasswordDialog {
         val layout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad, pad, 0)
+            if (forced) addView(TextView(ctx).apply {
+                text = "Your password is too easy to guess, or an admin gave it to you. Choose a new one to continue."
+                setTextColor(android.graphics.Color.parseColor("#6C7293"))
+            })
             addView(currentPass)
             addView(newPass)
             addView(confirmPass)
@@ -36,11 +47,13 @@ object ChangePasswordDialog {
         }
 
         val dialog = AlertDialog.Builder(ctx)
-            .setTitle("Change Password")
+            .setTitle(if (forced) "Choose a new password" else "Change Password")
             .setView(layout)
+            .setCancelable(!forced)
             .setPositiveButton("Change", null)   // set below so we can block auto-dismiss on error
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(if (forced) "Sign out" else "Cancel") { _, _ -> if (forced) activity.endSession("You signed out.") }
             .create()
+        if (forced) dialog.setOnDismissListener { forcedShowing = false }
 
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -61,6 +74,7 @@ object ChangePasswordDialog {
                                 session.mustChangePassword = false
                                 Toast.makeText(ctx, "Password changed", Toast.LENGTH_SHORT).show()
                                 dialog.dismiss()
+                                if (forced) activity.recreate()          // everything was refused until now: load the screen again
                             } else error.text = err
                         }
                     }

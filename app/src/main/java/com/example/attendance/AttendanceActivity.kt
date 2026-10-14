@@ -45,6 +45,7 @@ class AttendanceActivity : AppCompatActivity() {
     private var captureTime: Date? = null
     private var location: Location? = null
     private var address: String = "Address unavailable"
+    private var forDate: String? = null          // set when an admin opened a past day for this person (manual entry)
 
     private val dateFmt = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     private val timeFmt = SimpleDateFormat("hh:mm:ss a", Locale.getDefault())
@@ -64,7 +65,8 @@ class AttendanceActivity : AppCompatActivity() {
         tvLive = findViewById(R.id.tvLive)
         tvSummary = findViewById(R.id.tvSummary)
         cardSummary = findViewById(R.id.cardSummary)
-        setupHeader("Mark Attendance")
+        forDate = intent.getStringExtra(EXTRA_FOR_DATE)?.takeIf { it.isNotBlank() }
+        setupHeader(if (forDate != null) "Manual Attendance" else "Mark Attendance")
         setupBottomNav(Tab.ATTENDANCE)
         btnCapture = findViewById(R.id.btnCapture)
         btnSubmit = findViewById(R.id.btnSubmit)
@@ -74,6 +76,12 @@ class AttendanceActivity : AppCompatActivity() {
         }
         btnSubmit.setOnClickListener { submit() }
 
+        forDate?.let { d ->
+            cardSummary.visibility = View.VISIBLE
+            cardSummary.setCardBackgroundColor(Color.parseColor("#EEF2FF"))
+            tvSummary.setTextColor(Color.parseColor("#3730A3"))
+            tvSummary.text = "📝 Manual attendance for $d\nAn admin opened this day for you. Take your selfie as usual."
+        }
         val perms = arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION)
         if (perms.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED })
             startCamera() else permLauncher.launch(perms)
@@ -152,7 +160,7 @@ class AttendanceActivity : AppCompatActivity() {
         imgSelfie.visibility = View.GONE
         btnCapture.text = "📸  Capture Selfie"
         btnSubmit.isEnabled = false
-        cardSummary.visibility = View.GONE
+        if (forDate == null) cardSummary.visibility = View.GONE
         tvLive.text = "Date: -\nTime: -\nLocation: -"
         location = null
     }
@@ -220,6 +228,7 @@ class AttendanceActivity : AppCompatActivity() {
                     .put("lat", l.latitude).put("lng", l.longitude).put("mock", isMockLocation(l))
                     .put("address", addr)
                     .put("photo", photo)
+                    .also { if (forDate != null) it.put("forDate", forDate) }
             } catch (e: Exception) {
                 runOnUiThread {
                     btnSubmit.isEnabled = true; btnCapture.isEnabled = true
@@ -239,11 +248,12 @@ class AttendanceActivity : AppCompatActivity() {
             if (res != null) {
                 // Saved copies of Home and Calendar are now out of date.
                 ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
+                Reminders.clearSelf(this)   // the "mark your attendance" reminder is no longer needed
                 photoFile?.delete()   // the selfie now lives on the server; don't keep a copy on the phone
                 val late = res.optBoolean("late")
                 cardSummary.setCardBackgroundColor(Color.parseColor(if (late) "#FFEDD5" else "#DCFCE7"))
                 tvSummary.setTextColor(Color.parseColor(if (late) "#9A3412" else "#166534"))
-                tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
+                tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}${if (res.optBoolean("manual")) " (manual)" else ""}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
                     "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
             } else {

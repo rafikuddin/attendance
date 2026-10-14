@@ -14,6 +14,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var session: Session
     private lateinit var tvStatus: TextView
     private lateinit var tvMonth: TextView
+    private val notifPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    private var allowances: org.json.JSONArray? = null     // dates an admin opened for this person's manual attendance / night hold
     private var pendingUpdate: JSONObject? = null           // the newer app version the server offers, if any
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,17 +39,18 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.cardUpdate).setOnClickListener { pendingUpdate?.let { AppUpdate.offer(this, it) } }
         Thread { AppUpdate.cleanUp(applicationContext) }.start()     // a downloaded APK from an earlier update is no longer needed
         setupBottomNav(Tab.HOME)
+        Reminders.schedule(this)            // attendance reminders in the notification bar (once; KEEP means no duplicates)
+        askNotificationPermission()
         maybeShowNoticePopup()
-        if (session.mustChangePassword) {          // signed in with a password shorter than the server now requires
-            session.mustChangePassword = false     // ask once per sign-in
-            android.widget.Toast.makeText(this, "Your password is short. Please choose a longer one.", android.widget.Toast.LENGTH_LONG).show()
-            ChangePasswordDialog.show(this, session)
-        }
+        if (session.mustChangePassword) ChangePasswordDialog.show(this, session, forced = true)   // too easy / temporary password: required, not optional
     }
 
     override fun onResume() {
         super.onResume()
-        if (session.loggedIn) loadStatus()
+        if (session.loggedIn) {
+            if (session.mustChangePassword) ChangePasswordDialog.show(this, session, forced = true)
+            loadStatus()
+        }
     }
 
     private val versionName: String
@@ -59,12 +62,55 @@ class MainActivity : AppCompatActivity() {
         val items = ArrayList<MenuEntry>()
         items.add(MenuEntry("👤", "My Profile", "#1E2247") { open(ProfileActivity::class.java) })
         items.add(MenuEntry("🔑", "Change Password", "#1E2247") { ChangePasswordDialog.show(this, session) })
+        items.add(MenuEntry("🔔", "Attendance reminders: ${if (Reminders.enabled(this)) "On" else "Off"}", "#1E2247") { toggleReminders() })
+        allowances?.takeIf { it.length() > 0 }?.let { a ->
+            items.add(MenuEntry("📝", "Manual entry (${a.length()})", "#7C3AED", true) { showManualEntries(a) })
+        }
         pendingUpdate?.let { u ->
             items.add(MenuEntry("⬆️", "Update app (v${u.optString("versionName")})", "#2563EB", true) { AppUpdate.offer(this, u) })
         }
         if (AdminFlag.get(this)) items.add(MenuEntry("🛠", "Admin Panel", "#1E2247") { open(AdminActivity::class.java) })
         items.add(MenuEntry("🚪", "Logout", "#DC2626", true) { logout() })
         showHomeMenu(anchor, items, "SAM BOND · App version $versionName")
+    }
+
+    /** Android 13 and newer need the person's OK before any notification can show. Asked once. */
+    private fun askNotificationPermission(force: Boolean = false) {
+        if (android.os.Build.VERSION.SDK_INT < 33 || !Reminders.enabled(this) || Reminders.canNotify(this)) return
+        val p = Reminders.prefs(this)
+        if (!force && p.getBoolean("asked", false)) return
+        p.edit().putBoolean("asked", true).apply()
+        notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun toggleReminders() {
+        val on = !Reminders.enabled(this)
+        Reminders.setEnabled(this, on)
+        if (on) {
+            askNotificationPermission(force = true)
+            android.widget.Toast.makeText(this, "Reminders are on. If you do not see them, allow notifications for this app in Android settings.", android.widget.Toast.LENGTH_LONG).show()
+        } else android.widget.Toast.makeText(this, "Reminders are off.", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    /** Lists the days an admin opened for this person; tapping one opens the normal screen for that day. */
+    private fun showManualEntries(a: org.json.JSONArray) {
+        val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val nice = SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault())
+        val items = ArrayList<JSONObject>()
+        for (i in 0 until a.length()) items.add(a.getJSONObject(i))
+        val labels = items.map { o ->
+            val d = o.optString("date")
+            val shown = try { nice.format(iso.parse(d)!!) } catch (e: Exception) { d }
+            (if (o.optString("kind") == "night") "🌙 Night hold · " else "📍 Attendance · ") + shown
+        }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Manual entry")
+            .setItems(labels) { _, which ->
+                val o = items[which]
+                val cls = if (o.optString("kind") == "night") NightHoldActivity::class.java else AttendanceActivity::class.java
+                startActivity(Intent(this, cls).putExtra(EXTRA_FOR_DATE, o.optString("date")))
+            }
+            .setNegativeButton("Close", null).show()
     }
 
     /** Tells the server to end this sign-in (best effort, in the background), then wipes everything kept on the phone. */
@@ -326,6 +372,7 @@ class MainActivity : AppCompatActivity() {
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
             session.isManager = res.optBoolean("isManager")
             AdminFlag.set(this, res.optBoolean("isAdmin"))
+            allowances = res.optJSONArray("allowances")
             showAvatar(res.optString("myPhoto"))
             showNotices(res.optJSONArray("notices"))
             showUpdate(res.optJSONObject("appUpdate"))
@@ -333,7 +380,9 @@ class MainActivity : AppCompatActivity() {
             showTodayDetail(todayRecord)
             res.optJSONArray("balance")?.let { showBalance(it) }
             // A night is named by the date its evening started, so between midnight and 6 AM "tonight" is still yesterday's date.
-            val tonightKey = fmt.format((now.clone() as Calendar).apply { if (get(Calendar.HOUR_OF_DAY) < 6) add(Calendar.DAY_OF_MONTH, -1) }.time)
+            // The server says which night it is (the night hold hours are set by an admin); the old 6 AM rule is only a fallback.
+            val tonightKey = res.optJSONObject("night")?.optString("nightDate")?.takeIf { it.isNotEmpty() }
+                ?: fmt.format((now.clone() as Calendar).apply { if (get(Calendar.HOUR_OF_DAY) < 6) add(Calendar.DAY_OF_MONTH, -1) }.time)
             showNights(res.optJSONArray("nights"), tonightKey, periodStartKey, periodEndKey)
         }
 
@@ -347,7 +396,12 @@ class MainActivity : AppCompatActivity() {
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<android.view.View>(R.id.btnRefresh),
             onData = { res -> render(res) },
-            onError = { err, hadSaved -> if (!hadSaved) { tvStatus.text = "Offline"; tvMonth.text = err ?: "" } }
+            onError = { err, hadSaved ->
+                if (err?.contains("choose a new password first") == true) {      // the server wants a new password before anything else
+                    session.mustChangePassword = true
+                    ChangePasswordDialog.show(this, session, forced = true)
+                } else if (!hadSaved) { tvStatus.text = "Offline"; tvMonth.text = err ?: "" }
+            }
         )
     }
 }

@@ -15,3 +15,6 @@ object AdminFlag {
         SecureStore.prefs(ctx, "session_secure").edit().putBoolean(KEY, value).apply()
     }
 }
+
+/** Intent extra: the date (yyyy-MM-dd) an admin opened for manual attendance / night hold. Absent = the normal screen. */
+const val EXTRA_FOR_DATE = "forDate"

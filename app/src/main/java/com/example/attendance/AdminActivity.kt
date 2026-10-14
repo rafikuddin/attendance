@@ -14,6 +14,11 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
+import android.widget.ListView
+import android.widget.ArrayAdapter
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import org.json.JSONArray
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -62,7 +67,7 @@ class AdminActivity : AppCompatActivity() {
         setupHeader("Admin") { load() }
         setupBottomNav(null)
         content = findViewById(R.id.adminContent)
-        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabApp))
+        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabApp))
         tabs.forEachIndexed { i, t -> t.setOnClickListener { select(i) } }
         select(0)
     }
@@ -85,6 +90,7 @@ class AdminActivity : AppCompatActivity() {
             0 -> loadUsers()
             1 -> loadNotices()
             2 -> loadHolidays()
+            3 -> loadEntry()
             else -> loadApp()
         }
     }
@@ -383,8 +389,15 @@ class AdminActivity : AppCompatActivity() {
             .setView(tv)
             .setPositiveButton("Copy") { _, _ ->
                 val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("password", password))
-                toast("Copied")
+                val clip = ClipData.newPlainText("password", password)
+                if (android.os.Build.VERSION.SDK_INT >= 33)       // keeps the password out of the keyboard's clipboard preview
+                    clip.description.extras = android.os.PersistableBundle().apply { putBoolean("android.content.extra.IS_SENSITIVE", true) }
+                cm.setPrimaryClip(clip)
+                if (android.os.Build.VERSION.SDK_INT >= 28)       // and wipes it again after a minute
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        try { if (cm.primaryClipDescription?.label == "password") cm.clearPrimaryClip() } catch (e: Exception) { }
+                    }, 60000)
+                toast("Copied (cleared from the clipboard in 1 minute)")
             }
             .setNegativeButton("Done", null)
             .show()
@@ -537,6 +550,237 @@ class AdminActivity : AppCompatActivity() {
                     .setNegativeButton("Cancel", null).show()
             }
         })
+        return cardOf(row)
+    }
+
+    // ---------- ENTRY (night hold hours, and manual attendance / night hold for a date the admin opens) ----------
+
+    private fun hourLabel(h: Int) = "${if (h % 12 == 0) 12 else h % 12}:00 ${if (h < 12) "AM" else "PM"}"
+
+    private fun usersFrom(res: JSONObject): List<JSONObject> {
+        val arr = res.optJSONArray("users")
+        val list = ArrayList<JSONObject>()
+        if (arr != null) for (i in 0 until arr.length()) list.add(arr.getJSONObject(i))
+        return list
+    }
+
+    private fun loadEntry() {
+        val id = ++loadId
+        content.removeAllViews()
+        val status = note("Loading…")
+        content.addView(status)
+        api(JSONObject().put("action", "adminEntrySettings")) { res, err ->
+            if (id != loadId) return@api
+            if (res == null) { status.text = err ?: "Could not load."; return@api }
+            if (users.isNotEmpty()) { content.removeView(status); showEntry(res); return@api }
+            api(JSONObject().put("action", "adminUsers")) { r2, _ ->       // the pickers need the people list
+                if (id != loadId) return@api
+                if (r2 != null) users = usersFrom(r2)
+                content.removeView(status)
+                showEntry(res)
+            }
+        }
+    }
+
+    private fun showEntry(res: JSONObject) {
+        // ---- 1. night hold hours ----
+        var open = res.optInt("nightOpen", 21)
+        var close = res.optInt("nightClose", 6)
+        val hours = (0..23).map { hourLabel(it) }
+        val btnOpen = chipButton("Opens at: ${hourLabel(open)}  ▾") {}
+        val btnClose = chipButton("Closes at: ${hourLabel(close)}  ▾") {}
+        btnOpen.setOnClickListener { PickerDialog.show(this, "Night hold opens at", hours) { p -> open = hours.indexOf(p); btnOpen.text = "Opens at: $p  ▾" } }
+        btnClose.setOnClickListener { PickerDialog.show(this, "Night hold closes at", hours) { p -> close = hours.indexOf(p); btnClose.text = "Closes at: $p  ▾" } }
+        val msgHours = label("", 14f, "#DC2626", false)
+        val f1 = column()
+        f1.addView(label("Night hold hours", 16f, "#111827", true))
+        f1.addView(label("People can submit their night hold only inside these hours. Now: ${res.optString("label")}. If the closing hour is earlier than the opening hour, the hours run through midnight (for example 9 PM to 6 AM).", 13f, "#6C7293", false))
+        f1.addView(btnOpen); f1.addView(btnClose)
+        f1.addView(bigButton("💾  Save night hold hours") {
+            msgHours.setTextColor(Color.parseColor("#6C7293")); msgHours.text = "Saving…"
+            api(JSONObject().put("action", "adminSetNightHours").put("open", open).put("close", close)) { r, err ->
+                if (r != null) { toast("Saved: ${r.optString("label")}"); dropSavedCopies(); loadEntry() }
+                else { msgHours.setTextColor(Color.parseColor("#DC2626")); msgHours.text = err }
+            }
+        })
+        f1.addView(msgHours)
+        content.addView(cardOf(f1))
+
+        // ---- 2. open a date for manual attendance / night hold ----
+        var kind = "attendance"
+        var pickedDate = ""
+        var scope = "all"
+        var teamManager = ""
+        val pickedUsers = LinkedHashSet<String>()
+
+        val rgKind = RadioGroup(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val rbAtt = RadioButton(this).apply { text = "Attendance"; id = View.generateViewId() }
+        val rbNight = RadioButton(this).apply { text = "Night hold"; id = View.generateViewId() }
+        rgKind.addView(rbAtt); rgKind.addView(rbNight); rbAtt.isChecked = true
+        rgKind.setOnCheckedChangeListener { _, checked -> kind = if (checked == rbNight.id) "night" else "attendance" }
+
+        val btnDate = chipButton("📅  Choose the date") {}
+        btnDate.setOnClickListener {
+            val c = Calendar.getInstance()
+            val dlg = DatePickerDialog(this, { _, y, m, d ->
+                pickedDate = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                btnDate.text = "📅  " + (try { nice.format(iso.parse(pickedDate)!!) } catch (e: Exception) { pickedDate })
+            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH))
+            dlg.datePicker.maxDate = System.currentTimeMillis()          // today or an earlier day only
+            dlg.show()
+        }
+
+        val rgScope = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
+        val rbAll = RadioButton(this).apply { text = "Everyone"; id = View.generateViewId() }
+        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; id = View.generateViewId() }
+        val rbUsers = RadioButton(this).apply { text = "Selected people"; id = View.generateViewId() }
+        rgScope.addView(rbAll); rgScope.addView(rbTeam); rgScope.addView(rbUsers); rbAll.isChecked = true
+        val btnWho = chipButton("") {}
+        btnWho.visibility = View.GONE
+        fun refreshWho() {
+            btnWho.text = when (scope) {
+                "team" -> if (teamManager.isEmpty()) "Choose the manager  ▾" else "Team of: $teamManager  ▾"
+                else -> if (pickedUsers.isEmpty()) "Choose the people  ▾" else "${pickedUsers.size} selected: " + pickedUsers.joinToString(", ") + "  ▾"
+            }
+        }
+        rgScope.setOnCheckedChangeListener { _, checked ->
+            scope = when (checked) { rbTeam.id -> "team"; rbUsers.id -> "users"; else -> "all" }
+            btnWho.visibility = if (scope == "all") View.GONE else View.VISIBLE
+            refreshWho()
+        }
+        btnWho.setOnClickListener {
+            if (scope == "team") {
+                val bosses = users.filter { u -> users.any { it.optString("manager").equals(u.optString("username"), true) } }
+                val labels = bosses.map { "${it.optString("name")}  (${it.optString("username")})" }
+                if (labels.isEmpty()) { toast("Nobody has a team yet."); return@setOnClickListener }
+                PickerDialog.show(this, "Whose team?", labels) { picked -> teamManager = bosses[labels.indexOf(picked)].optString("username"); refreshWho() }
+            } else pickPeople(pickedUsers) { refreshWho() }
+        }
+
+        val etTime = field("Time to record (optional, 24-hour, for example 09:00)", InputType.TYPE_CLASS_TEXT)
+        val etAdminPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val msg = label("", 14f, "#DC2626", false)
+        val f2 = column()
+        f2.addView(label("Open a date for manual entry", 16f, "#111827", true))
+        f2.addView(label("Choose a day and who may fill it in. Those people then see \"Manual entry\" on their Home menu and submit it like normal (live selfie and GPS are still needed). Each person can fill each day once. Leave the time empty to record the real time.", 13f, "#6C7293", false))
+        f2.addView(label("What can they enter?", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        f2.addView(rgKind)
+        f2.addView(btnDate)
+        f2.addView(label("Who can enter it?", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        f2.addView(rgScope); f2.addView(btnWho)
+        f2.addView(etTime); f2.addView(etAdminPw)
+        f2.addView(bigButton("✅  Open this date") {
+            val pw = etAdminPw.text.toString()
+            when {
+                pickedDate.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the date first" }
+                scope == "team" && teamManager.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the manager whose team may enter it" }
+                scope == "users" && pickedUsers.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose at least one person" }
+                pw.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Enter your own password to confirm" }
+                else -> {
+                    msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Saving…"
+                    val body = JSONObject().put("action", "adminAllowAdd").put("kind", kind).put("date", pickedDate).put("scope", scope)
+                        .put("time", etTime.text.toString().trim()).put("adminPassword", pw)
+                    if (scope == "team") body.put("target", teamManager)
+                    if (scope == "users") body.put("target", JSONArray(pickedUsers.toList()))
+                    api(body) { r, err ->
+                        if (r != null) { toast("Date opened"); loadEntry() }
+                        else { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err }
+                    }
+                }
+            }
+        })
+        f2.addView(msg)
+        content.addView(cardOf(f2))
+
+        // ---- 3. dates already opened ----
+        val arr = res.optJSONArray("allowances")
+        val n = arr?.length() ?: 0
+        content.addView(heading("OPENED DATES ($n)"))
+        if (arr == null || n == 0) { content.addView(note("No manual-entry dates yet.")); return }
+        for (i in 0 until n) content.addView(allowCard(arr.getJSONObject(i)))
+    }
+
+    /** A multi-pick list with a search box. [chosen] is updated in place; [done] runs when the admin taps OK. */
+    private fun pickPeople(chosen: MutableSet<String>, done: () -> Unit) {
+        val rows = users.map { Pair(it.optString("username"), "${it.optString("name")}  (${it.optString("username")})") }
+        var shown: List<Pair<String, String>> = rows
+        val search = EditText(this).apply { hint = "Type to search"; inputType = InputType.TYPE_CLASS_TEXT; setSingleLine() }
+        val adapter = object : ArrayAdapter<String>(this, android.R.layout.simple_list_item_multiple_choice, ArrayList<String>()) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val v = super.getView(position, convertView, parent) as android.widget.CheckedTextView
+                v.isChecked = chosen.contains(shown[position].first)
+                return v
+            }
+        }
+        fun refill(q: String) {
+            shown = if (q.isEmpty()) rows else rows.filter { it.second.contains(q, ignoreCase = true) }
+            adapter.clear(); adapter.addAll(shown.map { it.second }); adapter.notifyDataSetChanged()
+        }
+        refill("")
+        val list = ListView(this).apply { this.adapter = adapter }
+        list.setOnItemClickListener { _, _, pos, _ ->
+            val u = shown[pos].first
+            if (!chosen.add(u)) chosen.remove(u)
+            adapter.notifyDataSetChanged()
+        }
+        search.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(e: android.text.Editable?) { refill(e?.toString()?.trim() ?: "") }
+            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+            override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
+        })
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(8), dp(16), 0)
+            addView(search)
+            addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(360)))
+        }
+        AlertDialog.Builder(this).setTitle("Choose the people").setView(box)
+            .setPositiveButton("OK") { _, _ -> done() }
+            .setNeutralButton("Clear") { _, _ -> chosen.clear(); done() }
+            .setNegativeButton("Cancel", null).show()
+    }
+
+    private fun allowCard(o: JSONObject): View {
+        val id = o.optString("id")
+        val active = o.optBoolean("active", true)
+        val isNight = o.optString("kind") == "night"
+        val date = o.optString("date")
+        val shown = try { nice.format(iso.parse(date)!!) } catch (e: Exception) { date }
+        val who = when (o.optString("scope")) {
+            "all" -> "Everyone"
+            "team" -> "Team of ${o.optString("targetName")}"
+            else -> o.optString("targetName")
+        }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(12), dp(8), dp(12))
+        }
+        val text = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        text.addView(label((if (isNight) "🌙 Night hold" else "📍 Attendance") + " · $shown", 15f, if (active) "#111827" else "#9CA3AF", true))
+        text.addView(label("For: $who", 13f, "#6B7280", false))
+        val extra = (if (o.optString("time").isNotEmpty()) "Time recorded: ${o.optString("time")} · " else "") + "by ${o.optString("createdBy")} · ${o.optString("createdOn")}"
+        text.addView(label(extra, 12f, "#9CA3AF", false))
+        row.addView(text)
+        if (active) {
+            row.addView(TextView(this).apply {
+                this.text = "✕"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.parseColor("#DC2626"))
+                isClickable = true; isFocusable = true
+                layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
+                setOnClickListener {
+                    AlertDialog.Builder(this@AdminActivity).setTitle("Switch this off?")
+                        .setMessage("$shown · $who\n\nPeople who have not filled it in yet will no longer be able to. Entries already made stay.")
+                        .setPositiveButton("Switch off") { _, _ ->
+                            api(JSONObject().put("action", "adminAllowRemove").put("id", id)) { r, err ->
+                                if (r != null) loadEntry() else toast(err ?: "Could not switch it off")
+                            }
+                        }
+                        .setNegativeButton("Cancel", null).show()
+                }
+            })
+        } else row.addView(pill("OFF", "#6B7280", "#F3F4F6"))
         return cardOf(row)
     }
 
