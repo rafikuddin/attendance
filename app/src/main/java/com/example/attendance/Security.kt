@@ -53,6 +53,7 @@ object Wipe {
         ResponseCache.clear(ctx)
         PhotoLoader.clearMemory()
         ctx.cacheDir.listFiles()?.forEach { if (it.name.startsWith("selfie_")) it.delete() }
+        try { java.io.File(ctx.cacheDir, "reports").deleteRecursively() } catch (e: Exception) { /* an admin's downloaded report */ }
     }
 
     fun signOutLocally(ctx: Context) {

@@ -31,6 +31,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import org.json.JSONObject
@@ -54,6 +55,21 @@ class AdminActivity : AppCompatActivity() {
     // The APK the admin picks to publish as the new version.
     private val pickApk = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) prepareApk(uri)
+    }
+
+    // Where the admin saves the Excel file (the phone's own "save as" screen, so no storage permission is needed).
+    private var reportFile: File? = null
+    private val xlsxType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    private val saveReport = registerForActivityResult(ActivityResultContracts.CreateDocument(xlsxType)) { uri ->
+        val f = reportFile
+        if (uri != null && f != null) {
+            try {
+                contentResolver.openOutputStream(uri)?.use { out -> FileInputStream(f).use { it.copyTo(out) } }
+                toast("Saved. Open it from your Files app.")
+            } catch (e: Exception) {
+                toast("Could not save the file.")
+            }
+        }
     }
 
     private val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -169,6 +185,7 @@ class AdminActivity : AppCompatActivity() {
         val id = ++loadId
         content.removeAllViews()
         content.addView(bigButton("➕  Add new user") { addUserDialog() })
+        content.addView(bigButton("📊  Download attendance (Excel)") { reportDialog() })
         val status = note("Loading users…")
         content.addView(status)
         api(JSONObject().put("action", "adminUsers")) { res, err ->
@@ -551,6 +568,87 @@ class AdminActivity : AppCompatActivity() {
             }
         })
         return cardOf(row)
+    }
+
+    // ---------- ATTENDANCE REPORT (Excel) ----------
+
+    /** Choose the period, ask the server to build the .xlsx (Summary + Daily Details), then save or share it. */
+    private fun reportDialog() {
+        var choice = "current"
+        var from = ""
+        var to = ""
+        val rg = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
+        val rbCur = RadioButton(this).apply { text = "This pay period (26th – 25th, up to today)"; id = View.generateViewId() }
+        val rbPrev = RadioButton(this).apply { text = "Last pay period"; id = View.generateViewId() }
+        val rbCustom = RadioButton(this).apply { text = "Choose the dates"; id = View.generateViewId() }
+        rg.addView(rbCur); rg.addView(rbPrev); rg.addView(rbCustom); rbCur.isChecked = true
+        fun dateChip(title: String, set: (String) -> Unit): TextView {
+            val chip = chipButton("📅  $title") {}
+            chip.setOnClickListener {
+                val c = Calendar.getInstance()
+                DatePickerDialog(this, { _, y, m, d ->
+                    val v = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                    set(v)
+                    chip.text = "📅  $title: " + (try { nice.format(iso.parse(v)!!) } catch (e: Exception) { v })
+                }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
+            }
+            chip.visibility = View.GONE
+            return chip
+        }
+        val chipFrom = dateChip("From") { from = it }
+        val chipTo = dateChip("To") { to = it }
+        rg.setOnCheckedChangeListener { _, checked ->
+            choice = when (checked) { rbPrev.id -> "previous"; rbCustom.id -> "custom"; else -> "current" }
+            val vis = if (choice == "custom") View.VISIBLE else View.GONE
+            chipFrom.visibility = vis; chipTo.visibility = vis
+        }
+        val info = label("The file has two sheets: Summary (one row per person: present, leave, absent, day off, total days) and Daily Details (every person, every day, with time and location).", 13f, "#6C7293", false)
+        val error = label("", 14f, "#DC2626", false)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Download attendance")
+            .setView(scrollable(info, rg, chipFrom, chipTo, error))
+            .setPositiveButton("Prepare file", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { error.text = "Choose the From and To dates"; return@setOnClickListener }
+                error.setTextColor(Color.parseColor("#6C7293")); error.text = "Preparing the file… this can take a few seconds."
+                val body = JSONObject().put("action", "adminReport").put("period", choice)
+                if (choice == "custom") body.put("from", from).put("to", to)
+                api(body) { res, err ->
+                    if (res == null) { error.setTextColor(Color.parseColor("#DC2626")); error.text = err; return@api }
+                    try {
+                        val dir = File(cacheDir, "reports").apply { mkdirs() }
+                        dir.listFiles()?.forEach { it.delete() }
+                        val f = File(dir, res.optString("name", "attendance.xlsx"))
+                        f.writeBytes(Base64.decode(res.getString("data"), Base64.DEFAULT))
+                        dialog.dismiss()
+                        reportReady(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to"))
+                    } catch (e: Exception) {
+                        error.setTextColor(Color.parseColor("#DC2626")); error.text = "Could not prepare the file."
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun reportReady(f: File, users: Int, days: Int, from: String, to: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Your Excel file is ready")
+            .setMessage("${f.name}\n\n$users people · $days days ($from to $to)")
+            .setPositiveButton("Save to phone") { _, _ -> reportFile = f; saveReport.launch(f.name) }
+            .setNeutralButton("Share") { _, _ ->
+                try {
+                    val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", f)
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType(xlsxType)
+                        .putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                        .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    startActivity(android.content.Intent.createChooser(send, "Share attendance file"))
+                } catch (e: Exception) { toast("Could not share the file.") }
+            }
+            .setNegativeButton("Close", null).show()
     }
 
     // ---------- ENTRY (night hold hours, and manual attendance / night hold for a date the admin opens) ----------
