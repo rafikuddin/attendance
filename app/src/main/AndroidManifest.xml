@@ -24,6 +24,7 @@
         <activity android:name=".TeamActivity" android:exported="false" />
         <activity android:name=".NightHoldActivity" android:exported="false" />
         <activity android:name=".NoticesActivity" android:exported="false" />
+        <activity android:name=".ReportActivity" android:exported="false" />
         <activity android:name=".AdminActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
         <!-- Lets the camera app save a leave-application or profile photo into this app's private cache folder -->

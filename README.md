@@ -26,8 +26,9 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
   - live GPS (fake/mock locations are rejected),
   - **district → thana** pickers (all **64 districts**, with searchable lists),
   - **hotel name**,
-  - **only between 9:00 PM and 6:00 AM** — outside those hours the Night Hold screen shows a *closed* notice and the server refuses a submission. It is **one per night**: a night is named by the date its evening started, so a 2:00 AM submission counts for the night before. The form can't be submitted without real data (checked again on the server).
-- **Notices** — a notice from an admin appears as a card on Home, behind a 🔔 **bell** at the top (a red number shows how many you haven't opened), and as a **pop-up on Home every time you sign in** or open the app fresh. *Got it* closes it; *View all notices* opens the list.
+  - **only during the night-hold hours** (9:00 PM to 6:00 AM unless an admin changed them in *Admin Panel → 📝 Entry*) — outside those hours the Night Hold screen shows a *closed* notice and the server refuses a submission. It is **one per night**: a night is named by the date its evening started, so a 2:00 AM submission counts for the night before. The form can't be submitted without real data (checked again on the server).
+- **My Reports** — open **👤 menu → 📊 My Reports** to download your own **Attendance** or **Night hold** report as an Excel file (this pay period, last pay period or any dates, up to a year). A manager gets a *Whose report* choice: **👤 Only me** or **👥 My team** (their own report plus everyone below them in the chain). The server decides whose data you may have; nobody can get a report for someone outside their own line. Admins can still download everyone's in the Admin Panel.
+- **Notices** — a notice from an admin (for everyone) or from **your manager (team notice)** appears as a card on Home, behind a 🔔 **bell** at the top (a red number shows how many you haven't opened), and as a **pop-up on Home every time you sign in** or open the app fresh. *Got it* closes it; *View all notices* opens the list.
 - **Update from inside the app** — when an admin publishes a newer version, a blue **⬆️ Update available** card appears on Home (and an *Update app* item in the 👤 menu). Tap **Update**, the app downloads the new version (with a progress bar), checks it isn't damaged, and opens Android's installer. The first time, Android asks you to allow *Install from this source* for this app. Your data is not affected.
 - **My Profile** — open it from the round photo at the top-left of Home, or from the 👤 menu → *My Profile*. You can:
   - **change your profile photo** (📷 *Take photo* or 🖼 *Choose picture*) — this is separate from your daily attendance selfie, and it replaces the letter in the round avatar on Home;
@@ -39,6 +40,8 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 - **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, 🎉 holidays, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
 
 ### For managers
+- **Team notices** — on the Notices screen a manager has **✍️ Post a notice**: a title, a message and how many days to show it. It is visible to **that manager and everyone below them** only (not to their own boss or other teams), and only the manager who wrote it can remove it. Ordinary staff cannot post. Admins still post notices for everyone from the Admin Panel.
+- **Team reports** — *My Reports → 👥 My team* downloads an Excel report for the manager and everyone below them.
 - **Unlimited levels** — everything uses one *Manager* column, so Employee → ZM/ASM → RSM/DSM → SM → Operation Manager (or any structure) works with no hardcoded roles.
 - **My Team** — each direct report's status today (Present / Late / On Leave / Absent / Off / Pending), their selfie and location, and a live roll-up for any report who manages a team.
 - **Drill down** — tap any manager to see their team, all the way to individual employees.
@@ -70,7 +73,8 @@ The notice pop-up is shown by the app when it is open. It is **not a phone push 
 | **Calendar** | Pay-period view of attendance, leave and night holds |
 | **Night Hold** | Overnight stay report with location, district/thana and hotel |
 | **My Profile** | Change your photo; phones, email, emergency contact + relation, bike number, laptop model (managers) |
-| **Notices** | Everything admins have posted |
+| **Notices** | Everything admins and your manager have posted; managers can post a team notice |
+| **My Reports** | Download your own (managers: or your team's) attendance / night hold Excel file |
 | **Admin Panel** *(admins only)* | Add users, reset passwords, post notices, add holidays, publish app updates |
 
 A **bottom bar** (Home · Attendance · Leave · Team · Calendar · Night Hold) is on every screen, and every screen has a compact header that stays fixed while the content scrolls. ⟳ buttons refresh any screen, and the 👤 menu on Home has *My Profile*, *Change Password*, *Admin Panel* (admins only), *Logout* and the app version.

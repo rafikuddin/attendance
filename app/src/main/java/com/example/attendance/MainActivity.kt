@@ -61,6 +61,7 @@ class MainActivity : AppCompatActivity() {
     private fun showMenu(anchor: android.view.View) {
         val items = ArrayList<MenuEntry>()
         items.add(MenuEntry("👤", "My Profile", "#1E2247") { open(ProfileActivity::class.java) })
+        items.add(MenuEntry("📊", "My Reports", "#1E2247") { open(ReportActivity::class.java) })
         items.add(MenuEntry("🔑", "Change Password", "#1E2247") { ChangePasswordDialog.show(this, session) })
         items.add(MenuEntry("🔔", "Attendance reminders: ${if (Reminders.enabled(this)) "On" else "Off"}", "#1E2247") { toggleReminders() })
         allowances?.takeIf { it.length() > 0 }?.let { a ->
@@ -249,7 +250,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** The newest admin notice, shown as a card under Today's Status. Hidden when there are none. */
+    /** The newest notice (admin or your manager's), shown as a card under Today's Status. Hidden when there are none. */
     private fun showNotices(arr: org.json.JSONArray?) {
         refreshBell(arr)
         val card = findViewById<android.view.View>(R.id.cardNotice)
