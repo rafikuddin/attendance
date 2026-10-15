@@ -35,6 +35,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnBell).setOnClickListener { open(NoticesActivity::class.java) }
 
         findViewById<android.view.View>(R.id.cardNight).setOnClickListener { open(NightHoldActivity::class.java) }
+        findViewById<android.view.View>(R.id.btnQuickAttendance).setOnClickListener { open(AttendanceActivity::class.java) }
+        findViewById<android.view.View>(R.id.btnQuickLeave).setOnClickListener { open(LeaveActivity::class.java) }
+        findViewById<android.view.View>(R.id.tileNight).setOnClickListener { open(NightHoldActivity::class.java) }
+        findViewById<android.view.View>(R.id.tileCalendar).setOnClickListener { open(CalendarActivity::class.java) }
+        findViewById<android.view.View>(R.id.tileReports).setOnClickListener { open(ReportActivity::class.java) }
         findViewById<android.view.View>(R.id.cardNotice).setOnClickListener { open(NoticesActivity::class.java) }
         findViewById<android.view.View>(R.id.cardUpdate).setOnClickListener { pendingUpdate?.let { AppUpdate.offer(this, it) } }
         Thread { AppUpdate.cleanUp(applicationContext) }.start()     // a downloaded APK from an earlier update is no longer needed

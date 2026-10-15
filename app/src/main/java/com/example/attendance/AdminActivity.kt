@@ -122,7 +122,7 @@ class AdminActivity : AppCompatActivity() {
         if (bold) setTypeface(null, Typeface.BOLD)
     }
 
-    private fun note(text: String) = label(text, 14f, "#6C7293", false).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }
+    private fun note(text: String) = label(text, 14f, "#3A3F73", false).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }
 
     private fun heading(text: String) = label(text, 13f, "#1E2247", true).apply {
         letterSpacing = 0.08f
@@ -136,7 +136,7 @@ class AdminActivity : AppCompatActivity() {
     }
 
     private fun cardOf(inner: View): MaterialCardView = MaterialCardView(this).apply {
-        radius = dp(16).toFloat(); cardElevation = dp(2).toFloat(); setCardBackgroundColor(Color.WHITE)
+        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         addView(inner)
     }

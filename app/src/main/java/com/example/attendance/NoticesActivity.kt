@@ -35,7 +35,7 @@ class NoticesActivity : AppCompatActivity() {
     }
 
     private fun note(text: String) = TextView(this).apply {
-        this.text = text; textSize = 14f; setTextColor(Color.parseColor("#6C7293"))
+        this.text = text; textSize = 14f; setTextColor(Color.parseColor("#3A3F73"))
         setPadding(dp(4), dp(8), dp(4), dp(8))
     }
 
@@ -80,7 +80,7 @@ class NoticesActivity : AppCompatActivity() {
             })
         }
         return MaterialCardView(this).apply {
-            radius = dp(16).toFloat(); cardElevation = dp(2).toFloat(); setCardBackgroundColor(Color.WHITE)
+            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
             addView(col)
         }
@@ -98,7 +98,7 @@ class NoticesActivity : AppCompatActivity() {
         })
         col.addView(MaterialButton(this).apply { text = "✍️  Post a notice"; setOnClickListener { showPostDialog() } })
         return MaterialCardView(this).apply {
-            radius = dp(16).toFloat(); cardElevation = dp(2).toFloat(); setCardBackgroundColor(Color.parseColor("#EEF1FF"))
+            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.parseColor("#EEF1FF"))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
             addView(col)
         }

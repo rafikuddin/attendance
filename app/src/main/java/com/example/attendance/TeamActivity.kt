@@ -167,7 +167,7 @@ class TeamActivity : AppCompatActivity() {
     }
 
     private fun note(text: String) = TextView(this).apply {
-        this.text = text; setTextColor(Color.parseColor("#6B7280"))
+        this.text = text; setTextColor(Color.parseColor("#3A3F73"))
         setPadding(dp(4), dp(6), dp(4), dp(6))
     }
 
@@ -178,7 +178,7 @@ class TeamActivity : AppCompatActivity() {
     }
 
     private fun cardWrap(inner: View): MaterialCardView = MaterialCardView(this).apply {
-        radius = dp(16).toFloat(); cardElevation = dp(2).toFloat(); setCardBackgroundColor(Color.WHITE)
+        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         addView(inner)
     }

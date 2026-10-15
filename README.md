@@ -62,6 +62,12 @@ The notice pop-up is shown by the app when it is open. It is **not a phone push 
 
 ---
 
+## 🎨 Look and feel
+
+The app uses a **glass / gradient** style: a soft indigo → lavender gradient behind every screen, frosted white cards with big rounded corners, white pill buttons, a **floating** bottom bar, and on Home a **Quick Actions** row of pastel tiles (Night Hold, Calendar, Reports) beside two big pills (Attendance, Leave). Everything is driven by a few shared resources, so the whole app can be re-coloured in one place: `res/values/colors.xml` and `themes.xml` (colours and the `GlassCard`, `Btn`, `BtnWhite` styles), `res/drawable/bg_app.xml` (the gradient), `bg_nav.xml` (floating bar) and `bg_tile_*.xml` (the pastel tiles).
+
+---
+
 ## 📱 Screens
 
 | Screen | What it does |
@@ -151,9 +157,8 @@ Requirements and limits:
 - The file is stored in Drive (folder `AppUpdates`) in 512 KB pieces; only signed-in users can download it. Uploading a newer version deletes the older file. The biggest APK accepted is 40 MB.
 
 ### Updating the project from a phone (no computer)
-1. Upload an `update.zip` to the repo's main page (**Add file → Upload files**). The **Apply Update** workflow unpacks it into the project automatically.
-2. Run **Actions → Build APK → Run workflow**.
-3. Download the new APK.
+1. Upload an `update.zip` to the repo's main page (**Add file → Upload files**). The **Apply Update** workflow unpacks it into the project automatically and then **starts Build APK by itself** (no need to press anything).
+2. When **Build APK** shows a green tick (about 5–10 minutes), download the new APK from **Releases**.
 
 Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit those directly on GitHub (paste the new `build.yml` over the old one). Backend changes (`Code.gs`) are not part of the zip either: paste them into Apps Script and deploy a **New version**.
 

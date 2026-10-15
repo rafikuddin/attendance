@@ -340,7 +340,7 @@ class LeaveActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
         })
         return MaterialCardView(this).apply {
-            radius = dp(16).toFloat(); cardElevation = dp(2).toFloat(); setCardBackgroundColor(Color.WHITE)
+            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
             addView(col)
         }
