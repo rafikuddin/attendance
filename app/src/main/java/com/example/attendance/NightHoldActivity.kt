@@ -17,8 +17,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.google.android.material.button.MaterialButton
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -239,43 +237,51 @@ class NightHoldActivity : AppCompatActivity() {
             permLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
-    @SuppressLint("MissingPermission")
+    private var locHandle: LiveLocation.Handle? = null
+
     private fun fetchLocation() {
+        locHandle?.cancel()
         location = null
         address = ""
-        tvLoc.text = "📍 Getting your location…"
+        tvLoc.text = LiveLocation.waitingText(0).let { "📍 $it" }
         btnRetry.visibility = View.GONE
         updateButton()
-        LocationServices.getFusedLocationProviderClient(this)
-            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            .addOnSuccessListener { loc ->
-                if (loc == null) { locFailed("Location unavailable. Turn on GPS, then tap Retry."); return@addOnSuccessListener }
+        locHandle = LiveLocation.start(
+            this,
+            onProgress = { sec -> if (location == null) tvLoc.text = "📍 " + LiveLocation.waitingText(sec) },
+            onFail = { locFailed(it) },
+            onFix = { loc ->
                 if (isMock(loc)) {
                     locFailed("A fake / mock location was detected. Turn off any fake-GPS app, then tap Retry.")
-                    return@addOnSuccessListener
-                }
-                location = loc
-                locAt = System.currentTimeMillis()
-                val coords = String.format(Locale.US, "%.5f, %.5f", loc.latitude, loc.longitude)
-                tvLoc.text = "📍 Location locked\n$coords\nFinding address…"
-                updateButton()
-                Thread {
-                    val found = try {
-                        @Suppress("DEPRECATION")
-                        Geocoder(this, Locale.getDefault()).getFromLocation(loc.latitude, loc.longitude, 1)
-                            ?.firstOrNull()?.getAddressLine(0)
-                    } catch (e: Exception) {
-                        null
-                    }
-                    runOnUiThread {
-                        if (location === loc) {
-                            address = found ?: ""
-                            tvLoc.text = "📍 Location locked\n$coords" + (if (address.isNotEmpty()) "\n$address" else "")
+                } else {
+                    location = loc
+                    locAt = System.currentTimeMillis()
+                    val coords = String.format(Locale.US, "%.5f, %.5f", loc.latitude, loc.longitude)
+                    tvLoc.text = "📍 Location locked\n$coords\nFinding address…"
+                    updateButton()
+                    Thread {
+                        val found = try {
+                            @Suppress("DEPRECATION")
+                            Geocoder(this, Locale.getDefault()).getFromLocation(loc.latitude, loc.longitude, 1)
+                                ?.firstOrNull()?.getAddressLine(0)
+                        } catch (e: Exception) {
+                            null
                         }
-                    }
-                }.start()
+                        runOnUiThread {
+                            if (location === loc) {
+                                address = found ?: ""
+                                tvLoc.text = "📍 Location locked\n$coords" + (if (address.isNotEmpty()) "\n$address" else "")
+                            }
+                        }
+                    }.start()
+                }
             }
-            .addOnFailureListener { locFailed("Location failed: ${it.message}") }
+        )
+    }
+
+    override fun onDestroy() {
+        locHandle?.cancel()
+        super.onDestroy()
     }
 
     private fun locFailed(message: String) {

@@ -22,8 +22,6 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import com.google.android.material.card.MaterialCardView
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -162,33 +160,41 @@ class AttendanceActivity : AppCompatActivity() {
         btnSubmit.isEnabled = false
         if (forDate == null) cardSummary.visibility = View.GONE
         tvLive.text = "Date: -\nTime: -\nLocation: -"
+        locHandle?.cancel()
         location = null
     }
 
-    @SuppressLint("MissingPermission")
+    private var locHandle: LiveLocation.Handle? = null
+
+    override fun onDestroy() {
+        locHandle?.cancel()
+        super.onDestroy()
+    }
+
     private fun fetchLocation() {
+        locHandle?.cancel()
+        location = null
         tvLive.text = "Getting location..."
-        LocationServices.getFusedLocationProviderClient(this)
-            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            .addOnSuccessListener { loc ->
-                if (loc == null) { tvLive.text = "Location unavailable. Turn on GPS and retake."; return@addOnSuccessListener }
+        locHandle = LiveLocation.start(
+            this,
+            onProgress = { sec -> if (location == null) tvLive.text = LiveLocation.waitingText(sec) },
+            onFail = { tvLive.text = "⚠️ $it\nThen tap Retake and capture again." },
+            onFix = { loc ->
                 if (isMockLocation(loc)) {
                     tvLive.text = "⚠️ A fake / mock location was detected. Turn off any fake-GPS app, then tap Retake and capture again."
-                    return@addOnSuccessListener
+                } else {
+                    location = loc
+                    Thread {
+                        address = try {
+                            @Suppress("DEPRECATION")
+                            Geocoder(this, Locale.getDefault()).getFromLocation(loc.latitude, loc.longitude, 1)
+                                ?.firstOrNull()?.getAddressLine(0) ?: "Address unavailable"
+                        } catch (e: Exception) { "Address unavailable" }
+                        runOnUiThread { if (location === loc) { showLive(); btnSubmit.isEnabled = true } }
+                    }.start()
                 }
-                location = loc
-                Thread {
-                    address = try {
-                        @Suppress("DEPRECATION")
-                        Geocoder(this, Locale.getDefault()).getFromLocation(loc.latitude, loc.longitude, 1)
-                            ?.firstOrNull()?.getAddressLine(0) ?: "Address unavailable"
-                    } catch (e: Exception) { "Address unavailable" }
-                    runOnUiThread { showLive(); btnSubmit.isEnabled = true }
-                }.start()
             }
-            .addOnFailureListener {
-                tvLive.text = "⚠️ Location failed: ${it.message}\nTurn on GPS, then tap Retake and capture again."
-            }
+        )
     }
 
     private fun showLive() {
