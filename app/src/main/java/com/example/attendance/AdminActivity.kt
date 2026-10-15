@@ -83,7 +83,7 @@ class AdminActivity : AppCompatActivity() {
         setupHeader("Admin") { load() }
         setupBottomNav(null)
         content = findViewById(R.id.adminContent)
-        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabApp))
+        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabApp))
         tabs.forEachIndexed { i, t -> t.setOnClickListener { select(i) } }
         select(0)
     }
@@ -98,6 +98,9 @@ class AdminActivity : AppCompatActivity() {
                 setColor(Color.parseColor(if (on) "#1E2247" else "#E6E9F7"))
             }
         }
+        findViewById<android.widget.HorizontalScrollView>(R.id.tabScroll).post {
+            findViewById<android.widget.HorizontalScrollView>(R.id.tabScroll).smoothScrollTo(maxOf(0, tabs[i].left - dp(40)), 0)
+        }
         load()
     }
 
@@ -107,6 +110,7 @@ class AdminActivity : AppCompatActivity() {
             1 -> loadNotices()
             2 -> loadHolidays()
             3 -> loadEntry()
+            4 -> loadReport()
             else -> loadApp()
         }
     }
@@ -176,7 +180,7 @@ class AdminActivity : AppCompatActivity() {
 
     /** Home and Calendar keep a saved copy; after an admin change this phone's copies are out of date. */
     private fun dropSavedCopies() {
-        ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
+        ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username), ResponseCache.nightKey(session.username))
     }
 
     // ---------- USERS ----------
@@ -185,7 +189,6 @@ class AdminActivity : AppCompatActivity() {
         val id = ++loadId
         content.removeAllViews()
         content.addView(bigButton("➕  Add new user") { addUserDialog() })
-        content.addView(bigButton("📊  Download attendance (Excel)") { reportDialog() })
         val status = note("Loading users…")
         content.addView(status)
         api(JSONObject().put("action", "adminUsers")) { res, err ->
@@ -570,85 +573,176 @@ class AdminActivity : AppCompatActivity() {
         return cardOf(row)
     }
 
-    // ---------- ATTENDANCE REPORT (Excel) ----------
+    // ---------- REPORT (attendance as an Excel file) ----------
 
-    /** Choose the period, ask the server to build the .xlsx (Summary + Daily Details), then save or share it. */
-    private fun reportDialog() {
-        var choice = "current"
-        var from = ""
-        var to = ""
-        val rg = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
-        val rbCur = RadioButton(this).apply { text = "This pay period (26th – 25th, up to today)"; id = View.generateViewId() }
-        val rbPrev = RadioButton(this).apply { text = "Last pay period"; id = View.generateViewId() }
-        val rbCustom = RadioButton(this).apply { text = "Choose the dates"; id = View.generateViewId() }
-        rg.addView(rbCur); rg.addView(rbPrev); rg.addView(rbCustom); rbCur.isChecked = true
-        fun dateChip(title: String, set: (String) -> Unit): TextView {
-            val chip = chipButton("📅  $title") {}
-            chip.setOnClickListener {
-                val c = Calendar.getInstance()
-                DatePickerDialog(this, { _, y, m, d ->
-                    val v = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
-                    set(v)
-                    chip.text = "📅  $title: " + (try { nice.format(iso.parse(v)!!) } catch (e: Exception) { v })
-                }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
-            }
-            chip.visibility = View.GONE
-            return chip
+    private fun dateChip(title: String, onPick: (String) -> Unit): TextView {
+        val chip = chipButton("📅  $title") {}
+        chip.setOnClickListener {
+            val c = Calendar.getInstance()
+            DatePickerDialog(this, { _, y, m, d ->
+                val v = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                onPick(v)
+                chip.text = "📅  $title: " + (try { nice.format(iso.parse(v)!!) } catch (e: Exception) { v })
+            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
         }
-        val chipFrom = dateChip("From") { from = it }
-        val chipTo = dateChip("To") { to = it }
-        rg.setOnCheckedChangeListener { _, checked ->
-            choice = when (checked) { rbPrev.id -> "previous"; rbCustom.id -> "custom"; else -> "current" }
-            val vis = if (choice == "custom") View.VISIBLE else View.GONE
-            chipFrom.visibility = vis; chipTo.visibility = vis
-        }
-        val info = label("The file has two sheets: Summary (one row per person: present, leave, absent, day off, total days) and Daily Details (every person, every day, with time and location).", 13f, "#6C7293", false)
-        val error = label("", 14f, "#DC2626", false)
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Download attendance")
-            .setView(scrollable(info, rg, chipFrom, chipTo, error))
-            .setPositiveButton("Prepare file", null)
-            .setNegativeButton("Cancel", null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { error.text = "Choose the From and To dates"; return@setOnClickListener }
-                error.setTextColor(Color.parseColor("#6C7293")); error.text = "Preparing the file… this can take a few seconds."
-                val body = JSONObject().put("action", "adminReport").put("period", choice)
-                if (choice == "custom") body.put("from", from).put("to", to)
-                api(body) { res, err ->
-                    if (res == null) { error.setTextColor(Color.parseColor("#DC2626")); error.text = err; return@api }
-                    try {
-                        val dir = File(cacheDir, "reports").apply { mkdirs() }
-                        dir.listFiles()?.forEach { it.delete() }
-                        val f = File(dir, res.optString("name", "attendance.xlsx"))
-                        f.writeBytes(Base64.decode(res.getString("data"), Base64.DEFAULT))
-                        dialog.dismiss()
-                        reportReady(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to"))
-                    } catch (e: Exception) {
-                        error.setTextColor(Color.parseColor("#DC2626")); error.text = "Could not prepare the file."
-                    }
-                }
-            }
-        }
-        dialog.show()
+        chip.visibility = View.GONE
+        return chip
     }
 
-    private fun reportReady(f: File, users: Int, days: Int, from: String, to: String) {
-        AlertDialog.Builder(this)
-            .setTitle("Your Excel file is ready")
-            .setMessage("${f.name}\n\n$users people · $days days ($from to $to)")
-            .setPositiveButton("Save to phone") { _, _ -> reportFile = f; saveReport.launch(f.name) }
-            .setNeutralButton("Share") { _, _ ->
+    /** "26 Oct 2026 – 25 Nov 2026" for this pay period (previous = false) or the one before it. */
+    private fun payPeriodText(previous: Boolean): String {
+        val show = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        val start = Calendar.getInstance().apply {
+            if (get(Calendar.DAY_OF_MONTH) < 26) add(Calendar.MONTH, -1)
+            set(Calendar.DAY_OF_MONTH, 26)
+            if (previous) add(Calendar.MONTH, -1)
+        }
+        val end = (start.clone() as Calendar).apply { add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, 25) }
+        return show.format(start.time) + " – " + show.format(end.time)
+    }
+
+    private fun loadReport() {
+        ++loadId
+        content.removeAllViews()
+        var choice = "current"
+        var kind = "attendance"                  // or "night"
+        var from = ""
+        var to = ""
+
+        // ---- 1. what to download ----
+        val hint = label("", 13f, "#6C7293", false).apply { setPadding(0, dp(10), 0, 0) }
+        val chipFrom = dateChip("From") { from = it }
+        val chipTo = dateChip("To") { to = it }
+        val options = listOf("current" to "This pay period", "previous" to "Last pay period", "custom" to "Choose dates")
+        val views = HashMap<String, TextView>()
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
+        fun refresh() {
+            views.forEach { (k, v) ->
+                val on = k == choice
+                v.setTextColor(Color.parseColor(if (on) "#FFFFFF" else "#6C7293"))
+                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor(if (on) "#1E2247" else "#E6E9F7")) }
+            }
+            chipFrom.visibility = if (choice == "custom") View.VISIBLE else View.GONE
+            chipTo.visibility = chipFrom.visibility
+            hint.text = when (choice) {
+                "current" -> payPeriodText(false) + "  (counted up to today)"
+                "previous" -> payPeriodText(true)
+                else -> "Pick the first and the last day (up to one year)."
+            }
+        }
+        options.forEachIndexed { i, (key, text) ->
+            val v = TextView(this).apply {
+                this.text = text; textSize = 13f; gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD)
+                setPadding(dp(6), dp(12), dp(6), dp(12)); isClickable = true; isFocusable = true
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (i > 0) marginStart = dp(6) }
+                setOnClickListener { choice = key; refresh() }
+            }
+            views[key] = v; row.addView(v)
+        }
+
+        val result = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val msg = label("", 14f, "#DC2626", false).apply { setPadding(0, dp(8), 0, 0) }
+        val infoSummary = label("", 13f, "#6C7293", false)
+        val infoDetail = label("", 13f, "#6C7293", false)
+        val infoDetailTitle = label("", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) }
+        val kindViews = HashMap<String, TextView>()
+        val kindRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
+        fun refreshKind() {
+            kindViews.forEach { (k, v) ->
+                val on = k == kind
+                v.setTextColor(Color.parseColor(if (on) "#FFFFFF" else "#6C7293"))
+                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor(if (on) "#1E2247" else "#E6E9F7")) }
+            }
+            if (kind == "night") {
+                infoSummary.text = "One row per person: how many night holds, how many were manual entries, days in the period."
+                infoDetailTitle.text = "🌙  Night Holds"
+                infoDetail.text = "Every night hold: night date, time, district, thana, hotel, location, and whether it was a normal or manual entry."
+            } else {
+                infoSummary.text = "One row per person: Present, Late, Leave, Absent, Day Off, Total Days."
+                infoDetailTitle.text = "🗓  Daily Details"
+                infoDetail.text = "Every person, every day: status (colour-coded), time, leave type, day-off reason and location."
+            }
+            result.removeAllViews()                   // a file made for the other report is no longer on screen
+        }
+        listOf("attendance" to "📍  Attendance", "night" to "🌙  Night hold").forEachIndexed { i, (key, text) ->
+            val v = TextView(this).apply {
+                this.text = text; textSize = 14f; gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD)
+                setPadding(dp(6), dp(12), dp(6), dp(12)); isClickable = true; isFocusable = true
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (i > 0) marginStart = dp(6) }
+                setOnClickListener { kind = key; refreshKind() }
+            }
+            kindViews[key] = v; kindRow.addView(v)
+        }
+        val form = column()
+        form.addView(label("Download as Excel", 18f, "#111827", true))
+        form.addView(label("Choose the report and the period.", 13f, "#6C7293", false))
+        form.addView(label("REPORT", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        form.addView(kindRow)
+        form.addView(label("PERIOD", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        form.addView(row); form.addView(hint); form.addView(chipFrom); form.addView(chipTo)
+        form.addView(bigButton("📊  Prepare Excel file") {
+            if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the From and To dates"; return@bigButton }
+            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Preparing the file… this can take a few seconds."
+            result.removeAllViews()
+            val body = JSONObject().put("action", "adminReport").put("period", choice).put("kind", kind)
+            if (choice == "custom") body.put("from", from).put("to", to)
+            api(body) { res, err ->
+                if (res == null) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err; return@api }
                 try {
-                    val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", f)
+                    val dir = File(cacheDir, "reports").apply { mkdirs() }
+                    dir.listFiles()?.forEach { it.delete() }
+                    val f = File(dir, res.optString("name", "attendance.xlsx"))
+                    f.writeBytes(Base64.decode(res.getString("data"), Base64.DEFAULT))
+                    msg.text = ""
+                    result.removeAllViews()
+                    result.addView(reportReadyCard(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to"), if (res.has("records")) res.optInt("records") else -1))
+                } catch (e: Exception) {
+                    msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Could not prepare the file."
+                }
+            }
+        })
+        form.addView(msg)
+        content.addView(cardOf(form))
+        content.addView(result)
+
+        // ---- 2. what is inside ----
+        val info = column()
+        info.addView(label("What is in the file", 16f, "#111827", true))
+        info.addView(label("📋  Summary", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        info.addView(infoSummary)
+        info.addView(infoDetailTitle)
+        info.addView(infoDetail)
+        content.addView(cardOf(info))
+        refresh()
+        refreshKind()
+    }
+
+    private fun reportReadyCard(f: File, users: Int, days: Int, from: String, to: String, records: Int = -1): View {
+        val col = column()
+        col.addView(label("✅  Your Excel file is ready", 16f, "#166534", true))
+        col.addView(label(f.name, 13f, "#111827", false).apply { setPadding(0, dp(6), 0, 0) })
+        col.addView(label("$users people · $days days ($from to $to)" + (if (records >= 0) " · $records night hold${if (records == 1) "" else "s"}" else ""), 13f, "#6C7293", false))
+        val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
+        buttons.addView(MaterialButton(this).apply {
+            text = "💾  Save"
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(6) }
+            setOnClickListener { reportFile = f; saveReport.launch(f.name) }
+        })
+        buttons.addView(MaterialButton(this).apply {
+            text = "📤  Share"
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(6) }
+            setOnClickListener {
+                try {
+                    val uri = FileProvider.getUriForFile(this@AdminActivity, "$packageName.fileprovider", f)
                     val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType(xlsxType)
                         .putExtra(android.content.Intent.EXTRA_STREAM, uri)
                         .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     startActivity(android.content.Intent.createChooser(send, "Share attendance file"))
                 } catch (e: Exception) { toast("Could not share the file.") }
             }
-            .setNegativeButton("Close", null).show()
+        })
+        col.addView(buttons)
+        return cardOf(col)
     }
 
     // ---------- ENTRY (night hold hours, and manual attendance / night hold for a date the admin opens) ----------

@@ -58,7 +58,13 @@ class NightHoldActivity : AppCompatActivity() {
     // which also enforces them and is the final judge of the clock.
     private var openHour = 21
     private var closeHour = 6
+    private lateinit var tvHours: TextView          // "Open every night from ... to ...": follows the hours the admin set
     private var forDate: String? = null            // set when an admin opened a past night for this person (manual entry)
+
+    private fun showHours() {
+        tvHours.text = if (forDate != null) "An admin opened this night for you. Every field and your live location are required."
+        else "Open every night from ${hourText(openHour)} to ${hourText(closeHour)}. Every field and your live location are required."
+    }
 
     private fun hourText(h: Int) = "${if (h % 12 == 0) 12 else h % 12}:00 ${if (h < 12) "AM" else "PM"}"
 
@@ -87,6 +93,8 @@ class NightHoldActivity : AppCompatActivity() {
         cardForm = findViewById(R.id.cardForm)
         tvDone = findViewById(R.id.tvDone)
         cardClosed = findViewById(R.id.cardClosed); tvClosed = findViewById(R.id.tvClosed)
+        tvHours = findViewById(R.id.tvNightHours)
+        showHours()
 
         etDistrict.setOnClickListener {
             PickerDialog.show(this, "Select district", BdLocations.districts(this)) { picked ->
@@ -166,6 +174,7 @@ class NightHoldActivity : AppCompatActivity() {
 
     private fun applyStatus(res: JSONObject) {
         res.optJSONObject("window")?.let { openHour = it.optInt("openHour", 21); closeHour = it.optInt("closeHour", 6) }
+        showHours()
         val tonight = nightKey()
         val arr = res.optJSONArray("nights")
         var found: JSONObject? = null

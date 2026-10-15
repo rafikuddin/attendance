@@ -45,7 +45,7 @@
 
                 <TextView android:text="🌙  Night hold" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/ink"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <TextView android:text="Open every night from 9:00 PM to 6:00 AM. Every field and your live location are required."
+                <TextView android:id="@+id/tvNightHours" android:text="Open every night. Every field and your live location are required."
                     android:textSize="13sp" android:textColor="@color/muted" android:layout_marginTop="2dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
 
