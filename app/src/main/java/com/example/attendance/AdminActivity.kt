@@ -82,6 +82,7 @@ class AdminActivity : AppCompatActivity() {
         setContentView(R.layout.activity_admin)
         setupHeader("Admin") { load() }
         setupBottomNav(null)
+        enforceAccess("admin")
         content = findViewById(R.id.adminContent)
         tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabSms), findViewById(R.id.tabApp))
         tabs.forEachIndexed { i, t -> t.setOnClickListener { select(i) } }
@@ -328,7 +329,11 @@ class AdminActivity : AppCompatActivity() {
         val form = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
         form.addView(label(if (names.size == 1) "Tick what this person may use. Untick to lock it. The server refuses a locked option, and the app hides the way in."
             else "These settings REPLACE the current ones of all ${names.size} chosen people. Tick what they may use; untick to lock it.", 13f, "#6C7293", false))
+        // The Admin Panel row only makes sense for admins, and never for yourself (you could not unlock it again).
+        val anyAdmin = names.any { n -> users.any { it.optString("username").equals(n, true) && it.optBoolean("isAdmin") } }
+        val includesMe = names.any { it.equals(session.username, true) }
         Access.items.forEach { (key, text) ->
+            if (key == "admin" && (!anyAdmin || includesMe)) return@forEach
             val cb = CheckBox(this).apply { this.text = text; textSize = 15f; isChecked = !locked.contains(key) }
             boxes[key] = cb; form.addView(cb)
         }

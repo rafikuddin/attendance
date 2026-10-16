@@ -21,7 +21,8 @@ object Access {
         "notices" to "🔔  Notices",
         "reports" to "📊  My Reports",
         "profile" to "👤  My Profile",
-        "manual" to "📝  Manual entry"
+        "manual" to "📝  Manual entry",
+        "admin" to "🛠  Admin Panel (admins only)"
     )
 
     private fun prefs(ctx: Context) = ctx.applicationContext.getSharedPreferences("access_locks", Context.MODE_PRIVATE)
@@ -36,7 +37,7 @@ object Access {
     fun isLocked(ctx: Context, key: String): Boolean =
         (prefs(ctx).getString(prefKey(ctx), "") ?: "").split(",").any { it == key }
 
-    fun name(key: String): String = items.firstOrNull { it.first == key }?.second?.substringAfter("  ") ?: key
+    fun name(key: String): String = items.firstOrNull { it.first == key }?.second?.substringAfter("  ")?.substringBefore(" (") ?: key
 
     /** The option a screen belongs to, or null when it can never be locked. */
     fun keyFor(c: Class<*>): String? = when (c) {
@@ -48,6 +49,7 @@ object Access {
         NoticesActivity::class.java -> "notices"
         ReportActivity::class.java -> "reports"
         ProfileActivity::class.java -> "profile"
+        AdminActivity::class.java -> "admin"
         else -> null
     }
 }

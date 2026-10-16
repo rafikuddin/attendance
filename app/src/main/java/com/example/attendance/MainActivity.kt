@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
         pendingUpdate?.let { u ->
             items.add(MenuEntry("⬆️", "Update app (v${u.optString("versionName")})", "#2563EB", true) { AppUpdate.offer(this, u) })
         }
-        if (AdminFlag.get(this)) items.add(MenuEntry("🛠", "Admin Panel", "#1E2247") { open(AdminActivity::class.java) })
+        if (AdminFlag.get(this) && !isLocked("admin")) items.add(MenuEntry("🛠", "Admin Panel", "#1E2247") { open(AdminActivity::class.java) })
         items.add(MenuEntry("🚪", "Logout", "#DC2626", true) { logout() })
         showHomeMenu(anchor, items, "SAM BOND · App version $versionName")
     }
