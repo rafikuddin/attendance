@@ -25,6 +25,7 @@ import java.util.Locale
 class TargetActivity : AppCompatActivity() {
     private lateinit var session: Session
     private lateinit var content: LinearLayout
+    private var daysLeft = 0          // remaining working days (for the RR captions)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,6 +110,21 @@ class TargetActivity : AppCompatActivity() {
             c.addView(label(if (scope == "all") "Upload the Target file and the Sale Collection file in Admin Panel → 🎯 Targets." else "Your admin has not uploaded the target and collection files yet.", 14f, "#6C7293", false).apply { setPadding(0, dp(6), 0, 0) })
             content.addView(cardOf(c)); return
         }
+        val days = res.optJSONObject("days")
+        val per = res.optJSONObject("period")
+        daysLeft = days?.optInt("remaining") ?: 0
+        if (days != null && per != null) {
+            val w = column()
+            w.addView(label("WORKING DAYS  ·  ${niceDate(per.optString("from"))} – ${niceDate(per.optString("to"))}", 12f, "#1E2247", true).apply { letterSpacing = 0.06f })
+            val st = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, 0) }
+            st.addView(bigStat("PASSED", days.optInt("passed").toString(), "#4F46E5"))
+            st.addView(bigStat("REMAINING", days.optInt("remaining").toString(), "#B45309"))
+            st.addView(bigStat("TOTAL", days.optInt("total").toString(), "#111827"))
+            w.addView(st)
+            val asOf = days.optString("asOf")
+            w.addView(label((if (asOf.isNotEmpty()) "Counted up to ${niceDate(asOf)}. " else "") + "Fridays and holidays are not working days.", 11f, "#9AA0C0", false).apply { setPadding(0, dp(6), 0, 0) })
+            content.addView(cardOf(w))
+        }
         val from = res.optString("from"); val to = res.optString("to")
         val upd = res.optJSONObject("updated")
         val line = StringBuilder()
@@ -134,6 +150,7 @@ class TargetActivity : AppCompatActivity() {
             stats.addView(stat("COLLECTED", taka(t.optDouble("collected")), "#15803D"))
             stats.addView(stat("REMAINING", taka(t.optDouble("remaining")), "#B45309"))
             c.addView(stats)
+            c.addView(rrLine(if (t.isNull("rr")) null else t.optDouble("rr"), true, t.optDouble("target") > 0))
             content.addView(cardOf(c))
             if (res.has("unassigned") && (res.optDouble("unassigned") != 0.0 || res.optDouble("unknownUser") != 0.0)) {
                 val w = column()
@@ -148,6 +165,35 @@ class TargetActivity : AppCompatActivity() {
         } else if (me == null || (!me.optBoolean("hasTarget") && me.optDouble("collected") == 0.0)) {
             content.addView(cardOf(column().apply { addView(label("There is no target or collection for you in the uploaded files.", 14f, "#6C7293", false)) }))
         }
+    }
+
+    private fun bigStat(title: String, value: String, color: String) = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL; gravity = android.view.Gravity.CENTER
+        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        addView(label(value, 28f, color, true))
+        addView(label(title, 11f, "#6C7293", true).apply { letterSpacing = 0.06f })
+    }
+
+    /** RR = the amount still to collect each remaining working day to reach the target. */
+    private fun rrLine(rr: Double?, hasTarget: Boolean, show: Boolean): View {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor("#EEF1FF")) }
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+            visibility = if (show) View.VISIBLE else View.GONE
+        }
+        box.addView(label("RR  ·  REQUIRED RATE PER WORKING DAY", 11f, "#1E2247", true).apply { letterSpacing = 0.05f })
+        when {
+            !hasTarget -> {}
+            rr == null -> box.addView(label("No working days left", 15f, "#DC2626", true))
+            rr == 0.0 -> box.addView(label("✅  Target reached", 15f, "#15803D", true))
+            else -> {
+                box.addView(label(taka(rr), 18f, "#4F46E5", true))
+                box.addView(label("every working day for the next $daysLeft working day${if (daysLeft == 1) "" else "s"}", 11f, "#6C7293", false))
+            }
+        }
+        return box
     }
 
     private fun row(a: View, b: View) = LinearLayout(this).apply {
@@ -169,6 +215,7 @@ class TargetActivity : AppCompatActivity() {
         stats.addView(stat("COLLECTED", taka(o.optDouble("collected")), "#15803D"))
         stats.addView(stat("REMAINING", if (o.optBoolean("hasTarget")) taka(o.optDouble("remaining")) else "—", "#B45309"))
         c.addView(stats)
+        c.addView(rrLine(if (o.isNull("rr")) null else o.optDouble("rr"), o.optBoolean("hasTarget"), o.optBoolean("hasTarget")))
         if (!o.optBoolean("hasTarget")) c.addView(label("No target in the file for this person.", 12f, "#B45309", false).apply { setPadding(0, dp(4), 0, 0) })
         c.addView(label("Tap for day by day", 11f, "#9AA0C0", false).apply { setPadding(0, dp(6), 0, 0) })
         return cardOf(c) { detail(o.optString("username"), o.optString("name")) }
@@ -180,6 +227,7 @@ class TargetActivity : AppCompatActivity() {
             val sb = StringBuilder()
             sb.append("Collected ${taka(res.optDouble("collected"))}")
             if (res.optDouble("target") > 0) sb.append(" of ${taka(res.optDouble("target"))}")
+            if (res.optDouble("target") > 0) sb.append(if (res.isNull("rr")) "\nRR: no working days left" else if (res.optDouble("rr") == 0.0) "\nRR: target reached" else "\nRR: ${taka(res.optDouble("rr"))} per working day")
             sb.append("\n${res.optInt("entries")} collection${if (res.optInt("entries") == 1) "" else "s"}\n\nBY DAY\n")
             val days = res.optJSONArray("days")
             if (days == null || days.length() == 0) sb.append("No collection yet.\n")

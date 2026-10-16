@@ -875,6 +875,39 @@ class AdminActivity : AppCompatActivity() {
         c.addView(bigButton("📤  Upload Collection report") { chooseExcel("collection") })
         content.addView(cardOf(c))
 
+        val per = res.optJSONObject("period")
+        if (per != null) {
+            val d = per.getJSONObject("days")
+            val p = column()
+            p.addView(label("Period and working days", 15f, "#111827", true))
+            p.addView(label("${per.optString("from")} to ${per.optString("to")}" + (if (per.optBoolean("auto")) "  (automatic: the month of the collection report)" else "  (set by you)"), 13f, "#1E2247", true).apply { setPadding(0, dp(6), 0, 0) })
+            p.addView(label("Working days ${d.optInt("total")}  ·  passed ${d.optInt("passed")}  ·  remaining ${d.optInt("remaining")}" + (if (d.optString("asOf").isNotEmpty()) "\ncounted up to ${d.optString("asOf")}" else ""), 13f, "#4F46E5", true))
+            p.addView(label("Fridays and the holidays in the 🎉 Holiday tab are not working days. RR = (target − collection) ÷ remaining working days.", 12f, "#6C7293", false).apply { setPadding(0, dp(4), 0, 0) })
+            var nf = ""; var nt = ""
+            val chipF = dateChip("Start") { nf = it }; val chipT = dateChip("End") { nt = it }
+            chipF.visibility = View.VISIBLE; chipT.visibility = View.VISIBLE
+            p.addView(chipF); p.addView(chipT)
+            val pmsg = label("", 13f, "#DC2626", false)
+            p.addView(bigButton("💾  Use these dates") {
+                if (nf.isEmpty() || nt.isEmpty()) { pmsg.text = "Choose the Start and End dates"; return@bigButton }
+                api(JSONObject().put("action", "adminTargetSettings").put("from", nf).put("to", nt)) { r, e -> if (r != null) { toast("Saved"); loadTargets() } else pmsg.text = e ?: "Could not save" }
+            })
+            if (!per.optBoolean("auto")) p.addView(chipButton("↩  Use the month of the report again") {
+                api(JSONObject().put("action", "adminTargetSettings").put("auto", true)) { r, e -> if (r != null) { toast("Saved"); loadTargets() } else pmsg.text = e ?: "Could not save" }
+            })
+            p.addView(label("Passed days are counted up to", 13f, "#1E2247", true).apply { setPadding(0, dp(12), 0, 0) })
+            val rg = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
+            val rbData = RadioButton(this).apply { text = "the last date in the Collection report"; id = View.generateViewId() }
+            val rbToday = RadioButton(this).apply { text = "today"; id = View.generateViewId() }
+            rg.addView(rbData); rg.addView(rbToday)
+            if (per.optString("asOfSetting") == "today") rbToday.isChecked = true else rbData.isChecked = true
+            rg.setOnCheckedChangeListener { _, checked ->
+                api(JSONObject().put("action", "adminTargetSettings").put("asOf", if (checked == rbToday.id) "today" else "data")) { r, e -> if (r != null) { toast("Saved"); loadTargets() } else pmsg.text = e ?: "Could not save" }
+            }
+            p.addView(rg); p.addView(pmsg)
+            content.addView(cardOf(p))
+        }
+
         val types = res.optJSONArray("types")
         if (types != null && types.length() > 0) {
             val k = column()
