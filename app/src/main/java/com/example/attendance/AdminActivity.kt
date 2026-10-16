@@ -83,7 +83,7 @@ class AdminActivity : AppCompatActivity() {
         setupHeader("Admin") { load() }
         setupBottomNav(null)
         content = findViewById(R.id.adminContent)
-        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabApp))
+        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabSms), findViewById(R.id.tabApp))
         tabs.forEachIndexed { i, t -> t.setOnClickListener { select(i) } }
         select(0)
     }
@@ -111,6 +111,7 @@ class AdminActivity : AppCompatActivity() {
             2 -> loadHolidays()
             3 -> loadEntry()
             4 -> loadReport()
+            5 -> loadSms()
             else -> loadApp()
         }
     }
@@ -435,20 +436,41 @@ class AdminActivity : AppCompatActivity() {
         val msg = label("", 14f, "#DC2626", false)
         val form = column()
         form.addView(label("New notice", 16f, "#111827", true))
-        form.addView(etTitle); form.addView(etMessage); form.addView(etDays)
+        val cbSms = CheckBox(this).apply { text = "📱  Also send as an SMS to everyone's phone"; textSize = 14f }
+        form.addView(etTitle); form.addView(etMessage); form.addView(etDays); form.addView(cbSms)
         form.addView(bigButton("📢  Post to everyone") {
             val t = etTitle.text.toString().trim()
             val m = etMessage.text.toString().trim()
             if (t.length < 2 || m.length < 2) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Enter a title and a message"; return@bigButton }
-            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Posting…"
             val body = JSONObject().put("action", "adminPostNotice").put("title", t).put("message", m)
                 .put("days", etDays.text.toString().trim().toIntOrNull() ?: 7)
-            api(body) { res, err ->
-                if (res != null) {
-                    toast("Notice posted. Everyone sees it on their Home screen.")
-                    dropSavedCopies()
-                    loadNotices()
-                } else { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err }
+            fun post(sms: Boolean) {
+                msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Posting…"
+                if (sms) body.put("sms", true)
+                api(body) { res, err ->
+                    if (res != null) {
+                        val s = SmsUi.summary(res.optJSONObject("sms"))
+                        toast("Notice posted. Everyone sees it on their Home screen." + (if (s.isNotEmpty()) "\n$s" else ""))
+                        dropSavedCopies()
+                        loadNotices()
+                    } else { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err }
+                }
+            }
+            if (!cbSms.isChecked) { post(false); return@bigButton }
+            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Checking SMS…"
+            api(JSONObject().put("action", "smsPreview").put("scope", "all")) { pv, perr ->
+                if (pv == null) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = perr; return@api }
+                msg.text = ""
+                if (!pv.optBoolean("configured") || pv.optInt("people") == 0) {
+                    AlertDialog.Builder(this).setTitle("SMS cannot be sent")
+                        .setMessage(if (!pv.optBoolean("configured")) "SMS is not set up yet (📱 SMS tab). Post the notice without SMS?" else "Nobody has a phone number saved. Post the notice without SMS?")
+                        .setPositiveButton("Post without SMS") { _, _ -> post(false) }.setNegativeButton("Cancel", null).show()
+                } else {
+                    AlertDialog.Builder(this).setTitle("Send SMS?").setMessage(SmsUi.confirmText(pv, "everyone"))
+                        .setPositiveButton("Post + send SMS") { _, _ -> post(true) }
+                        .setNeutralButton("Post without SMS") { _, _ -> post(false) }
+                        .setNegativeButton("Cancel", null).show()
+                }
             }
         })
         form.addView(msg)
@@ -743,6 +765,139 @@ class AdminActivity : AppCompatActivity() {
         })
         col.addView(buttons)
         return cardOf(col)
+    }
+
+    // ---------- SMS (free text messages through httpSMS) ----------
+
+    private fun loadSms() {
+        val id = ++loadId
+        content.removeAllViews()
+        val status = note("Loading…")
+        content.addView(status)
+        api(JSONObject().put("action", "adminSmsSettings")) { res, err ->
+            if (id != loadId) return@api
+            if (res == null) { status.text = err ?: "Could not load."; return@api }
+            if (users.isNotEmpty()) { content.removeView(status); showSms(res); return@api }
+            api(JSONObject().put("action", "adminUsers")) { r2, _ ->          // the pickers need the people list
+                if (id != loadId) return@api
+                if (r2 != null) users = usersFrom(r2)
+                content.removeView(status); showSms(res)
+            }
+        }
+    }
+
+    private fun showSms(res: JSONObject) {
+        val configured = res.optBoolean("configured")
+        // ---- 1. status ----
+        val st = column()
+        st.addView(label("📱  SMS to people's phones", 16f, "#111827", true))
+        if (configured) {
+            st.addView(label("✅  Ready", 15f, "#166534", true).apply { setPadding(0, dp(6), 0, 0) })
+            st.addView(label("Sends from ${res.optString("from")} · key ${res.optString("keyHint")}", 13f, "#6C7293", false))
+            st.addView(label("This month (${res.optString("month")}): ${res.optInt("used")} sent · ${res.optInt("left")} left of ${res.optInt("limit")}", 13f, "#6C7293", false))
+        } else {
+            st.addView(label("⚠️  Not set up yet. Follow the steps below.", 14f, "#B45309", true).apply { setPadding(0, dp(6), 0, 0) })
+        }
+        st.addView(label("Free with httpSMS: your own Android phone (with a SIM) sends the texts. The free plan allows 200 messages a month.", 13f, "#6C7293", false).apply { setPadding(0, dp(8), 0, 0) })
+        content.addView(cardOf(st))
+
+        // ---- 2. setup ----
+        val etKey = field("API key from httpsms.com > Settings" + (if (res.optBoolean("hasKey")) " (leave empty to keep the saved one)" else ""),
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etFrom = field("Phone number of the httpSMS phone" + (if (res.optString("from").isNotEmpty()) " (now ${res.optString("from")})" else ""), InputType.TYPE_CLASS_PHONE)
+        val etLimit = field("Monthly limit (free plan: 200)", InputType.TYPE_CLASS_NUMBER)
+        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val msgSetup = label("", 14f, "#DC2626", false)
+        val setup = column()
+        setup.addView(label("Set up", 16f, "#111827", true))
+        setup.addView(label("1. On a spare Android phone with a SIM, install the httpSMS app and sign in at httpsms.com.\n2. At httpsms.com > Settings copy your API key.\n3. Paste the key and that phone's number here and Save.\n4. In the Google Apps Script editor run authorizeSms once (Run, then Review permissions).\nThe key is kept privately on the server. It is never shown again, never in the app and never in the Sheet.", 13f, "#6C7293", false))
+        setup.addView(etKey); setup.addView(etFrom); setup.addView(etLimit); setup.addView(etPw)
+        setup.addView(bigButton("💾  Save SMS settings") {
+            if (etPw.text.isNullOrEmpty()) { msgSetup.setTextColor(Color.parseColor("#DC2626")); msgSetup.text = "Enter your own password to confirm"; return@bigButton }
+            msgSetup.setTextColor(Color.parseColor("#6C7293")); msgSetup.text = "Saving…"
+            val body = JSONObject().put("action", "adminSmsSave").put("apiKey", etKey.text.toString().trim())
+                .put("from", etFrom.text.toString().trim()).put("adminPassword", etPw.text.toString())
+            etLimit.text.toString().trim().takeIf { it.isNotEmpty() }?.let { body.put("limit", it) }
+            api(body) { r, e ->
+                if (r != null) { toast("SMS settings saved"); loadSms() } else { msgSetup.setTextColor(Color.parseColor("#DC2626")); msgSetup.text = e }
+            }
+        })
+        if (configured) setup.addView(bigButton("✉️  Send a test text to my phone") {
+            msgSetup.setTextColor(Color.parseColor("#6C7293")); msgSetup.text = "Sending a test to the phone number in your My Profile…"
+            api(JSONObject().put("action", "adminSmsTest")) { r, e ->
+                if (r != null) { msgSetup.setTextColor(Color.parseColor("#166534")); msgSetup.text = "Sent. It should reach your phone in a moment." }
+                else { msgSetup.setTextColor(Color.parseColor("#DC2626")); msgSetup.text = e }
+            }
+        })
+        setup.addView(msgSetup)
+        content.addView(cardOf(setup))
+        if (!configured) return
+
+        // ---- 3. send a message ----
+        var scope = "all"
+        var teamManager = ""
+        val pickedUsers = LinkedHashSet<String>()
+        val rgScope = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
+        val rbAll = RadioButton(this).apply { text = "Everyone"; id = View.generateViewId() }
+        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; id = View.generateViewId() }
+        val rbUsers = RadioButton(this).apply { text = "Selected people"; id = View.generateViewId() }
+        rgScope.addView(rbAll); rgScope.addView(rbTeam); rgScope.addView(rbUsers); rbAll.isChecked = true
+        val btnWho = chipButton("") {}
+        btnWho.visibility = View.GONE
+        fun refreshWho() {
+            btnWho.text = if (scope == "team") (if (teamManager.isEmpty()) "Choose the manager  ▾" else "Team of: $teamManager  ▾")
+            else (if (pickedUsers.isEmpty()) "Choose the people  ▾" else "${pickedUsers.size} selected: " + pickedUsers.joinToString(", ") + "  ▾")
+        }
+        rgScope.setOnCheckedChangeListener { _, checked ->
+            scope = when (checked) { rbTeam.id -> "team"; rbUsers.id -> "users"; else -> "all" }
+            btnWho.visibility = if (scope == "all") View.GONE else View.VISIBLE
+            refreshWho()
+        }
+        btnWho.setOnClickListener {
+            if (scope == "team") {
+                val bosses = users.filter { u -> users.any { it.optString("manager").equals(u.optString("username"), true) } }
+                val labels = bosses.map { "${it.optString("name")}  (${it.optString("username")})" }
+                if (labels.isEmpty()) { toast("Nobody has a team yet."); return@setOnClickListener }
+                PickerDialog.show(this, "Whose team?", labels) { picked -> teamManager = bosses[labels.indexOf(picked)].optString("username"); refreshWho() }
+            } else pickPeople(pickedUsers) { refreshWho() }
+        }
+        val etText = field("Message (up to 300 characters)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES).apply {
+            minLines = 3; filters = arrayOf(android.text.InputFilter.LengthFilter(300))
+        }
+        val etPw2 = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val msg = label("", 14f, "#DC2626", false)
+        val send = column()
+        send.addView(label("Send a text message", 16f, "#111827", true))
+        send.addView(label("Each person gets one SMS on the Official phone in their profile (or the Personal phone if there is no Official one). Every send uses your monthly allowance and is listed on the SmsLog tab of the Sheet.", 13f, "#6C7293", false))
+        send.addView(label("Who gets it?", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        send.addView(rgScope); send.addView(btnWho); send.addView(etText); send.addView(etPw2)
+        send.addView(bigButton("📱  Send SMS") {
+            val text = etText.text.toString().trim()
+            when {
+                text.length < 2 -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Write the message first" }
+                scope == "team" && teamManager.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the manager whose team gets it" }
+                scope == "users" && pickedUsers.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose at least one person" }
+                etPw2.text.isNullOrEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Enter your own password to confirm" }
+                else -> {
+                    val who = when (scope) { "all" -> "everyone"; "team" -> "the team of $teamManager"; else -> "${pickedUsers.size} selected ${if (pickedUsers.size == 1) "person" else "people"}" }
+                    AlertDialog.Builder(this).setTitle("Send this SMS?").setMessage("To $who:\n\n$text")
+                        .setPositiveButton("Send") { _, _ ->
+                            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Sending…"
+                            val body = JSONObject().put("action", "adminSmsSend").put("scope", scope).put("message", text).put("adminPassword", etPw2.text.toString())
+                            if (scope == "team") body.put("target", teamManager)
+                            if (scope == "users") body.put("target", JSONArray(pickedUsers.toList()))
+                            api(body) { r, e ->
+                                if (r != null) {
+                                    toast(SmsUi.summary(r)); loadSms()
+                                } else { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = e }
+                            }
+                        }
+                        .setNegativeButton("Cancel", null).show()
+                }
+            }
+        })
+        send.addView(msg)
+        content.addView(cardOf(send))
     }
 
     // ---------- ENTRY (night hold hours, and manual attendance / night hold for a date the admin opens) ----------

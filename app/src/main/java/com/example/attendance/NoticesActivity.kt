@@ -113,7 +113,8 @@ class NoticesActivity : AppCompatActivity() {
             filters = arrayOf(android.text.InputFilter.LengthFilter(600))
         }
         val days = EditText(this).apply { hint = "Show for how many days (default 7)"; inputType = InputType.TYPE_CLASS_NUMBER; filters = arrayOf(android.text.InputFilter.LengthFilter(2)) }
-        form.addView(title); form.addView(message); form.addView(days)
+        val cbSms = android.widget.CheckBox(this).apply { text = "📱  Also send as an SMS to my team"; textSize = 14f }
+        form.addView(title); form.addView(message); form.addView(days); form.addView(cbSms)
         val dialog = AlertDialog.Builder(this).setTitle("Notice for my team").setView(form)
             .setPositiveButton("Post", null).setNegativeButton("Cancel", null).create()
         dialog.setOnShowListener {
@@ -124,16 +125,37 @@ class NoticesActivity : AppCompatActivity() {
                 if (m.length < 2) { message.error = "Please enter the message"; return@setOnClickListener }
                 val body = JSONObject().put("action", "postNotice").put("title", t).put("message", m)
                 days.text.toString().toIntOrNull()?.let { body.put("days", it) }
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                api(body) { res, err ->
-                    if (res != null) {
-                        dialog.dismiss()
-                        ResponseCache.remove(this, ResponseCache.homeKey(session.username))
-                        toast("Posted for your team")
-                        load()
+                val okBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                fun post(sms: Boolean) {
+                    okBtn.isEnabled = false
+                    if (sms) body.put("sms", true)
+                    api(body) { res, err ->
+                        if (res != null) {
+                            dialog.dismiss()
+                            ResponseCache.remove(this, ResponseCache.homeKey(session.username))
+                            val s = SmsUi.summary(res.optJSONObject("sms"))
+                            toast("Posted for your team" + (if (s.isNotEmpty()) "\n$s" else ""))
+                            load()
+                        } else {
+                            okBtn.isEnabled = true
+                            toast(err ?: "Could not post the notice")
+                        }
+                    }
+                }
+                if (!cbSms.isChecked) { post(false); return@setOnClickListener }
+                okBtn.isEnabled = false
+                api(JSONObject().put("action", "smsPreview").put("scope", "team")) { pv, perr ->
+                    okBtn.isEnabled = true
+                    if (pv == null) { toast(perr ?: "Could not check SMS"); return@api }
+                    if (!pv.optBoolean("configured") || pv.optInt("people") == 0) {
+                        AlertDialog.Builder(this).setTitle("SMS cannot be sent")
+                            .setMessage(if (!pv.optBoolean("configured")) "SMS is not set up yet. Ask your admin to set it up (Admin Panel > SMS). Post the notice without SMS?" else "Nobody in your team has a phone number saved. Post the notice without SMS?")
+                            .setPositiveButton("Post without SMS") { _, _ -> post(false) }.setNegativeButton("Cancel", null).show()
                     } else {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                        toast(err ?: "Could not post the notice")
+                        AlertDialog.Builder(this).setTitle("Send SMS?").setMessage(SmsUi.confirmText(pv, "your team"))
+                            .setPositiveButton("Post + send SMS") { _, _ -> post(true) }
+                            .setNeutralButton("Post without SMS") { _, _ -> post(false) }
+                            .setNegativeButton("Cancel", null).show()
                     }
                 }
             }
