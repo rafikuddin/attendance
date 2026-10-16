@@ -726,6 +726,10 @@ class AdminActivity : AppCompatActivity() {
         form.addView(msg)
         content.addView(cardOf(form))
         content.addView(result)
+        content.addView(emailReportsCard {
+            if (choice == "custom" && (from.isEmpty() || to.isEmpty())) null
+            else JSONObject().put("period", choice).apply { if (choice == "custom") put("from", from).put("to", to) }
+        })
 
         // ---- 2. what is inside ----
         val info = column()
@@ -764,6 +768,123 @@ class AdminActivity : AppCompatActivity() {
             }
         })
         col.addView(buttons)
+        return cardOf(col)
+    }
+
+    // ---------- E-mail every person their own attendance / night hold report ----------
+
+    private fun ensureUsers(done: () -> Unit) {
+        if (users.isNotEmpty()) { done(); return }
+        api(JSONObject().put("action", "adminUsers")) { r, e ->
+            if (r != null) { users = usersFrom(r); done() } else toast(e ?: "Could not load the people list")
+        }
+    }
+
+    /** [period] gives {period[,from,to]} for the period chosen above, or null when the dates are not chosen yet. */
+    private fun emailReportsCard(period: () -> JSONObject?): View {
+        var scope = "all"
+        var teamManager = ""
+        val pickedUsers = LinkedHashSet<String>()
+        val cbAtt = CheckBox(this).apply { text = "📍  Attendance report"; isChecked = true; textSize = 14f }
+        val cbNight = CheckBox(this).apply { text = "🌙  Night hold report"; isChecked = true; textSize = 14f }
+        val rgScope = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
+        val rbAll = RadioButton(this).apply { text = "Everyone"; id = View.generateViewId() }
+        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; id = View.generateViewId() }
+        val rbUsers = RadioButton(this).apply { text = "Selected people"; id = View.generateViewId() }
+        rgScope.addView(rbAll); rgScope.addView(rbTeam); rgScope.addView(rbUsers); rbAll.isChecked = true
+        val btnWho = chipButton("") {}
+        btnWho.visibility = View.GONE
+        fun refreshWho() {
+            btnWho.text = if (scope == "team") (if (teamManager.isEmpty()) "Choose the manager  ▾" else "Team of: $teamManager  ▾")
+            else (if (pickedUsers.isEmpty()) "Choose the people  ▾" else "${pickedUsers.size} selected: " + pickedUsers.joinToString(", ") + "  ▾")
+        }
+        rgScope.setOnCheckedChangeListener { _, checked ->
+            scope = when (checked) { rbTeam.id -> "team"; rbUsers.id -> "users"; else -> "all" }
+            btnWho.visibility = if (scope == "all") View.GONE else View.VISIBLE
+            refreshWho()
+        }
+        btnWho.setOnClickListener {
+            ensureUsers {
+                if (scope == "team") {
+                    val bosses = users.filter { u -> users.any { it.optString("manager").equals(u.optString("username"), true) } }
+                    val labels = bosses.map { "${it.optString("name")}  (${it.optString("username")})" }
+                    if (labels.isEmpty()) { toast("Nobody has a team yet."); return@ensureUsers }
+                    PickerDialog.show(this, "Whose team?", labels) { picked -> teamManager = bosses[labels.indexOf(picked)].optString("username"); refreshWho() }
+                } else pickPeople(pickedUsers) { refreshWho() }
+            }
+        }
+        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val msg = label("", 14f, "#DC2626", false).apply { setPadding(0, dp(8), 0, 0) }
+
+        fun fail(t: String) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = t }
+        fun info(t: String) { msg.setTextColor(Color.parseColor("#6C7293")); msg.text = t }
+
+        // sends 10 people per request, one request after another, so a long list never times out
+        fun sendAll(ids: List<String>, per: JSONObject, pw: String) {
+            val batch = 10
+            fun step(at: Int, sent: Int, failed: Int) {
+                if (at >= ids.size) {
+                    msg.setTextColor(Color.parseColor(if (failed == 0) "#166534" else "#B45309"))
+                    msg.text = "✅  Sent $sent e-mail${if (sent == 1) "" else "s"}" + (if (failed > 0) " · $failed could not be sent" else "") + "."
+                    etPw.setText("")
+                    return
+                }
+                info("Sending… $at of ${ids.size} done")
+                val body = JSONObject(per.toString()).put("action", "adminEmailSend").put("adminPassword", pw)
+                    .put("attendance", cbAtt.isChecked).put("night", cbNight.isChecked)
+                    .put("target", JSONArray(ids.subList(at, minOf(at + batch, ids.size))))
+                api(body) { r, e ->
+                    if (r == null) { fail("Stopped after $sent sent" + (if (failed > 0) " ($failed failed)" else "") + ": " + (e ?: "unknown problem")); return@api }
+                    step(at + batch, sent + r.optInt("sent"), failed + r.optInt("failed"))
+                }
+            }
+            step(0, 0, 0)
+        }
+
+        val col = column()
+        col.addView(label("✉️  E-mail reports to staff", 18f, "#111827", true))
+        col.addView(label("Each person gets only their own report, as an Excel file, at the e-mail address in their My Profile. It uses the period chosen above.", 13f, "#6C7293", false))
+        col.addView(label("REPORTS", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        col.addView(cbAtt); col.addView(cbNight)
+        col.addView(label("WHO GETS IT", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(10), 0, 0) })
+        col.addView(rgScope); col.addView(btnWho); col.addView(etPw)
+        col.addView(bigButton("✉️  Check and send") {
+            val per = period()
+            when {
+                per == null -> fail("Choose the From and To dates above first")
+                !cbAtt.isChecked && !cbNight.isChecked -> fail("Tick at least one report")
+                scope == "team" && teamManager.isEmpty() -> fail("Choose the manager whose team gets it")
+                scope == "users" && pickedUsers.isEmpty() -> fail("Choose at least one person")
+                etPw.text.isNullOrEmpty() -> fail("Enter your own password to confirm")
+                else -> {
+                    info("Checking who has an e-mail address…")
+                    val pv = JSONObject().put("action", "adminEmailPreview").put("scope", scope)
+                    if (scope == "team") pv.put("target", teamManager)
+                    if (scope == "users") pv.put("target", JSONArray(pickedUsers.toList()))
+                    api(pv) { r, e ->
+                        if (r == null) { fail(e ?: "Could not check"); return@api }
+                        val n = r.optInt("count"); val noMail = r.optInt("noEmail"); val quota = r.optInt("quota")
+                        msg.text = ""
+                        when {
+                            !r.optBoolean("authorized") -> fail("E-mail is not allowed yet. In the Google Apps Script editor run the function authorizeEmail once and approve it.")
+                            n == 0 -> fail("Nobody has an e-mail address saved in My Profile.")
+                            n > quota -> fail("Only $quota e-mails can still be sent today (Google's daily limit) but $n are needed. Choose fewer people, or try again tomorrow.")
+                            else -> {
+                                val names = (0 until minOf(r.optJSONArray("noEmailNames")?.length() ?: 0, 8)).joinToString(", ") { r.getJSONArray("noEmailNames").getString(it) }
+                                var t = "$n ${if (n == 1) "person" else "people"} will get their own report by e-mail."
+                                if (noMail > 0) t += "\n\n$noMail ${if (noMail == 1) "has" else "have"} no e-mail saved and will be skipped" + (if (names.isNotEmpty()) " ($names)" else "") + "."
+                                t += "\n\nThis uses $n of the $quota e-mails left today."
+                                val ids = (0 until r.getJSONArray("people").length()).map { r.getJSONArray("people").getString(it) }
+                                AlertDialog.Builder(this).setTitle("Send the reports?").setMessage(t)
+                                    .setPositiveButton("Send") { _, _ -> sendAll(ids, per, etPw.text.toString()) }
+                                    .setNegativeButton("Cancel", null).show()
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        col.addView(msg)
         return cardOf(col)
     }
 
