@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.tileNight).setOnClickListener { open(NightHoldActivity::class.java) }
         findViewById<android.view.View>(R.id.tileCalendar).setOnClickListener { open(CalendarActivity::class.java) }
         findViewById<android.view.View>(R.id.tileReports).setOnClickListener { open(ReportActivity::class.java) }
+        findViewById<android.view.View>(R.id.tileTarget).setOnClickListener { open(TargetActivity::class.java) }
         findViewById<android.view.View>(R.id.cardNotice).setOnClickListener { open(NoticesActivity::class.java) }
         findViewById<android.view.View>(R.id.cardUpdate).setOnClickListener { pendingUpdate?.let { AppUpdate.offer(this, it) } }
         Thread { AppUpdate.cleanUp(applicationContext) }.start()     // a downloaded APK from an earlier update is no longer needed
@@ -71,7 +72,7 @@ class MainActivity : AppCompatActivity() {
     /** Locked ways in look faded (the server refuses them anyway). */
     private fun showLocks() {
         mapOf(R.id.btnQuickAttendance to "attendance", R.id.btnQuickLeave to "leave", R.id.cardNight to "night", R.id.tileNight to "night",
-            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.btnBell to "notices", R.id.cardNotice to "notices").forEach { (id, key) ->
+            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.tileTarget to "target", R.id.btnBell to "notices", R.id.cardNotice to "notices").forEach { (id, key) ->
             findViewById<android.view.View>(id)?.fadeIfLocked(this, key)
         }
         setupBottomNav(Tab.HOME)
@@ -80,6 +81,7 @@ class MainActivity : AppCompatActivity() {
     private fun showMenu(anchor: android.view.View) {
         val items = ArrayList<MenuEntry>()
         items.add(MenuEntry("👤", "My Profile", "#1E2247") { open(ProfileActivity::class.java) })
+        items.add(MenuEntry("🎯", "Target vs Collection", "#1E2247") { open(TargetActivity::class.java) })
         items.add(MenuEntry("📊", "My Reports", "#1E2247") { open(ReportActivity::class.java) })
         items.add(MenuEntry("🔑", "Change Password", "#1E2247") { ChangePasswordDialog.show(this, session) })
         items.add(MenuEntry("🔔", "Attendance reminders: ${if (Reminders.enabled(this)) "On" else "Off"}", "#1E2247") { toggleReminders() })

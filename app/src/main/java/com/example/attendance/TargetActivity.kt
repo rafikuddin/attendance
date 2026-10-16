@@ -1,0 +1,200 @@
+package com.example.attendance
+
+import android.app.AlertDialog
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.card.MaterialCardView
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+/**
+ * Target vs Collection. Everyone sees their own target and what they collected; a manager also sees everyone below
+ * them; an admin sees everyone. The numbers come from the two Excel files an admin uploads (Admin Panel > 🎯 Targets).
+ * The server decides whose numbers are allowed.
+ */
+class TargetActivity : AppCompatActivity() {
+    private lateinit var session: Session
+    private lateinit var content: LinearLayout
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        session = Session(this)
+        if (!session.loggedIn) { finish(); return }
+        setContentView(R.layout.activity_notices)
+        setupHeader("Target vs Collection") { load() }
+        setupBottomNav(null)
+        enforceAccess("target")
+        content = findViewById(R.id.noticeList)
+        load()
+    }
+
+    private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_LONG).show()
+
+    private fun label(text: String, size: Float, color: String, bold: Boolean) = TextView(this).apply {
+        this.text = text; textSize = size; setTextColor(Color.parseColor(color))
+        if (bold) setTypeface(null, Typeface.BOLD)
+    }
+
+    private fun cardOf(inner: View, onClick: (() -> Unit)? = null) = MaterialCardView(this).apply {
+        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
+        if (onClick != null) { isClickable = true; isFocusable = true; setOnClickListener { onClick() } }
+        addView(inner)
+    }
+
+    private fun column() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
+
+    private fun pctColor(p: Double?): String = when {
+        p == null -> "#6C7293"
+        p >= 100 -> "#15803D"
+        p >= 70 -> "#B45309"
+        else -> "#DC2626"
+    }
+
+    /** A thin progress bar; the fill stops at 100% (the % text shows more). */
+    private fun bar(p: Double?): View {
+        val frac = ((p ?: 0.0) / 100.0).coerceIn(0.0, 1.0).toFloat()
+        val track = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = GradientDrawable().apply { cornerRadius = dp(6).toFloat(); setColor(Color.parseColor("#E6E9F7")) }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(10)).apply { topMargin = dp(8); bottomMargin = dp(4) }
+        }
+        track.addView(View(this).apply {
+            background = GradientDrawable().apply { cornerRadius = dp(6).toFloat(); setColor(Color.parseColor(pctColor(p))) }
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, frac)
+        })
+        if (frac < 1f) track.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - frac) })
+        return track
+    }
+
+    private fun pctText(o: JSONObject): String = if (o.isNull("pct")) "no target" else "${trim(o.optDouble("pct"))}%"
+    private fun trim(d: Double): String = if (d == Math.floor(d)) d.toLong().toString() else String.format(Locale.US, "%.1f", d)
+
+    private fun stat(title: String, value: String, color: String = "#111827") = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        addView(label(title, 11f, "#6C7293", true).apply { letterSpacing = 0.06f })
+        addView(label(value, 15f, color, true))
+    }
+
+    private fun load() {
+        content.removeAllViews()
+        content.addView(label("Loading…", 14f, "#6C7293", false).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
+        api(JSONObject().put("action", "targetView")) { res, err ->
+            content.removeAllViews()
+            if (res == null) { content.addView(label(err ?: "Could not load.", 14f, "#DC2626", false).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) }); return@api }
+            show(res)
+        }
+    }
+
+    private fun niceDate(iso: String): String = try {
+        SimpleDateFormat("d MMM", Locale.getDefault()).format(SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(iso)!!)
+    } catch (e: Exception) { iso }
+
+    private fun show(res: JSONObject) {
+        val scope = res.optString("scope")
+        if (!res.optBoolean("loaded")) {
+            val c = column()
+            c.addView(label("🎯  Nothing to show yet", 16f, "#111827", true))
+            c.addView(label(if (scope == "all") "Upload the Target file and the Sale Collection file in Admin Panel → 🎯 Targets." else "Your admin has not uploaded the target and collection files yet.", 14f, "#6C7293", false).apply { setPadding(0, dp(6), 0, 0) })
+            content.addView(cardOf(c)); return
+        }
+        val from = res.optString("from"); val to = res.optString("to")
+        val upd = res.optJSONObject("updated")
+        val line = StringBuilder()
+        if (from.isNotEmpty()) line.append("Collection ${niceDate(from)} – ${niceDate(to)}")
+        val on = upd?.optString("collection").orEmpty()
+        if (on.isNotEmpty()) line.append("  ·  updated ${on.take(10)}")
+        if (line.isNotEmpty()) content.addView(label(line.toString(), 12f, "#6C7293", false).apply { setPadding(dp(6), 0, dp(6), dp(8)) })
+
+        // ---- my numbers ----
+        val me = res.optJSONObject("me")
+        if (me != null && scope != "all") content.addView(personCard(me, "MY TARGET", big = true))
+        else if (me != null && me.optBoolean("hasTarget")) content.addView(personCard(me, "MY TARGET", big = true))
+
+        // ---- team / everyone ----
+        if (scope != "me") {
+            val t = res.getJSONObject("totals")
+            val c = column()
+            c.addView(label(if (scope == "all") "EVERYONE" else "MY TEAM", 12f, "#1E2247", true).apply { letterSpacing = 0.08f })
+            c.addView(row(label(pctText(t), 26f, pctColor(if (t.isNull("pct")) null else t.optDouble("pct")), true), label("${t.optInt("people")} people", 13f, "#6C7293", false)))
+            c.addView(bar(if (t.isNull("pct")) null else t.optDouble("pct")))
+            val stats = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(6), 0, 0) }
+            stats.addView(stat("TARGET", taka(t.optDouble("target"))))
+            stats.addView(stat("COLLECTED", taka(t.optDouble("collected")), "#15803D"))
+            stats.addView(stat("REMAINING", taka(t.optDouble("remaining")), "#B45309"))
+            c.addView(stats)
+            content.addView(cardOf(c))
+            if (res.has("unassigned") && (res.optDouble("unassigned") != 0.0 || res.optDouble("unknownUser") != 0.0)) {
+                val w = column()
+                if (res.optDouble("unassigned") != 0.0) w.addView(label("⚠️  ${taka(res.optDouble("unassigned"))} of the collection has no Username in the file, so it is not counted for anyone.", 12f, "#B45309", false))
+                if (res.optDouble("unknownUser") != 0.0) w.addView(label("⚠️  ${taka(res.optDouble("unknownUser"))} belongs to a Username that is not an app user.", 12f, "#B45309", false).apply { setPadding(0, dp(4), 0, 0) })
+                content.addView(cardOf(w))
+            }
+            content.addView(label("PEOPLE", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(10), dp(6), dp(6)) })
+            val rows = res.getJSONArray("rows")
+            if (rows.length() == 0) content.addView(label("No one has a target or a collection yet.", 14f, "#6C7293", false).apply { setPadding(dp(6), 0, dp(6), 0) })
+            for (i in 0 until rows.length()) content.addView(personCard(rows.getJSONObject(i), null, big = false))
+        } else if (me == null || (!me.optBoolean("hasTarget") && me.optDouble("collected") == 0.0)) {
+            content.addView(cardOf(column().apply { addView(label("There is no target or collection for you in the uploaded files.", 14f, "#6C7293", false)) }))
+        }
+    }
+
+    private fun row(a: View, b: View) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL
+        addView(a, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)); addView(b)
+    }
+
+    private fun personCard(o: JSONObject, title: String?, big: Boolean): View {
+        val c = column()
+        val p = if (o.isNull("pct")) null else o.optDouble("pct")
+        if (title != null) c.addView(label(title, 12f, "#1E2247", true).apply { letterSpacing = 0.08f })
+        val nm = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        nm.addView(label(o.optString("name"), if (big) 16f else 15f, "#111827", true))
+        if (!big) nm.addView(label("@" + o.optString("username"), 12f, "#6B7280", false))
+        c.addView(row(nm, label(pctText(o), if (big) 26f else 18f, pctColor(p), true)))
+        c.addView(bar(p))
+        val stats = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(4), 0, 0) }
+        stats.addView(stat("TARGET", if (o.optBoolean("hasTarget")) taka(o.optDouble("target")) else "—"))
+        stats.addView(stat("COLLECTED", taka(o.optDouble("collected")), "#15803D"))
+        stats.addView(stat("REMAINING", if (o.optBoolean("hasTarget")) taka(o.optDouble("remaining")) else "—", "#B45309"))
+        c.addView(stats)
+        if (!o.optBoolean("hasTarget")) c.addView(label("No target in the file for this person.", 12f, "#B45309", false).apply { setPadding(0, dp(4), 0, 0) })
+        c.addView(label("Tap for day by day", 11f, "#9AA0C0", false).apply { setPadding(0, dp(6), 0, 0) })
+        return cardOf(c) { detail(o.optString("username"), o.optString("name")) }
+    }
+
+    private fun detail(username: String, name: String) {
+        api(JSONObject().put("action", "targetDetail").put("username", username)) { res, err ->
+            if (res == null) { toast(err ?: "Could not load"); return@api }
+            val sb = StringBuilder()
+            sb.append("Collected ${taka(res.optDouble("collected"))}")
+            if (res.optDouble("target") > 0) sb.append(" of ${taka(res.optDouble("target"))}")
+            sb.append("\n${res.optInt("entries")} collection${if (res.optInt("entries") == 1) "" else "s"}\n\nBY DAY\n")
+            val days = res.optJSONArray("days")
+            if (days == null || days.length() == 0) sb.append("No collection yet.\n")
+            else for (i in 0 until days.length()) { val d = days.getJSONObject(i); sb.append("${niceDate(d.optString("d"))}   ${taka(d.optDouble("a"))}\n") }
+            val types = res.optJSONArray("types")
+            if (types != null && types.length() > 0) {
+                sb.append("\nBY TYPE\n")
+                for (i in 0 until types.length()) {
+                    val t = types.getJSONObject(i)
+                    sb.append("${t.optString("type")}   ${taka(t.optDouble("amount"))}" + (if (!t.optBoolean("counted", true)) "   (not counted)" else "") + "\n")
+                }
+            }
+            AlertDialog.Builder(this).setTitle(name).setView(ScrollView(this).apply {
+                addView(TextView(this@TargetActivity).apply { text = sb.toString(); textSize = 14f; setTextColor(Color.parseColor("#1E2247")); setPadding(dp(22), dp(8), dp(22), dp(8)) })
+            }).setPositiveButton("Close", null).show()
+        }
+    }
+}

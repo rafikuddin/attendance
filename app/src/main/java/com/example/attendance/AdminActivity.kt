@@ -84,7 +84,7 @@ class AdminActivity : AppCompatActivity() {
         setupBottomNav(null)
         enforceAccess("admin")
         content = findViewById(R.id.adminContent)
-        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabSms), findViewById(R.id.tabApp))
+        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabTarget), findViewById(R.id.tabSms), findViewById(R.id.tabApp))
         tabs.forEachIndexed { i, t -> t.setOnClickListener { select(i) } }
         select(0)
     }
@@ -112,7 +112,8 @@ class AdminActivity : AppCompatActivity() {
             2 -> loadHolidays()
             3 -> loadEntry()
             4 -> loadReport()
-            5 -> loadSms()
+            5 -> loadTargets()
+            6 -> loadSms()
             else -> loadApp()
         }
     }
@@ -820,6 +821,133 @@ class AdminActivity : AppCompatActivity() {
         })
         col.addView(buttons)
         return cardOf(col)
+    }
+
+    // ---------- TARGETS (upload the Target file and the Sale Collection file) ----------
+
+    private var importKind = ""
+    private val pickExcel = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) importExcel(uri, importKind)
+    }
+
+    private fun chooseExcel(kind: String) {
+        importKind = kind
+        pickExcel.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream", "application/vnd.ms-excel", "*/*"))
+    }
+
+    private fun loadTargets() {
+        val id = ++loadId
+        content.removeAllViews()
+        val status = note("Loading…")
+        content.addView(status)
+        api(JSONObject().put("action", "adminTargetStatus")) { res, err ->
+            if (id != loadId) return@api
+            content.removeView(status)
+            if (res == null) { content.addView(note(err ?: "Could not load.")); return@api }
+            showTargets(res)
+        }
+    }
+
+    private fun showTargets(res: JSONObject) {
+        val tg = res.optJSONObject("target")
+        val co = res.optJSONObject("collection")
+        val head = column()
+        head.addView(label("🎯  Target vs Collection", 16f, "#111827", true))
+        head.addView(label("Upload two Excel files. Everyone then sees their own target against what they collected; managers also see their team.", 13f, "#6C7293", false).apply { setPadding(0, dp(6), 0, 0) })
+        content.addView(cardOf(head))
+
+        val t = column()
+        t.addView(label("1.  Target file", 15f, "#111827", true))
+        t.addView(label("Columns: Username, Name, Base Code, Base Name, Target (one target per person).", 12f, "#6C7293", false))
+        t.addView(label(if (tg == null) "Not uploaded yet." else "✅  ${tg.optInt("people")} people · total ${taka(tg.optDouble("total"))}\nUploaded ${tg.optString("on")} by ${tg.optString("by")}", 13f, if (tg == null) "#B45309" else "#166534", tg != null).apply { setPadding(0, dp(6), 0, 0) })
+        t.addView(bigButton("📤  Upload Target file") { chooseExcel("target") })
+        content.addView(cardOf(t))
+
+        val c = column()
+        c.addView(label("2.  Sale Collection report", 15f, "#111827", true))
+        c.addView(label("Columns used: Collection Date, Collection Amount, Collection Type and Username (the Username decides who the money counts for).", 12f, "#6C7293", false))
+        if (co == null) c.addView(label("Not uploaded yet.", 13f, "#B45309", false).apply { setPadding(0, dp(6), 0, 0) })
+        else {
+            c.addView(label("✅  ${co.optInt("rows")} rows · ${co.optString("from")} to ${co.optString("to")}\nCounted total ${taka(co.optDouble("total"))}\nUploaded ${co.optString("on")} by ${co.optString("by")}", 13f, "#166534", true).apply { setPadding(0, dp(6), 0, 0) })
+            if (co.optDouble("unassigned") != 0.0)
+                c.addView(label("⚠️  ${taka(co.optDouble("unassigned"))} has no Username and is not counted for anyone.", 12f, "#B45309", false).apply { setPadding(0, dp(4), 0, 0) })
+        }
+        c.addView(bigButton("📤  Upload Collection report") { chooseExcel("collection") })
+        content.addView(cardOf(c))
+
+        val types = res.optJSONArray("types")
+        if (types != null && types.length() > 0) {
+            val k = column()
+            k.addView(label("What counts as collected", 15f, "#111827", true))
+            k.addView(label("Tick the Collection Types that count towards the target. Untick things such as Bank Charge.", 12f, "#6C7293", false))
+            val boxes = ArrayList<Pair<String, CheckBox>>()
+            for (i in 0 until types.length()) {
+                val o = types.getJSONObject(i)
+                val cb = CheckBox(this).apply { text = "${o.optString("type")}   (${taka(o.optDouble("amount"))})"; textSize = 14f; isChecked = o.optBoolean("counted") }
+                boxes.add(Pair(o.optString("type"), cb)); k.addView(cb)
+            }
+            val msg = label("", 13f, "#DC2626", false)
+            k.addView(bigButton("💾  Save") {
+                val keep = JSONArray(boxes.filter { it.second.isChecked }.map { it.first })
+                if (keep.length() == 0) { msg.text = "Tick at least one type"; return@bigButton }
+                api(JSONObject().put("action", "adminTargetTypes").put("types", keep)) { r, e ->
+                    if (r != null) { toast("Saved"); loadTargets() } else { msg.text = e ?: "Could not save" }
+                }
+            })
+            k.addView(msg)
+            content.addView(cardOf(k))
+        }
+    }
+
+    /** Reads the chosen Excel file on the phone, shows what was found and asks for the admin's password before uploading. */
+    private fun importExcel(uri: android.net.Uri, kind: String) {
+        toast("Reading the file…")
+        Thread {
+            var summary = ""
+            var rows: JSONArray? = null
+            var problem: String? = null
+            try {
+                val table = contentResolver.openInputStream(uri)?.use { Xlsx.read(it) } ?: throw IllegalArgumentException("Could not open the file.")
+                val arr = JSONArray()
+                if (kind == "target") {
+                    val r = TargetImport.parseTarget(table)
+                    r.rows.forEach { arr.put(JSONObject().put("u", it.username).put("n", it.name).put("bc", it.baseCode).put("bn", it.baseName).put("t", it.target)) }
+                    summary = "Target file\n\n${r.rows.size} people\nTotal target ${taka(r.total)}" + (if (r.skipped > 0) "\n${r.skipped} rows skipped (no Username or no Target number)" else "")
+                } else {
+                    val r = TargetImport.parseCollection(table)
+                    r.rows.forEach { arr.put(JSONObject().put("d", it.date).put("u", it.username).put("k", it.type).put("a", it.amount).put("c", it.count)) }
+                    summary = "Sale Collection report\n\n${r.fileRows} rows in the file · ${r.from} to ${r.to}\nTotal ${taka(r.total)}\n${r.people} people have a Username"
+                    if (r.unassignedRows > 0) summary += "\n\n⚠️ ${r.unassignedRows} rows (${taka(r.unassigned)}) have NO Username. They cannot be given to anyone and will not count."
+                    if (r.skipped > 0) summary += "\n${r.skipped} rows skipped (no valid date or amount)"
+                    summary += "\n\nTypes: " + r.types.entries.joinToString(", ") { "${it.key} ${taka(it.value)}" }
+                }
+                rows = arr
+            } catch (e: IllegalArgumentException) { problem = e.message
+            } catch (e: Exception) { problem = "Could not read this file. Is it an Excel (.xlsx) file?"
+            } catch (e: OutOfMemoryError) { problem = "This file is too big to read on the phone." }
+            runOnUiThread {
+                if (problem != null || rows == null) { AlertDialog.Builder(this).setTitle("Cannot use this file").setMessage(problem ?: "Unknown problem").setPositiveButton("OK", null).show(); return@runOnUiThread }
+                val pw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+                val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(4), dp(20), 0) }
+                box.addView(label(summary + "\n\nThis REPLACES the " + (if (kind == "target") "targets" else "collection data") + " now loaded.", 13f, "#1E2247", false))
+                box.addView(pw)
+                AlertDialog.Builder(this).setTitle("Upload this file?").setView(ScrollView(this).apply { addView(box) })
+                    .setPositiveButton("Upload") { _, _ ->
+                        toast("Uploading…")
+                        api(JSONObject().put("action", "adminTargetUpload").put("kind", kind).put("rows", rows).put("adminPassword", pw.text.toString())) { r, e ->
+                            if (r == null) { AlertDialog.Builder(this).setTitle("Not uploaded").setMessage(e ?: "Unknown problem").setPositiveButton("OK", null).show(); return@api }
+                            var t = if (kind == "target") "Loaded ${r.optInt("people")} targets (total ${taka(r.optDouble("total"))})." else "Loaded ${r.optInt("rows")} collection lines, ${r.optString("from")} to ${r.optString("to")}, total ${taka(r.optDouble("total"))}."
+                            t += "\n${r.optInt("matched")} ${if (kind == "target") "of them are" else "usernames are"} app users."
+                            if (r.optInt("notInApp") > 0) {
+                                val s = r.optJSONArray("notInAppSample")
+                                t += "\n${r.optInt("notInApp")} Username${if (r.optInt("notInApp") == 1) " is" else "s are"} not an app user" + (if (s != null && s.length() > 0) ": " + (0 until s.length()).joinToString(", ") { s.optString(it) } else "") + ". Add them in Users with the same Username to see them."
+                            }
+                            AlertDialog.Builder(this).setTitle("Uploaded").setMessage(t).setPositiveButton("OK", null).show()
+                            loadTargets()
+                        }
+                    }.setNegativeButton("Cancel", null).show()
+            }
+        }.start()
     }
 
     // ---------- E-mail every person their own attendance / night hold report ----------

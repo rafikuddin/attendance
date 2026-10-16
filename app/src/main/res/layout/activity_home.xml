@@ -226,6 +226,24 @@
                         android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 </LinearLayout>
             </LinearLayout>
+            <LinearLayout android:id="@+id/tileTarget" android:orientation="horizontal" android:gravity="center_vertical"
+                android:background="@drawable/bg_tile_lilac" android:clickable="true" android:focusable="true"
+                android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="76dp"
+                android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="12dp"
+                android:paddingStart="14dp" android:paddingEnd="14dp" android:elevation="3dp">
+                <TextView android:text="🎯" android:textSize="26sp" android:gravity="center"
+                    android:background="@drawable/bg_action_icon"
+                    android:layout_width="58dp" android:layout_height="58dp" />
+                <LinearLayout android:orientation="vertical" android:layout_marginStart="14dp"
+                    android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content">
+                    <TextView android:text="Target vs Collection" android:textSize="15sp" android:textStyle="bold" android:textColor="@color/ink"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    <TextView android:text="How much you have collected against your target" android:textSize="12sp" android:textColor="@color/muted"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                </LinearLayout>
+                <TextView android:text="›" android:textSize="26sp" android:textColor="@color/muted"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
 
             <!-- Leave balance -->
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
