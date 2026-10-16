@@ -79,6 +79,7 @@ class NightHoldActivity : AppCompatActivity() {
         forDate = intent.getStringExtra(EXTRA_FOR_DATE)?.takeIf { it.isNotBlank() }
         setupHeader(if (forDate != null) "Manual Night Hold" else "Night Hold") { loadStatus(); if (cardForm.visibility == View.VISIBLE) startLocation() }
         setupBottomNav(Tab.NIGHT)
+        enforceAccess("night")
 
         tvLoc = findViewById(R.id.tvLoc)
         btnRetry = findViewById(R.id.btnRetryLoc)

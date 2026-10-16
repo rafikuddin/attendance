@@ -50,6 +50,7 @@ class CalendarActivity : AppCompatActivity() {
         val shownName = intent.getStringExtra(EXTRA_NAME) ?: target ?: ""
         setupHeader(if (target == null) "My Attendance" else shownName) { loadData() }
         setupBottomNav(if (target == null) Tab.CALENDAR else null)
+        if (target == null) enforceAccess("calendar")
         grid = findViewById(R.id.grid)
         tvMonth = findViewById(R.id.tvMonth)
         tvCount = findViewById(R.id.tvCount)

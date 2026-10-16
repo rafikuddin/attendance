@@ -80,6 +80,7 @@ class ProfileActivity : AppCompatActivity() {
         target = intent.getStringExtra(EXTRA_USER)?.takeIf { it.isNotBlank() }
         setupHeader(if (target == null) "My Profile" else "Edit Profile") { loadProfile() }
         setupBottomNav(null)
+        if (target == null) enforceAccess("profile")
         session = Session(this)
         val shownName = if (target == null) session.name else (intent.getStringExtra(EXTRA_NAME) ?: target!!)
         imgProfile = findViewById(R.id.imgProfile); tvInitial = findViewById(R.id.tvPhotoInitial)

@@ -190,6 +190,11 @@ class AdminActivity : AppCompatActivity() {
         val id = ++loadId
         content.removeAllViews()
         content.addView(bigButton("➕  Add new user") { addUserDialog() })
+        content.addView(chipButton("🔐  Menu access for several people") {
+            if (users.isEmpty()) { toast("Wait until the users have loaded."); return@chipButton }
+            val chosen = LinkedHashSet<String>()
+            pickPeople(chosen) { if (chosen.isNotEmpty()) accessDialog(chosen.toList(), null) }
+        })
         val status = note("Loading users…")
         content.addView(status)
         api(JSONObject().put("action", "adminUsers")) { res, err ->
@@ -295,6 +300,16 @@ class AdminActivity : AppCompatActivity() {
             }
         })
         col.addView(viewRow)
+        val lockedNow = o.optJSONArray("locks")
+        if (lockedNow != null && lockedNow.length() > 0) {
+            val names = (0 until lockedNow.length()).joinToString(", ") { Access.name(lockedNow.optString(it)) }
+            col.addView(label("🔒 Locked: $names", 12f, "#B45309", true).apply { setPadding(0, dp(8), 0, 0) })
+        }
+        col.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = "🔐  Menu access"
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+            setOnClickListener { accessDialog(listOf(username), lockedNow) }
+        })
         if (!username.equals(session.username, ignoreCase = true)) {
             col.addView(MaterialButton(this).apply {
                 text = "🔑  Reset password"
@@ -303,6 +318,37 @@ class AdminActivity : AppCompatActivity() {
             })
         }
         return cardOf(col)
+    }
+
+    /** Tick = the person MAY use it; untick = locked. [now] is the current locked list of one person (null when several are chosen). */
+    private fun accessDialog(names: List<String>, now: JSONArray?) {
+        val locked = HashSet<String>()
+        if (now != null) for (i in 0 until now.length()) locked.add(now.optString(i))
+        val boxes = LinkedHashMap<String, CheckBox>()
+        val form = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
+        form.addView(label(if (names.size == 1) "Tick what this person may use. Untick to lock it. The server refuses a locked option, and the app hides the way in."
+            else "These settings REPLACE the current ones of all ${names.size} chosen people. Tick what they may use; untick to lock it.", 13f, "#6C7293", false))
+        Access.items.forEach { (key, text) ->
+            val cb = CheckBox(this).apply { this.text = text; textSize = 15f; isChecked = !locked.contains(key) }
+            boxes[key] = cb; form.addView(cb)
+        }
+        form.addView(label("Admin Panel access always comes from the Role column, not from this list.", 12f, "#9AA0C0", false).apply { setPadding(0, dp(8), 0, 0) })
+        val title = if (names.size == 1) "Menu access: " + (users.firstOrNull { it.optString("username").equals(names[0], true) }?.optString("name") ?: names[0])
+                    else "Menu access: ${names.size} people"
+        AlertDialog.Builder(this).setTitle(title).setView(ScrollView(this).apply { addView(form) })
+            .setPositiveButton("Save") { _, _ ->
+                val body = JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names))
+                    .put("locks", JSONArray(boxes.filter { !it.value.isChecked }.keys.toList()))
+                api(body) { res, err ->
+                    if (res != null) { toast("Saved for ${res.optInt("updated")} ${if (res.optInt("updated") == 1) "person" else "people"}"); loadUsers() }
+                    else toast(err ?: "Could not save")
+                }
+            }
+            .setNeutralButton("Unlock all") { _, _ -> boxes.values.forEach { it.isChecked = true }
+                api(JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names)).put("locks", JSONArray())) { res, err ->
+                    if (res != null) { toast("Everything unlocked"); loadUsers() } else toast(err ?: "Could not save") }
+            }
+            .setNegativeButton("Cancel", null).show()
     }
 
     private fun addUserDialog() {

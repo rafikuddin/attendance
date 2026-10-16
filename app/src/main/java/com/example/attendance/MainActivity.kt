@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         if (session.loggedIn) {
             if (session.mustChangePassword) ChangePasswordDialog.show(this, session, forced = true)
+            showLocks()
             loadStatus()
         }
     }
@@ -61,7 +62,20 @@ class MainActivity : AppCompatActivity() {
     private val versionName: String
         get() = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "" } catch (e: Exception) { "" }
 
-    private fun open(c: Class<*>) = startActivity(Intent(this, c))
+    private fun open(c: Class<*>) {
+        val key = Access.keyFor(c)
+        if (key != null && isLocked(key)) { toastLocked(key); return }
+        startActivity(Intent(this, c))
+    }
+
+    /** Locked ways in look faded (the server refuses them anyway). */
+    private fun showLocks() {
+        mapOf(R.id.btnQuickAttendance to "attendance", R.id.btnQuickLeave to "leave", R.id.cardNight to "night", R.id.tileNight to "night",
+            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.btnBell to "notices", R.id.cardNotice to "notices").forEach { (id, key) ->
+            findViewById<android.view.View>(id)?.fadeIfLocked(this, key)
+        }
+        setupBottomNav(Tab.HOME)
+    }
 
     private fun showMenu(anchor: android.view.View) {
         val items = ArrayList<MenuEntry>()
@@ -69,7 +83,7 @@ class MainActivity : AppCompatActivity() {
         items.add(MenuEntry("📊", "My Reports", "#1E2247") { open(ReportActivity::class.java) })
         items.add(MenuEntry("🔑", "Change Password", "#1E2247") { ChangePasswordDialog.show(this, session) })
         items.add(MenuEntry("🔔", "Attendance reminders: ${if (Reminders.enabled(this)) "On" else "Off"}", "#1E2247") { toggleReminders() })
-        allowances?.takeIf { it.length() > 0 }?.let { a ->
+        allowances?.takeIf { it.length() > 0 && !isLocked("manual") }?.let { a ->
             items.add(MenuEntry("📝", "Manual entry (${a.length()})", "#7C3AED", true) { showManualEntries(a) })
         }
         pendingUpdate?.let { u ->
@@ -401,7 +415,7 @@ class MainActivity : AppCompatActivity() {
                 .put("appVersion", AppUpdate.installedName(this)).put("appCode", AppUpdate.installedCode(this)),   // lets admins see who has which version
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<android.view.View>(R.id.btnRefresh),
-            onData = { res -> render(res) },
+            onData = { res -> Access.remember(this, res); render(res); showLocks() },
             onError = { err, hadSaved ->
                 if (err?.contains("choose a new password first") == true) {      // the server wants a new password before anything else
                     session.mustChangePassword = true

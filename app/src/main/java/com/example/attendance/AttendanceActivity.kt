@@ -66,6 +66,7 @@ class AttendanceActivity : AppCompatActivity() {
         forDate = intent.getStringExtra(EXTRA_FOR_DATE)?.takeIf { it.isNotBlank() }
         setupHeader(if (forDate != null) "Manual Attendance" else "Mark Attendance")
         setupBottomNav(Tab.ATTENDANCE)
+        enforceAccess("attendance")
         btnCapture = findViewById(R.id.btnCapture)
         btnSubmit = findViewById(R.id.btnSubmit)
 

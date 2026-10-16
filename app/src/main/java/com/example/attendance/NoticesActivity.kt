@@ -30,6 +30,7 @@ class NoticesActivity : AppCompatActivity() {
         setContentView(R.layout.activity_notices)
         setupHeader("Notices") { load() }
         setupBottomNav(null)
+        enforceAccess("notices")
         list = findViewById(R.id.noticeList)
         load()
     }

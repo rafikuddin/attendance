@@ -51,7 +51,11 @@ fun AppCompatActivity.setupBottomNav(active: Tab?) {
         icon.alpha = if (on) 1f else 0.6f
         label.setTextColor(ContextCompat.getColor(this, if (on) R.color.primary else R.color.muted))
         label.setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
+        val key = when (tab) { Tab.ATTENDANCE -> "attendance"; Tab.LEAVE -> "leave"; Tab.TEAM -> "team"; Tab.CALENDAR -> "calendar"; Tab.NIGHT -> "night"; else -> null }
+        label.text = label.text.toString().removePrefix("🔒 ")
+        if (key != null && !on && isLocked(key)) { icon.alpha = 0.25f; label.text = "🔒 " + label.text }
         item.setOnClickListener {
+            if (key != null && !on && isLocked(key)) { toastLocked(key); return@setOnClickListener }
             if (!on) {
                 val target: Class<*> = when (tab) {
                     Tab.HOME -> MainActivity::class.java

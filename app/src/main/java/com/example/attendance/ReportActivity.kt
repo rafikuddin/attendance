@@ -57,6 +57,7 @@ class ReportActivity : AppCompatActivity() {
         setContentView(R.layout.activity_notices)            // the same plain scrolling page
         setupHeader("My Reports")
         setupBottomNav(null)
+        enforceAccess("reports")
         content = findViewById(R.id.noticeList)
         build()
     }
