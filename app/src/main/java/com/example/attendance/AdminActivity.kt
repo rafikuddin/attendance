@@ -195,7 +195,7 @@ class AdminActivity : AppCompatActivity() {
         content.addView(chipButton("🔐  Menu access for several people") {
             if (users.isEmpty()) { toast("Wait until the users have loaded."); return@chipButton }
             val chosen = LinkedHashSet<String>()
-            pickPeople(chosen) { if (chosen.isNotEmpty()) accessDialog(chosen.toList(), null) }
+            pickPeople(chosen) { if (chosen.isNotEmpty()) accessDialog(chosen.toList(), null, null) }
         })
         val status = note("Loading users…")
         content.addView(status)
@@ -303,6 +303,9 @@ class AdminActivity : AppCompatActivity() {
         })
         col.addView(viewRow)
         val lockedNow = o.optJSONArray("locks")
+        val grantsNow = o.optJSONArray("grants")
+        if (!o.optBoolean("isAdmin") && grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "surveys" })
+            col.addView(label("📋 Can create & manage surveys", 12f, "#4338CA", true).apply { setPadding(0, dp(8), 0, 0) })
         if (lockedNow != null && lockedNow.length() > 0) {
             val names = (0 until lockedNow.length()).joinToString(", ") { Access.name(lockedNow.optString(it)) }
             col.addView(label("🔒 Locked: $names", 12f, "#B45309", true).apply { setPadding(0, dp(8), 0, 0) })
@@ -310,7 +313,7 @@ class AdminActivity : AppCompatActivity() {
         col.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
             text = "🔐  Menu access"
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
-            setOnClickListener { accessDialog(listOf(username), lockedNow) }
+            setOnClickListener { accessDialog(listOf(username), lockedNow, grantsNow) }
         })
         if (!username.equals(session.username, ignoreCase = true)) {
             col.addView(MaterialButton(this).apply {
@@ -323,7 +326,7 @@ class AdminActivity : AppCompatActivity() {
     }
 
     /** Tick = the person MAY use it; untick = locked. [now] is the current locked list of one person (null when several are chosen). */
-    private fun accessDialog(names: List<String>, now: JSONArray?) {
+    private fun accessDialog(names: List<String>, now: JSONArray?, grantsNow: JSONArray?) {
         val locked = HashSet<String>()
         if (now != null) for (i in 0 until now.length()) locked.add(now.optString(i))
         val boxes = LinkedHashMap<String, CheckBox>()
@@ -339,19 +342,29 @@ class AdminActivity : AppCompatActivity() {
             boxes[key] = cb; form.addView(cb)
         }
         form.addView(label("Admin Panel access always comes from the Role column, not from this list.", 12f, "#9AA0C0", false).apply { setPadding(0, dp(8), 0, 0) })
+        // An extra right (not a menu): who may create, edit and read the results of surveys. Admins always may.
+        form.addView(label("EXTRA RIGHTS", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, dp(2)) })
+        val cbSurvey = CheckBox(this).apply {
+            text = "📋  Can create & manage surveys"; textSize = 15f
+            isChecked = grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "surveys" }
+        }
+        form.addView(cbSurvey)
+        form.addView(label(if (names.size == 1) "Admins can always do this. Everybody else only with this tick; they then see ⚙️ Manage surveys inside Surveys."
+            else "Applies to all ${names.size} chosen people (admins can always do this).", 12f, "#9AA0C0", false))
         val title = if (names.size == 1) "Menu access: " + (users.firstOrNull { it.optString("username").equals(names[0], true) }?.optString("name") ?: names[0])
                     else "Menu access: ${names.size} people"
         AlertDialog.Builder(this).setTitle(title).setView(ScrollView(this).apply { addView(form) })
             .setPositiveButton("Save") { _, _ ->
                 val body = JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names))
                     .put("locks", JSONArray(boxes.filter { !it.value.isChecked }.keys.toList()))
+                    .put("grants", JSONArray(if (cbSurvey.isChecked) listOf("surveys") else listOf()))
                 api(body) { res, err ->
                     if (res != null) { toast("Saved for ${res.optInt("updated")} ${if (res.optInt("updated") == 1) "person" else "people"}"); loadUsers() }
                     else toast(err ?: "Could not save")
                 }
             }
             .setNeutralButton("Unlock all") { _, _ -> boxes.values.forEach { it.isChecked = true }
-                api(JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names)).put("locks", JSONArray())) { res, err ->
+                api(JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names)).put("locks", JSONArray()).put("grants", JSONArray(if (cbSurvey.isChecked) listOf("surveys") else listOf()))) { res, err ->
                     if (res != null) { toast("Everything unlocked"); loadUsers() } else toast(err ?: "Could not save") }
             }
             .setNegativeButton("Cancel", null).show()

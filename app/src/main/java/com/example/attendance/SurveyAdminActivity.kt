@@ -86,7 +86,7 @@ class SurveyAdminActivity : AppCompatActivity() {
         setContentView(R.layout.activity_notices)
         setupHeader("Manage surveys") { if (mode == 0) loadList() }
         setupBottomNav(null)
-        enforceAccess("admin")
+        if (!Access.canManageSurveys(this)) { toast("Only a survey manager can open this."); finish(); return }
         content = findViewById(R.id.noticeList)
         findViewById<TextView>(R.id.btnBack).setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -397,7 +397,7 @@ class SurveyAdminActivity : AppCompatActivity() {
                 .setNegativeButton("Cancel", null).show()
         }
         val have = people
-        if (have != null) show(have) else api(JSONObject().put("action", "adminUsers")) { r, e ->
+        if (have != null) show(have) else api(JSONObject().put("action", "surveyPeople")) { r, e ->
             val l = r?.optJSONArray("users")
             if (l == null) toast(e ?: "Could not load the people.") else { people = l; show(l) }
         }

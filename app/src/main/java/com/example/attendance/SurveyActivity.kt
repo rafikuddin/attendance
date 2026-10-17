@@ -99,7 +99,7 @@ class SurveyActivity : AppCompatActivity() {
         content.addView(label("Loading…", 14f, "#6C7293").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
         api(JSONObject().put("action", "surveyList")) { res, err ->
             content.removeAllViews()
-            if (AdminFlag.get(this) && !isLocked("admin")) {
+            if (Access.canManageSurveys(this)) {
                 val a = column()
                 a.addView(label("⚙️  Manage surveys", 15f, "#4F46E5", true))
                 a.addView(label("Create a survey, see the results, download Excel", 12f, "#6C7293"))

@@ -38,6 +38,7 @@ class LoginActivity : AppCompatActivity() {
                 if (res != null) {
                     session.username = u
                     session.name = res.optString("name", u)
+                    Access.remember(this, res)
                     session.isManager = res.optBoolean("isManager")
                     AdminFlag.set(this, res.optBoolean("isAdmin"))
                     session.mustChangePassword = res.optBoolean("weakPassword")
