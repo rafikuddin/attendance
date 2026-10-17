@@ -23,6 +23,7 @@ object Access {
         "profile" to "👤  My Profile",
         "manual" to "📝  Manual entry",
         "target" to "🎯  Target vs Collection",
+        "survey" to "📋  Surveys",
         "admin" to "🛠  Admin Panel (admins only)"
     )
 
@@ -50,6 +51,7 @@ object Access {
         NoticesActivity::class.java -> "notices"
         ReportActivity::class.java -> "reports"
         TargetActivity::class.java -> "target"
+        SurveyActivity::class.java -> "survey"
         ProfileActivity::class.java -> "profile"
         AdminActivity::class.java -> "admin"
         else -> null

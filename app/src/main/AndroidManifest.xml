@@ -26,6 +26,8 @@
         <activity android:name=".NoticesActivity" android:exported="false" />
         <activity android:name=".ReportActivity" android:exported="false" />
         <activity android:name=".TargetActivity" android:exported="false" />
+        <activity android:name=".SurveyActivity" android:exported="false" />
+        <activity android:name=".SurveyAdminActivity" android:exported="false" />
         <activity android:name=".AdminActivity" android:exported="false" />
         <activity android:name=".ProfileActivity" android:exported="false" />
         <!-- Lets the camera app save a leave-application or profile photo into this app's private cache folder -->

@@ -215,7 +215,7 @@ class LeaveActivity : AppCompatActivity() {
     private fun showPreviewDialog(bytes: ByteArray) {
         val img = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
-            setBackgroundColor(Pal.c("#111827"))
+            setBackgroundColor(Color.parseColor("#111827"))
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.7).toInt())
             setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
         }

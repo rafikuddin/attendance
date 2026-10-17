@@ -16,6 +16,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvMonth: TextView
     private val notifPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
     private var allowances: org.json.JSONArray? = null     // dates an admin opened for this person's manual attendance / night hold
+    private var pendingSurveys = 0                          // surveys this person has not answered yet
     private var pendingUpdate: JSONObject? = null           // the newer app version the server offers, if any
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.tileCalendar).setOnClickListener { open(CalendarActivity::class.java) }
         findViewById<android.view.View>(R.id.tileReports).setOnClickListener { open(ReportActivity::class.java) }
         findViewById<android.view.View>(R.id.tileTarget).setOnClickListener { open(TargetActivity::class.java) }
+        findViewById<android.view.View>(R.id.tileSurvey).setOnClickListener { open(SurveyActivity::class.java) }
         findViewById<android.view.View>(R.id.cardNotice).setOnClickListener { open(NoticesActivity::class.java) }
         findViewById<android.view.View>(R.id.cardUpdate).setOnClickListener { pendingUpdate?.let { AppUpdate.offer(this, it) } }
         Thread { AppUpdate.cleanUp(applicationContext) }.start()     // a downloaded APK from an earlier update is no longer needed
@@ -58,6 +60,7 @@ class MainActivity : AppCompatActivity() {
             if (session.mustChangePassword) ChangePasswordDialog.show(this, session, forced = true)
             showLocks()
             loadStatus()
+            loadSurveyCount()
         }
     }
 
@@ -73,7 +76,7 @@ class MainActivity : AppCompatActivity() {
     /** Locked ways in look faded (the server refuses them anyway). */
     private fun showLocks() {
         mapOf(R.id.btnQuickAttendance to "attendance", R.id.btnQuickLeave to "leave", R.id.cardNight to "night", R.id.tileNight to "night",
-            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.tileTarget to "target", R.id.btnBell to "notices", R.id.cardNotice to "notices").forEach { (id, key) ->
+            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.tileTarget to "target", R.id.tileSurvey to "survey", R.id.btnBell to "notices", R.id.cardNotice to "notices").forEach { (id, key) ->
             findViewById<android.view.View>(id)?.fadeIfLocked(this, key)
         }
         setupBottomNav(Tab.HOME)
@@ -93,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         items.add(SideItem("🔔", "Notices", "Menu", badge = unread, locked = isLocked("notices")) { open(NoticesActivity::class.java) })
         items.add(SideItem("📊", "My Reports", "Menu", locked = isLocked("reports")) { open(ReportActivity::class.java) })
         items.add(SideItem("🎯", "Target vs Collection", "Menu", locked = isLocked("target")) { open(TargetActivity::class.java) })
+        items.add(SideItem("📋", "Surveys", "Menu", badge = pendingSurveys, locked = isLocked("survey")) { open(SurveyActivity::class.java) })
 
         items.add(SideItem("👤", "My Profile", "Settings", locked = isLocked("profile")) { open(ProfileActivity::class.java) })
         items.add(SideItem("🔑", "Change Password", "Settings") { ChangePasswordDialog.show(this, session) })
@@ -266,6 +270,16 @@ class MainActivity : AppCompatActivity() {
         val notes = info.optString("notes")
         findViewById<TextView>(R.id.tvUpdateText).text = if (notes.isNotEmpty()) notes else "A new version of the app is ready. Tap Update."
         card.visibility = android.view.View.VISIBLE
+    }
+
+    /** How many surveys are waiting for this person (shown on the Home tile and as a badge in the side menu). */
+    private fun loadSurveyCount() {
+        if (isLocked("survey")) { pendingSurveys = 0; return }
+        api(JSONObject().put("action", "surveyList")) { res, _ ->
+            pendingSurveys = res?.optInt("pending") ?: 0
+            findViewById<TextView>(R.id.tvSurveySub)?.text =
+                if (pendingSurveys > 0) "$pendingSurveys waiting for your answer" else "Answer the questions your team has sent"
+        }
     }
 
     /** Bell badge: how many notices have not been opened yet. */
