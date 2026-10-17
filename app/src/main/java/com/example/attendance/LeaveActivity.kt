@@ -215,7 +215,7 @@ class LeaveActivity : AppCompatActivity() {
     private fun showPreviewDialog(bytes: ByteArray) {
         val img = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
-            setBackgroundColor(Color.parseColor("#111827"))
+            setBackgroundColor(Pal.c("#111827"))
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.7).toInt())
             setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
         }
@@ -224,7 +224,7 @@ class LeaveActivity : AppCompatActivity() {
 
     private fun msg(m: String, ok: Boolean) {
         tvMsg.text = m
-        tvMsg.setTextColor(Color.parseColor(if (ok) "#166534" else "#DC2626"))
+        tvMsg.setTextColor(Pal.c(if (ok) "#166534" else "#DC2626"))
     }
 
     private fun fmt(s: String) = try { nice.format(iso.parse(s)!!) } catch (e: Exception) { s }
@@ -247,7 +247,7 @@ class LeaveActivity : AppCompatActivity() {
         list.removeAllViews()
         renderBalance(res)
         val arr = res.getJSONArray("leaves")
-        if (arr.length() == 0) list.addView(TextView(this).apply { text = "No leave requests yet."; setTextColor(Color.GRAY) })
+        if (arr.length() == 0) list.addView(TextView(this).apply { text = "No leave requests yet."; setTextColor(Pal.c("#6B7280")) })
         for (i in 0 until arr.length()) list.addView(card(arr.getJSONObject(i)))
     }
 
@@ -271,7 +271,7 @@ class LeaveActivity : AppCompatActivity() {
                 "Earn" -> Triple("#D97706", "#FEF3D6", "💰")
                 else -> Triple("#0284C7", "#E3F3FC", "👶")
             }
-            val accent = Color.parseColor(if (rem <= 0) "#DC2626" else look.first)
+            val accent = Pal.c(if (rem <= 0) "#DC2626" else look.first)
             if (i % 2 == 0) {
                 row = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -282,7 +282,7 @@ class LeaveActivity : AppCompatActivity() {
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(14), dp(12), dp(14), dp(12))
-                background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Color.parseColor(look.second)) }
+                background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Pal.c(look.second)) }
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
                     if (i % 2 == 0) marginEnd = dp(5) else marginStart = dp(5)
                 }
@@ -293,7 +293,7 @@ class LeaveActivity : AppCompatActivity() {
             val big = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.BOTTOM }
             big.addView(TextView(this).apply { text = rem.toString(); textSize = 34f; setTypeface(null, Typeface.BOLD); setTextColor(accent) })
             big.addView(TextView(this).apply {
-                text = "  of $quota left"; textSize = 12f; setTextColor(Color.parseColor("#6B7280"))
+                text = "  of $quota left"; textSize = 12f; setTextColor(Pal.c("#6B7280"))
                 setPadding(0, 0, 0, dp(7))
             })
             tile.addView(big)
@@ -312,7 +312,7 @@ class LeaveActivity : AppCompatActivity() {
             tile.addView(track)
             tile.addView(TextView(this).apply {
                 text = "Used $used" + if (pend > 0) "  ·  Pending $pend" else ""
-                textSize = 11f; setTextColor(Color.parseColor("#6B7280")); setPadding(0, dp(6), 0, 0)
+                textSize = 11f; setTextColor(Pal.c("#6B7280")); setPadding(0, dp(6), 0, 0)
             })
             row?.addView(tile)
         }
@@ -329,19 +329,19 @@ class LeaveActivity : AppCompatActivity() {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
         col.addView(TextView(this).apply {
             text = "${o.optString("type")}  •  ${o.optString("days")} day(s)"
-            textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Color.parseColor("#111827"))
+            textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#111827"))
         })
-        col.addView(TextView(this).apply { text = "${fmt(o.optString("from"))}  →  ${fmt(o.optString("to"))}"; setTextColor(Color.parseColor("#6B7280")) })
-        if (o.optString("reason").isNotEmpty()) col.addView(TextView(this).apply { text = o.optString("reason"); setTextColor(Color.parseColor("#6B7280")) })
+        col.addView(TextView(this).apply { text = "${fmt(o.optString("from"))}  →  ${fmt(o.optString("to"))}"; setTextColor(Pal.c("#6B7280")) })
+        if (o.optString("reason").isNotEmpty()) col.addView(TextView(this).apply { text = o.optString("reason"); setTextColor(Pal.c("#6B7280")) })
         if (o.optString("application").isNotEmpty()) col.addView(applicationLink(session, o.optString("application")))
         col.addView(TextView(this).apply {
-            text = status; setTextColor(Color.parseColor(fg)); setTypeface(null, android.graphics.Typeface.BOLD)
+            text = status; setTextColor(Pal.c(fg)); setTypeface(null, android.graphics.Typeface.BOLD)
             setPadding(dp(12), dp(4), dp(12), dp(4))
-            background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.parseColor(bg)) }
+            background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Pal.c(bg)) }
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
         })
         return MaterialCardView(this).apply {
-            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
+            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.card)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
             addView(col)
         }

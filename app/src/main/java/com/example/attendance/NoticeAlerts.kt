@@ -60,16 +60,16 @@ object NoticePopup {
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(22), dp(24), dp(22), dp(18))
-            background = GradientDrawable().apply { cornerRadius = dp(28).toFloat(); setColor(Color.WHITE) }
+            background = GradientDrawable().apply { cornerRadius = dp(28).toFloat(); setColor(Pal.card) }
         }
         root.addView(TextView(activity).apply {
             text = "📢"; textSize = 30f; gravity = Gravity.CENTER
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#FFF4E5")) }
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Pal.c("#FFF4E5")) }
             layoutParams = LinearLayout.LayoutParams(dp(68), dp(68))
         })
         root.addView(TextView(activity).apply {
             text = if (notices.length() == 1) "New notice" else "${notices.length()} notices for you"
-            textSize = 20f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#1B1E3B"))
+            textSize = 20f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#1B1E3B"))
             gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(6))
         })
 
@@ -80,25 +80,25 @@ object NoticePopup {
             val box = LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(14), dp(10), dp(14), dp(10))
-                background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Color.parseColor("#F4F5FB")) }
+                background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c("#F4F5FB")) }
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
             }
             box.addView(TextView(activity).apply {
-                text = o.optString("title"); textSize = 15f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#7C2D12"))
+                text = o.optString("title"); textSize = 15f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#7C2D12"))
             })
             box.addView(TextView(activity).apply {
-                text = o.optString("message"); textSize = 13f; setTextColor(Color.parseColor("#374151"))
+                text = o.optString("message"); textSize = 13f; setTextColor(Pal.c("#374151"))
                 maxLines = 4; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, dp(3), 0, 0)
             })
             box.addView(TextView(activity).apply {
                 text = "${o.optString("date")} ${o.optString("time")}"; textSize = 11f
-                setTextColor(Color.parseColor("#6B7280")); setPadding(0, dp(4), 0, 0)
+                setTextColor(Pal.c("#6B7280")); setPadding(0, dp(4), 0, 0)
             })
             root.addView(box)
         }
         if (notices.length() > shown) {
             root.addView(TextView(activity).apply {
-                text = "+${notices.length() - shown} more"; textSize = 12f; setTextColor(Color.parseColor("#6B7280"))
+                text = "+${notices.length() - shown} more"; textSize = 12f; setTextColor(Pal.c("#6B7280"))
                 gravity = Gravity.CENTER; setPadding(0, dp(8), 0, 0)
             })
         }
@@ -111,7 +111,7 @@ object NoticePopup {
         })
         root.addView(TextView(activity).apply {
             text = "View all notices"; textSize = 14f; setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.parseColor("#6C7293")); gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(2))
+            setTextColor(Pal.c("#6C7293")); gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(2))
             setOnClickListener { dialog.dismiss(); activity.startActivity(Intent(activity, NoticesActivity::class.java)) }
         })
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)

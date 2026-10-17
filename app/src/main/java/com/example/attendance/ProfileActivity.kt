@@ -243,11 +243,11 @@ class ProfileActivity : AppCompatActivity() {
 
     private fun photoMsg(m: String, ok: Boolean) {
         tvPhotoMsg.text = m
-        tvPhotoMsg.setTextColor(Color.parseColor(if (ok) "#166534" else "#DC2626"))
+        tvPhotoMsg.setTextColor(Pal.c(if (ok) "#166534" else "#DC2626"))
     }
 
     private fun msg(m: String, ok: Boolean) {
         tvMsg.text = m
-        tvMsg.setTextColor(Color.parseColor(if (ok) "#166534" else "#DC2626"))
+        tvMsg.setTextColor(Pal.c(if (ok) "#166534" else "#DC2626"))
     }
 }

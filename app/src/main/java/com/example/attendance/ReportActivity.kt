@@ -67,7 +67,7 @@ class ReportActivity : AppCompatActivity() {
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_LONG).show()
 
     private fun label(text: String, size: Float, color: String, bold: Boolean) = TextView(this).apply {
-        this.text = text; textSize = size; setTextColor(Color.parseColor(color))
+        this.text = text; textSize = size; setTextColor(Pal.c(color))
         if (bold) setTypeface(null, Typeface.BOLD)
     }
 
@@ -77,7 +77,7 @@ class ReportActivity : AppCompatActivity() {
     }
 
     private fun cardOf(inner: View) = MaterialCardView(this).apply {
-        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
+        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.card)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         addView(inner)
     }
@@ -89,9 +89,9 @@ class ReportActivity : AppCompatActivity() {
     }
 
     private fun chipButton(text: String, onClick: () -> Unit) = TextView(this).apply {
-        this.text = text; textSize = 15f; setTextColor(Color.parseColor("#1E2247"))
+        this.text = text; textSize = 15f; setTextColor(Pal.c("#1E2247"))
         setPadding(dp(14), dp(12), dp(14), dp(12))
-        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor("#E6E9F7")) }
+        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
         isClickable = true; isFocusable = true
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
         setOnClickListener { onClick() }
@@ -141,8 +141,8 @@ class ReportActivity : AppCompatActivity() {
     private fun paint(views: Map<String, TextView>, selected: String) {
         views.forEach { (k, v) ->
             val on = k == selected
-            v.setTextColor(Color.parseColor(if (on) "#FFFFFF" else "#6C7293"))
-            v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor(if (on) "#1E2247" else "#E6E9F7")) }
+            v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#6C7293"))
+            v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#E6E9F7")) }
         }
     }
 
@@ -215,13 +215,13 @@ class ReportActivity : AppCompatActivity() {
         form.addView(chipRow(listOf("current" to "This pay period", "previous" to "Last pay period", "custom" to "Choose dates"), 13f, { choice = it; refreshPeriod() }, periodViews))
         form.addView(hint); form.addView(chipFrom); form.addView(chipTo)
         form.addView(bigButton("📊  Prepare Excel file") {
-            if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the From and To dates"; return@bigButton }
-            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Preparing the file… this can take a few seconds."
+            if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose the From and To dates"; return@bigButton }
+            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Preparing the file… this can take a few seconds."
             result.removeAllViews()
             val body = JSONObject().put("action", "myReport").put("period", choice).put("kind", kind).put("who", if (isManager) who else "me")
             if (choice == "custom") body.put("from", from).put("to", to)
             api(body) { res, err ->
-                if (res == null) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err; return@api }
+                if (res == null) { msg.setTextColor(Pal.c("#DC2626")); msg.text = err; return@api }
                 try {
                     val dir = File(cacheDir, "reports").apply { mkdirs() }
                     dir.listFiles()?.forEach { it.delete() }
@@ -231,7 +231,7 @@ class ReportActivity : AppCompatActivity() {
                     result.removeAllViews()
                     result.addView(readyCard(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to"), if (res.has("records")) res.optInt("records") else -1))
                 } catch (e: Exception) {
-                    msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Could not prepare the file."
+                    msg.setTextColor(Pal.c("#DC2626")); msg.text = "Could not prepare the file."
                 }
             }
         })

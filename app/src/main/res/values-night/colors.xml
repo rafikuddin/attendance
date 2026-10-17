@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Night mode twins of the colours in values/colors.xml -->
+    <color name="primary">#E8EAFF</color>
+    <color name="ink">#E8EAFF</color>
+    <color name="muted">#A9AFD3</color>
+    <color name="chip">#2A2F5C</color>
+    <color name="accent_soft">#2A2F5C</color>
+    <color name="bg">#0B0D24</color>
+    <color name="btn_disabled">#3A3E5C</color>
+    <color name="sky_top">#0E1030</color>
+    <color name="glass">#F51D2142</color>
+    <color name="glass_edge">#26FFFFFF</color>
+    <color name="surface">#1D2142</color>
+    <color name="on_surface">#E8EAFF</color>
+    <color name="tile_fill">#232748</color>
+    <color name="tile_edge">#353A63</color>
+    <color name="nav_fill">#F21D2142</color>
+    <color name="nav_edge">#33FFFFFF</color>
+    <color name="btn_white">#2A2F5C</color>
+    <color name="app_top">#0E1030</color>
+    <color name="app_mid">#1A1D4A</color>
+    <color name="app_end">#0B0D24</color>
+    <color name="lilac_a">#2B2760</color>
+    <color name="lilac_b">#3A2150</color>
+    <color name="mint_a">#123A3A</color>
+    <color name="mint_b">#3A3A18</color>
+    <color name="peach_a">#3A1F36</color>
+    <color name="peach_b">#3A2616</color>
+    <color name="link">#60A5FA</color>
+    <color name="upd_bg">#1B2A4D</color>
+    <color name="upd_t1">#BFDBFE</color>
+    <color name="upd_t2">#93C5FD</color>
+    <color name="note_bg">#3B2A12</color>
+    <color name="note_t1">#FED7AA</color>
+    <color name="note_t2">#FDBA74</color>
+    <color name="note_t3">#FB923C</color>
+    <color name="danger">#F87171</color>
+    <color name="danger2">#FCA5A5</color>
+    <color name="ok_bg">#12301F</color>
+    <color name="ok_text">#86EFAC</color>
+    <color name="warn_bg">#3A2F10</color>
+    <color name="warn_t1">#FCD34D</color>
+    <color name="warn_t2">#FBBF24</color>
+    <color name="track">#2A2F5C</color>
+</resources>

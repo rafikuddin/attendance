@@ -42,12 +42,12 @@ class TargetActivity : AppCompatActivity() {
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_LONG).show()
 
     private fun label(text: String, size: Float, color: String, bold: Boolean) = TextView(this).apply {
-        this.text = text; textSize = size; setTextColor(Color.parseColor(color))
+        this.text = text; textSize = size; setTextColor(Pal.c(color))
         if (bold) setTypeface(null, Typeface.BOLD)
     }
 
     private fun cardOf(inner: View, onClick: (() -> Unit)? = null) = MaterialCardView(this).apply {
-        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
+        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.card)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         if (onClick != null) { isClickable = true; isFocusable = true; setOnClickListener { onClick() } }
         addView(inner)
@@ -67,7 +67,7 @@ class TargetActivity : AppCompatActivity() {
         val frac = ((p ?: 0.0) / 100.0).coerceIn(0.0, 1.0).toFloat()
         val track = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = GradientDrawable().apply { cornerRadius = dp(6).toFloat(); setColor(Color.parseColor("#E6E9F7")) }
+            background = GradientDrawable().apply { cornerRadius = dp(6).toFloat(); setColor(Pal.c("#E6E9F7")) }
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(10)).apply { topMargin = dp(8); bottomMargin = dp(4) }
         }
         track.addView(View(this).apply {
@@ -181,7 +181,7 @@ class TargetActivity : AppCompatActivity() {
     private fun rrLine(rr: Double?, hasTarget: Boolean, show: Boolean): View {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor("#EEF1FF")) }
+            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#EEF1FF")) }
             setPadding(dp(12), dp(8), dp(12), dp(8))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
             visibility = if (show) View.VISIBLE else View.GONE
@@ -259,7 +259,7 @@ class TargetActivity : AppCompatActivity() {
                 }
             }
             AlertDialog.Builder(this).setTitle(name).setView(ScrollView(this).apply {
-                addView(TextView(this@TargetActivity).apply { text = sb.toString(); textSize = 14f; setTextColor(Color.parseColor("#1E2247")); setPadding(dp(22), dp(8), dp(22), dp(8)) })
+                addView(TextView(this@TargetActivity).apply { text = sb.toString(); textSize = 14f; setTextColor(Pal.c("#1E2247")); setPadding(dp(22), dp(8), dp(22), dp(8)) })
             }).setPositiveButton("Close", null).show()
         }
     }

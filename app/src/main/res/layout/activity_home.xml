@@ -140,7 +140,7 @@
                 android:visibility="gone" android:clickable="true" android:focusable="true"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="14dp"
-                app:cardCornerRadius="20dp" app:cardElevation="3dp" app:cardBackgroundColor="#E8F0FE">
+                app:cardCornerRadius="20dp" app:cardElevation="3dp" app:cardBackgroundColor="@color/upd_bg">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical" android:padding="14dp">
                     <TextView android:text="⬆️" android:textSize="22sp" android:gravity="center"
@@ -148,9 +148,9 @@
                     <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
                         android:orientation="vertical" android:layout_marginStart="8dp">
                         <TextView android:id="@+id/tvUpdateTitle" android:textSize="15sp" android:textStyle="bold"
-                            android:textColor="#1E3A8A"
+                            android:textColor="@color/upd_t1"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:id="@+id/tvUpdateText" android:textSize="13sp" android:textColor="#1D4ED8"
+                        <TextView android:id="@+id/tvUpdateText" android:textSize="13sp" android:textColor="@color/upd_t2"
                             android:maxLines="3" android:ellipsize="end"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>
@@ -166,7 +166,7 @@
                 android:visibility="gone" android:clickable="true" android:focusable="true"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="14dp"
-                app:cardCornerRadius="20dp" app:cardElevation="3dp" app:cardBackgroundColor="#FFF4E5">
+                app:cardCornerRadius="20dp" app:cardElevation="3dp" app:cardBackgroundColor="@color/note_bg">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical" android:padding="14dp">
                     <TextView android:text="📢" android:textSize="22sp" android:gravity="center"
@@ -174,13 +174,13 @@
                     <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
                         android:orientation="vertical" android:layout_marginStart="8dp">
                         <TextView android:id="@+id/tvNoticeTitle" android:textSize="15sp" android:textStyle="bold"
-                            android:textColor="#7C2D12" android:maxLines="1" android:ellipsize="end"
+                            android:textColor="@color/note_t1" android:maxLines="1" android:ellipsize="end"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:id="@+id/tvNoticeText" android:textSize="13sp" android:textColor="#9A3412"
+                        <TextView android:id="@+id/tvNoticeText" android:textSize="13sp" android:textColor="@color/note_t2"
                             android:maxLines="3" android:ellipsize="end"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:id="@+id/tvNoticeMore" android:textSize="12sp" android:textStyle="bold"
-                            android:textColor="#C2410C" android:layout_marginTop="4dp"
+                            android:textColor="@color/note_t3" android:layout_marginTop="4dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>
                 </LinearLayout>

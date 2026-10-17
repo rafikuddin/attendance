@@ -77,8 +77,8 @@ class AttendanceActivity : AppCompatActivity() {
 
         forDate?.let { d ->
             cardSummary.visibility = View.VISIBLE
-            cardSummary.setCardBackgroundColor(Color.parseColor("#EEF2FF"))
-            tvSummary.setTextColor(Color.parseColor("#3730A3"))
+            cardSummary.setCardBackgroundColor(Pal.c("#EEF2FF"))
+            tvSummary.setTextColor(Pal.c("#3730A3"))
             tvSummary.text = "📝 Manual attendance for $d\nAn admin opened this day for you. Take your selfie as usual."
         }
         val perms = arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -213,8 +213,8 @@ class AttendanceActivity : AppCompatActivity() {
         btnSubmit.isEnabled = false
         btnCapture.isEnabled = false
         cardSummary.visibility = View.VISIBLE
-        cardSummary.setCardBackgroundColor(Color.parseColor("#E3F2FD"))
-        tvSummary.setTextColor(Color.parseColor("#0D47A1"))
+        cardSummary.setCardBackgroundColor(Pal.c("#E3F2FD"))
+        tvSummary.setTextColor(Pal.c("#0D47A1"))
         tvSummary.text = "Submitting..."
 
         val selfieTimeText = "${dateFmt.format(t)} ${timeFmt.format(t)}"
@@ -239,8 +239,8 @@ class AttendanceActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 runOnUiThread {
                     btnSubmit.isEnabled = true; btnCapture.isEnabled = true
-                    cardSummary.setCardBackgroundColor(Color.parseColor("#FFEBEE"))
-                    tvSummary.setTextColor(Color.parseColor("#B71C1C"))
+                    cardSummary.setCardBackgroundColor(Pal.c("#FFEBEE"))
+                    tvSummary.setTextColor(Pal.c("#B71C1C"))
                     tvSummary.text = "❌ Couldn't prepare the photo. Please retake the selfie."
                 }
                 return@Thread
@@ -258,15 +258,15 @@ class AttendanceActivity : AppCompatActivity() {
                 Reminders.clearSelf(this)   // the "mark your attendance" reminder is no longer needed
                 photoFile?.delete()   // the selfie now lives on the server; don't keep a copy on the phone
                 val late = res.optBoolean("late")
-                cardSummary.setCardBackgroundColor(Color.parseColor(if (late) "#FFEDD5" else "#DCFCE7"))
-                tvSummary.setTextColor(Color.parseColor(if (late) "#9A3412" else "#166534"))
+                cardSummary.setCardBackgroundColor(Pal.c(if (late) "#FFEDD5" else "#DCFCE7"))
+                tvSummary.setTextColor(Pal.c(if (late) "#9A3412" else "#166534"))
                 tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}${if (res.optBoolean("manual")) " (manual)" else ""}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
                     "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
             } else {
                 btnSubmit.isEnabled = true
-                cardSummary.setCardBackgroundColor(Color.parseColor("#FFEBEE"))
-                tvSummary.setTextColor(Color.parseColor("#B71C1C"))
+                cardSummary.setCardBackgroundColor(Pal.c("#FFEBEE"))
+                tvSummary.setTextColor(Pal.c("#B71C1C"))
                 tvSummary.text = "❌ $err"
             }
         }

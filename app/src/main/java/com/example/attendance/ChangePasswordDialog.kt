@@ -31,14 +31,14 @@ object ChangePasswordDialog {
         val currentPass = field("Current password")
         val newPass = field("New password (at least $MIN_LENGTH characters)")
         val confirmPass = field("Confirm new password")
-        val error = TextView(ctx).apply { setTextColor(android.graphics.Color.parseColor("#DC2626")) }
+        val error = TextView(ctx).apply { setTextColor(Pal.c("#DC2626")) }
 
         val layout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad, pad, 0)
             if (forced) addView(TextView(ctx).apply {
                 text = "Your password is too easy to guess, or an admin gave it to you. Choose a new one to continue."
-                setTextColor(android.graphics.Color.parseColor("#6C7293"))
+                setTextColor(Pal.c("#6C7293"))
             })
             addView(currentPass)
             addView(newPass)

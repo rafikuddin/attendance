@@ -70,7 +70,7 @@ fun AppCompatActivity.showPhotoDialog(session: Session, fileId: String) {
     val h = (resources.displayMetrics.heightPixels * 0.7).toInt()
     val img = ImageView(this).apply {
         scaleType = ImageView.ScaleType.FIT_CENTER
-        setBackgroundColor(Color.parseColor("#111827"))
+        setBackgroundColor(Pal.c("#111827"))
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, h)
     }
     PhotoLoader.load(this, session, fileId, img, 1000)
@@ -80,7 +80,7 @@ fun AppCompatActivity.showPhotoDialog(session: Session, fileId: String) {
 /** A tappable "📎 View leave application" line, added under a leave request that has a picture. */
 fun AppCompatActivity.applicationLink(session: Session, fileId: String): TextView = TextView(this).apply {
     text = "📎 View leave application"
-    textSize = 13f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Color.parseColor("#2563EB"))
+    textSize = 13f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#2563EB"))
     setPadding(0, (6 * resources.displayMetrics.density).toInt(), 0, (2 * resources.displayMetrics.density).toInt())
     setOnClickListener { showPhotoDialog(session, fileId) }
 }

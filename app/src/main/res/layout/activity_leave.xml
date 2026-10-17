@@ -118,7 +118,7 @@
                         android:layout_marginStart="12dp"
                         android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
                     <TextView android:id="@+id/btnRemoveApp" android:text="✕ Remove" android:textSize="13sp" android:textStyle="bold"
-                        android:textColor="#B91C1C" android:padding="8dp" android:clickable="true" android:focusable="true"
+                        android:textColor="@color/danger2" android:padding="8dp" android:clickable="true" android:focusable="true"
                         android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 </LinearLayout>
                 <com.google.android.material.button.MaterialButton android:id="@+id/btnApply" android:text="Apply for Leave"

@@ -36,7 +36,7 @@ class NoticesActivity : AppCompatActivity() {
     }
 
     private fun note(text: String) = TextView(this).apply {
-        this.text = text; textSize = 14f; setTextColor(Color.parseColor("#3A3F73"))
+        this.text = text; textSize = 14f; setTextColor(Pal.c("#3A3F73"))
         setPadding(dp(4), dp(8), dp(4), dp(8))
     }
 
@@ -61,27 +61,27 @@ class NoticesActivity : AppCompatActivity() {
         }
         col.addView(TextView(this).apply {
             text = "📢  ${o.optString("title")}"; textSize = 16f
-            setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#111827"))
+            setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#111827"))
         })
         col.addView(TextView(this).apply {
-            text = o.optString("message"); textSize = 14f; setTextColor(Color.parseColor("#374151"))
+            text = o.optString("message"); textSize = 14f; setTextColor(Pal.c("#374151"))
             setPadding(0, dp(6), 0, 0)
         })
         val team = o.optBoolean("team")
         col.addView(TextView(this).apply {
             text = "${o.optString("date")} ${o.optString("time")} · ${o.optString("postedBy")}" + (if (team) " · 👥 team notice" else "")
-            textSize = 12f; setTextColor(Color.parseColor("#6B7280")); setPadding(0, dp(8), 0, 0)
+            textSize = 12f; setTextColor(Pal.c("#6B7280")); setPadding(0, dp(8), 0, 0)
         })
         if (o.optBoolean("mine")) {
             col.addView(TextView(this).apply {
                 text = "🗑  Remove this notice"; textSize = 13f; setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.parseColor("#DC2626")); setPadding(0, dp(10), 0, dp(2))
+                setTextColor(Pal.c("#DC2626")); setPadding(0, dp(10), 0, dp(2))
                 isClickable = true; isFocusable = true
                 setOnClickListener { confirmRemove(o.optString("id"), o.optString("title")) }
             })
         }
         return MaterialCardView(this).apply {
-            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
+            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.card)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
             addView(col)
         }
@@ -92,14 +92,14 @@ class NoticesActivity : AppCompatActivity() {
     private fun postCard(): View {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
         col.addView(TextView(this).apply {
-            text = "👥  Notice for my team"; textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#111827"))
+            text = "👥  Notice for my team"; textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#111827"))
         })
         col.addView(TextView(this).apply {
-            text = "Only you and the people below you will see it."; textSize = 13f; setTextColor(Color.parseColor("#6C7293")); setPadding(0, dp(4), 0, dp(8))
+            text = "Only you and the people below you will see it."; textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(0, dp(4), 0, dp(8))
         })
         col.addView(MaterialButton(this).apply { text = "✍️  Post a notice"; setOnClickListener { showPostDialog() } })
         return MaterialCardView(this).apply {
-            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.parseColor("#EEF1FF"))
+            radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.c("#EEF1FF"))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
             addView(col)
         }

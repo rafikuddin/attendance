@@ -100,7 +100,7 @@ class TeamActivity : AppCompatActivity() {
         }
         val selfie = o.optString("selfie")
         if (o.optString("status") == "Present" && selfie.isNotEmpty()) {
-            card.setCardBackgroundColor(Color.parseColor("#E5E7EB"))
+            card.setCardBackgroundColor(Pal.c("#E5E7EB"))
             val img = ImageView(this).apply {
                 scaleType = ImageView.ScaleType.CENTER_CROP
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -109,10 +109,10 @@ class TeamActivity : AppCompatActivity() {
             card.addView(img)
             PhotoLoader.load(this, session, selfie, img)
         } else {
-            card.setCardBackgroundColor(Color.parseColor("#E6E9F7"))
+            card.setCardBackgroundColor(Pal.c("#E6E9F7"))
             card.addView(TextView(this).apply {
                 text = o.optString("name").trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-                gravity = Gravity.CENTER; setTextColor(Color.parseColor("#1E2247")); setTypeface(null, Typeface.BOLD); textSize = 16f
+                gravity = Gravity.CENTER; setTextColor(Pal.c("#1E2247")); setTypeface(null, Typeface.BOLD); textSize = 16f
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             })
         }
@@ -134,7 +134,7 @@ class TeamActivity : AppCompatActivity() {
         val total = c.optInt("total", items.sumOf { v -> v[1] as Int })
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         head.addView(TextView(this).apply {
-            text = "TEAM TODAY"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#1E2247")); letterSpacing = 0.06f
+            text = "TEAM TODAY"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#1E2247")); letterSpacing = 0.06f
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         head.addView(pill("$total member" + (if (total == 1) "" else "s"), "#1E2247", "#E6E9F7"))
@@ -149,17 +149,17 @@ class TeamActivity : AppCompatActivity() {
                 val tile = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
                     setPadding(dp(4), dp(12), dp(4), dp(10))
-                    background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Color.parseColor(item[3] as String)) }
+                    background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c(item[3] as String)) }
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
                         if (k > 0) marginStart = dp(5); if (k < 2) marginEnd = dp(5)
                     }
                 }
                 tile.addView(TextView(this).apply {
-                    text = (item[1] as Int).toString(); textSize = 28f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor(item[2] as String))
+                    text = (item[1] as Int).toString(); textSize = 28f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(item[2] as String))
                 })
                 tile.addView(TextView(this).apply {
                     text = (item[4] as String) + " " + (item[0] as String); textSize = 12f; setTypeface(null, Typeface.BOLD)
-                    setTextColor(Color.parseColor(item[2] as String)); maxLines = 1
+                    setTextColor(Pal.c(item[2] as String)); maxLines = 1
                 })
                 row.addView(tile)
             }
@@ -168,18 +168,18 @@ class TeamActivity : AppCompatActivity() {
     }
 
     private fun note(text: String) = TextView(this).apply {
-        this.text = text; setTextColor(Color.parseColor("#3A3F73"))
+        this.text = text; setTextColor(Pal.c("#3A3F73"))
         setPadding(dp(4), dp(6), dp(4), dp(6))
     }
 
     private fun pill(text: String, fg: String, bg: String) = TextView(this).apply {
-        this.text = text; setTextColor(Color.parseColor(fg)); setTypeface(null, Typeface.BOLD); textSize = 12f
+        this.text = text; setTextColor(Pal.c(fg)); setTypeface(null, Typeface.BOLD); textSize = 12f
         setPadding(dp(10), dp(4), dp(10), dp(4))
-        background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.parseColor(bg)) }
+        background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(if (fg == "#FFFFFF") Color.parseColor(bg) else Pal.c(bg)) }
     }
 
     private fun cardWrap(inner: View): MaterialCardView = MaterialCardView(this).apply {
-        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
+        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.card)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         addView(inner)
     }
@@ -205,16 +205,16 @@ class TeamActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        nameCol.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#111827")) })
+        nameCol.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#111827")) })
         val detail = o.optString("detail")
         nameCol.addView(TextView(this).apply {
             text = "Own attendance: ${o.optInt("presentThisMonth")} day(s) this month" + if (detail.isNotEmpty() && status == "Present") " · $detail" else ""
-            textSize = 12f; setTextColor(Color.parseColor("#6B7280"))
+            textSize = 12f; setTextColor(Pal.c("#6B7280"))
         })
         val address = o.optString("address")
         if (status == "Present" && address.isNotEmpty()) {
             nameCol.addView(TextView(this).apply {
-                text = "📍 $address"; textSize = 12f; setTextColor(Color.parseColor("#6B7280"))
+                text = "📍 $address"; textSize = 12f; setTextColor(Pal.c("#6B7280"))
                 maxLines = 2; setPadding(0, dp(2), 0, 0)
             })
         }
@@ -229,11 +229,11 @@ class TeamActivity : AppCompatActivity() {
             col.addView(TextView(this).apply {
                 text = "👥 Team: $p Present" + (if (lt > 0) " ($lt Late)" else "") + " · $l On Leave" +
                     (if (off > 0) " · $off Off" else "") + (if (ab > 0) " · $ab Absent" else "") + " · $pe Pending  (of $t)"
-                textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#1E2247"))
+                textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#1E2247"))
                 setPadding(0, dp(8), 0, 0)
             })
             col.addView(TextView(this).apply {
-                text = "Tap to view →"; textSize = 12f; setTextColor(Color.parseColor("#9CA3AF"))
+                text = "Tap to view →"; textSize = 12f; setTextColor(Pal.c("#9CA3AF"))
                 setPadding(0, dp(2), 0, 0)
             })
         }
@@ -259,18 +259,18 @@ class TeamActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        name.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#111827")) })
-        name.addView(TextView(this).apply { text = "${o.optString("type")} · ${o.optString("days")} day(s)"; textSize = 13f; setTextColor(Color.parseColor("#6B7280")) })
+        name.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#111827")) })
+        name.addView(TextView(this).apply { text = "${o.optString("type")} · ${o.optString("days")} day(s)"; textSize = 13f; setTextColor(Pal.c("#6B7280")) })
         top.addView(name)
         top.addView(pill(status, fg, bg))
         col.addView(top)
         col.addView(TextView(this).apply {
-            text = "${o.optString("from")}  →  ${o.optString("to")}"; textSize = 13f; setTextColor(Color.parseColor("#6B7280"))
+            text = "${o.optString("from")}  →  ${o.optString("to")}"; textSize = 13f; setTextColor(Pal.c("#6B7280"))
             (layoutParams as? LinearLayout.LayoutParams)
             setPadding(0, dp(6), 0, 0)
         })
         if (o.optString("reason").isNotEmpty())
-            col.addView(TextView(this).apply { text = o.optString("reason"); textSize = 13f; setTextColor(Color.parseColor("#6B7280")) })
+            col.addView(TextView(this).apply { text = o.optString("reason"); textSize = 13f; setTextColor(Pal.c("#6B7280")) })
         if (o.optString("application").isNotEmpty()) col.addView(applicationLink(session, o.optString("application")))
 
         if (status == "Pending" && canDecide) {
@@ -279,11 +279,11 @@ class TeamActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
             }
             val approve = MaterialButton(this).apply {
-                text = "✓ Approve"; setBackgroundColor(Color.parseColor("#16A34A"))
+                text = "✓ Approve"; setBackgroundColor(Pal.c("#16A34A"))
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(6) }
             }
             val reject = MaterialButton(this).apply {
-                text = "✕ Reject"; setBackgroundColor(Color.parseColor("#DC2626"))
+                text = "✕ Reject"; setBackgroundColor(Pal.c("#DC2626"))
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(6) }
             }
             approve.setOnClickListener { decide(o, "Approved", approve, reject) }

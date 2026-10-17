@@ -310,7 +310,7 @@ class NightHoldActivity : AppCompatActivity() {
 
     private fun msg(text: String, ok: Boolean) {
         tvMsg.text = text
-        tvMsg.setTextColor(Color.parseColor(if (ok) "#166534" else "#DC2626"))
+        tvMsg.setTextColor(Pal.c(if (ok) "#166534" else "#DC2626"))
     }
 
     private fun submit() {

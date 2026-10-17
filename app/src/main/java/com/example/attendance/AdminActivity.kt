@@ -93,10 +93,10 @@ class AdminActivity : AppCompatActivity() {
         current = i
         tabs.forEachIndexed { index, t ->
             val on = index == i
-            t.setTextColor(Color.parseColor(if (on) "#FFFFFF" else "#6C7293"))
+            t.setTextColor(Pal.c(if (on) "#FFFFFF" else "#6C7293"))
             t.background = GradientDrawable().apply {
                 cornerRadius = dp(14).toFloat()
-                setColor(Color.parseColor(if (on) "#1E2247" else "#E6E9F7"))
+                setColor(if (on) Pal.chipOn else Pal.c("#E6E9F7"))
             }
         }
         findViewById<android.widget.HorizontalScrollView>(R.id.tabScroll).post {
@@ -121,7 +121,7 @@ class AdminActivity : AppCompatActivity() {
     // ---------- small view helpers ----------
 
     private fun label(text: String, size: Float, color: String, bold: Boolean) = TextView(this).apply {
-        this.text = text; textSize = size; setTextColor(Color.parseColor(color))
+        this.text = text; textSize = size; setTextColor(Pal.c(color))
         if (bold) setTypeface(null, Typeface.BOLD)
     }
 
@@ -133,13 +133,13 @@ class AdminActivity : AppCompatActivity() {
     }
 
     private fun pill(text: String, fg: String, bg: String) = TextView(this).apply {
-        this.text = text; setTextColor(Color.parseColor(fg)); setTypeface(null, Typeface.BOLD); textSize = 12f
+        this.text = text; setTextColor(Pal.c(fg)); setTypeface(null, Typeface.BOLD); textSize = 12f
         setPadding(dp(10), dp(4), dp(10), dp(4))
-        background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Color.parseColor(bg)) }
+        background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Pal.c(bg)) }
     }
 
     private fun cardOf(inner: View): MaterialCardView = MaterialCardView(this).apply {
-        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Color.WHITE)
+        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.card)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         addView(inner)
     }
@@ -161,9 +161,9 @@ class AdminActivity : AppCompatActivity() {
     }
 
     private fun chipButton(text: String, onClick: () -> Unit) = TextView(this).apply {
-        this.text = text; textSize = 15f; setTextColor(Color.parseColor("#1E2247"))
+        this.text = text; textSize = 15f; setTextColor(Pal.c("#1E2247"))
         setPadding(dp(14), dp(12), dp(14), dp(12))
-        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor("#E6E9F7")) }
+        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
         isClickable = true; isFocusable = true
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
         setOnClickListener { onClick() }
@@ -216,7 +216,7 @@ class AdminActivity : AppCompatActivity() {
                 maxLines = 1; isSingleLine = true; textSize = 15f
                 imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
                 setPadding(dp(16), dp(12), dp(16), dp(12))
-                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor("#E6E9F7")) }
+                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
             }
             val countLine = heading("")
@@ -453,7 +453,7 @@ class AdminActivity : AppCompatActivity() {
     private fun showTempPassword(title: String, username: String, password: String) {
         val tv = TextView(this).apply {
             text = password; textSize = 28f; typeface = Typeface.MONOSPACE; gravity = Gravity.CENTER
-            setTextIsSelectable(true); setTextColor(Color.parseColor("#1E2247"))
+            setTextIsSelectable(true); setTextColor(Pal.c("#1E2247"))
             setPadding(dp(16), dp(16), dp(16), dp(16))
         }
         AlertDialog.Builder(this)
@@ -493,11 +493,11 @@ class AdminActivity : AppCompatActivity() {
         form.addView(bigButton("📢  Post to everyone") {
             val t = etTitle.text.toString().trim()
             val m = etMessage.text.toString().trim()
-            if (t.length < 2 || m.length < 2) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Enter a title and a message"; return@bigButton }
+            if (t.length < 2 || m.length < 2) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Enter a title and a message"; return@bigButton }
             val body = JSONObject().put("action", "adminPostNotice").put("title", t).put("message", m)
                 .put("days", etDays.text.toString().trim().toIntOrNull() ?: 7)
             fun post(sms: Boolean) {
-                msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Posting…"
+                msg.setTextColor(Pal.c("#6C7293")); msg.text = "Posting…"
                 if (sms) body.put("sms", true)
                 api(body) { res, err ->
                     if (res != null) {
@@ -505,13 +505,13 @@ class AdminActivity : AppCompatActivity() {
                         toast("Notice posted. Everyone sees it on their Home screen." + (if (s.isNotEmpty()) "\n$s" else ""))
                         dropSavedCopies()
                         loadNotices()
-                    } else { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err }
+                    } else { msg.setTextColor(Pal.c("#DC2626")); msg.text = err }
                 }
             }
             if (!cbSms.isChecked) { post(false); return@bigButton }
-            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Checking SMS…"
+            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Checking SMS…"
             api(JSONObject().put("action", "smsPreview").put("scope", "all")) { pv, perr ->
-                if (pv == null) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = perr; return@api }
+                if (pv == null) { msg.setTextColor(Pal.c("#DC2626")); msg.text = perr; return@api }
                 msg.text = ""
                 if (!pv.optBoolean("configured") || pv.optInt("people") == 0) {
                     AlertDialog.Builder(this).setTitle("SMS cannot be sent")
@@ -549,7 +549,7 @@ class AdminActivity : AppCompatActivity() {
         col.addView(label("Posted ${o.optString("date")} by ${o.optString("postedBy")}" +
             (if (o.optString("expires").isNotEmpty()) " · visible until ${o.optString("expires")}" else ""), 12f, "#6C7293", false).apply { setPadding(0, dp(6), 0, 0) })
         col.addView(MaterialButton(this).apply {
-            text = "🗑  Remove"; setBackgroundColor(Color.parseColor("#DC2626"))
+            text = "🗑  Remove"; setBackgroundColor(Pal.c("#DC2626"))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
             setOnClickListener {
                 AlertDialog.Builder(this@AdminActivity).setTitle("Remove this notice?")
@@ -591,10 +591,10 @@ class AdminActivity : AppCompatActivity() {
             val name = etName.text.toString().trim()
             if (pickedHolidayDate.isEmpty()) { msg.text = "Choose the date first"; return@bigButton }
             if (name.length < 2) { msg.text = "Enter the holiday name"; return@bigButton }
-            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Saving…"
+            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Saving…"
             api(JSONObject().put("action", "adminAddHoliday").put("date", pickedHolidayDate).put("name", name)) { res, err ->
                 if (res != null) { toast("Holiday added"); dropSavedCopies(); loadHolidays() }
-                else { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err }
+                else { msg.setTextColor(Pal.c("#DC2626")); msg.text = err }
             }
         })
         form.addView(msg)
@@ -630,7 +630,7 @@ class AdminActivity : AppCompatActivity() {
         text.addView(label(shown + if (date < today) "  ·  past" else "", 13f, "#6B7280", false))
         row.addView(text)
         row.addView(TextView(this).apply {
-            this.text = "✕"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.parseColor("#DC2626"))
+            this.text = "✕"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Pal.c("#DC2626"))
             isClickable = true; isFocusable = true
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
             setOnClickListener {
@@ -693,8 +693,8 @@ class AdminActivity : AppCompatActivity() {
         fun refresh() {
             views.forEach { (k, v) ->
                 val on = k == choice
-                v.setTextColor(Color.parseColor(if (on) "#FFFFFF" else "#6C7293"))
-                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor(if (on) "#1E2247" else "#E6E9F7")) }
+                v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#6C7293"))
+                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#E6E9F7")) }
             }
             chipFrom.visibility = if (choice == "custom") View.VISIBLE else View.GONE
             chipTo.visibility = chipFrom.visibility
@@ -724,8 +724,8 @@ class AdminActivity : AppCompatActivity() {
         fun refreshKind() {
             kindViews.forEach { (k, v) ->
                 val on = k == kind
-                v.setTextColor(Color.parseColor(if (on) "#FFFFFF" else "#6C7293"))
-                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Color.parseColor(if (on) "#1E2247" else "#E6E9F7")) }
+                v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#6C7293"))
+                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#E6E9F7")) }
             }
             if (kind == "night") {
                 infoSummary.text = "One row per person: how many night holds, how many were manual entries, days in the period."
@@ -755,13 +755,13 @@ class AdminActivity : AppCompatActivity() {
         form.addView(label("PERIOD", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
         form.addView(row); form.addView(hint); form.addView(chipFrom); form.addView(chipTo)
         form.addView(bigButton("📊  Prepare Excel file") {
-            if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the From and To dates"; return@bigButton }
-            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Preparing the file… this can take a few seconds."
+            if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose the From and To dates"; return@bigButton }
+            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Preparing the file… this can take a few seconds."
             result.removeAllViews()
             val body = JSONObject().put("action", "adminReport").put("period", choice).put("kind", kind)
             if (choice == "custom") body.put("from", from).put("to", to)
             api(body) { res, err ->
-                if (res == null) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err; return@api }
+                if (res == null) { msg.setTextColor(Pal.c("#DC2626")); msg.text = err; return@api }
                 try {
                     val dir = File(cacheDir, "reports").apply { mkdirs() }
                     dir.listFiles()?.forEach { it.delete() }
@@ -771,7 +771,7 @@ class AdminActivity : AppCompatActivity() {
                     result.removeAllViews()
                     result.addView(reportReadyCard(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to"), if (res.has("records")) res.optInt("records") else -1))
                 } catch (e: Exception) {
-                    msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Could not prepare the file."
+                    msg.setTextColor(Pal.c("#DC2626")); msg.text = "Could not prepare the file."
                 }
             }
         })
@@ -1030,15 +1030,15 @@ class AdminActivity : AppCompatActivity() {
         val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         val msg = label("", 14f, "#DC2626", false).apply { setPadding(0, dp(8), 0, 0) }
 
-        fun fail(t: String) { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = t }
-        fun info(t: String) { msg.setTextColor(Color.parseColor("#6C7293")); msg.text = t }
+        fun fail(t: String) { msg.setTextColor(Pal.c("#DC2626")); msg.text = t }
+        fun info(t: String) { msg.setTextColor(Pal.c("#6C7293")); msg.text = t }
 
         // sends 10 people per request, one request after another, so a long list never times out
         fun sendAll(ids: List<String>, per: JSONObject, pw: String) {
             val batch = 10
             fun step(at: Int, sent: Int, failed: Int) {
                 if (at >= ids.size) {
-                    msg.setTextColor(Color.parseColor(if (failed == 0) "#166534" else "#B45309"))
+                    msg.setTextColor(Pal.c(if (failed == 0) "#166534" else "#B45309"))
                     msg.text = "✅  Sent $sent e-mail${if (sent == 1) "" else "s"}" + (if (failed > 0) " · $failed could not be sent" else "") + "."
                     etPw.setText("")
                     return
@@ -1148,20 +1148,20 @@ class AdminActivity : AppCompatActivity() {
         setup.addView(label("1. On a spare Android phone with a SIM, install the httpSMS app and sign in at httpsms.com.\n2. At httpsms.com > Settings copy your API key.\n3. Paste the key and that phone's number here and Save.\n4. In the Google Apps Script editor run authorizeSms once (Run, then Review permissions).\nThe key is kept privately on the server. It is never shown again, never in the app and never in the Sheet.", 13f, "#6C7293", false))
         setup.addView(etKey); setup.addView(etFrom); setup.addView(etLimit); setup.addView(etPw)
         setup.addView(bigButton("💾  Save SMS settings") {
-            if (etPw.text.isNullOrEmpty()) { msgSetup.setTextColor(Color.parseColor("#DC2626")); msgSetup.text = "Enter your own password to confirm"; return@bigButton }
-            msgSetup.setTextColor(Color.parseColor("#6C7293")); msgSetup.text = "Saving…"
+            if (etPw.text.isNullOrEmpty()) { msgSetup.setTextColor(Pal.c("#DC2626")); msgSetup.text = "Enter your own password to confirm"; return@bigButton }
+            msgSetup.setTextColor(Pal.c("#6C7293")); msgSetup.text = "Saving…"
             val body = JSONObject().put("action", "adminSmsSave").put("apiKey", etKey.text.toString().trim())
                 .put("from", etFrom.text.toString().trim()).put("adminPassword", etPw.text.toString())
             etLimit.text.toString().trim().takeIf { it.isNotEmpty() }?.let { body.put("limit", it) }
             api(body) { r, e ->
-                if (r != null) { toast("SMS settings saved"); loadSms() } else { msgSetup.setTextColor(Color.parseColor("#DC2626")); msgSetup.text = e }
+                if (r != null) { toast("SMS settings saved"); loadSms() } else { msgSetup.setTextColor(Pal.c("#DC2626")); msgSetup.text = e }
             }
         })
         if (configured) setup.addView(bigButton("✉️  Send a test text to my phone") {
-            msgSetup.setTextColor(Color.parseColor("#6C7293")); msgSetup.text = "Sending a test to the phone number in your My Profile…"
+            msgSetup.setTextColor(Pal.c("#6C7293")); msgSetup.text = "Sending a test to the phone number in your My Profile…"
             api(JSONObject().put("action", "adminSmsTest")) { r, e ->
-                if (r != null) { msgSetup.setTextColor(Color.parseColor("#166534")); msgSetup.text = "Sent. It should reach your phone in a moment." }
-                else { msgSetup.setTextColor(Color.parseColor("#DC2626")); msgSetup.text = e }
+                if (r != null) { msgSetup.setTextColor(Pal.c("#166534")); msgSetup.text = "Sent. It should reach your phone in a moment." }
+                else { msgSetup.setTextColor(Pal.c("#DC2626")); msgSetup.text = e }
             }
         })
         setup.addView(msgSetup)
@@ -1209,22 +1209,22 @@ class AdminActivity : AppCompatActivity() {
         send.addView(bigButton("📱  Send SMS") {
             val text = etText.text.toString().trim()
             when {
-                text.length < 2 -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Write the message first" }
-                scope == "team" && teamManager.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the manager whose team gets it" }
-                scope == "users" && pickedUsers.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose at least one person" }
-                etPw2.text.isNullOrEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Enter your own password to confirm" }
+                text.length < 2 -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Write the message first" }
+                scope == "team" && teamManager.isEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose the manager whose team gets it" }
+                scope == "users" && pickedUsers.isEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose at least one person" }
+                etPw2.text.isNullOrEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Enter your own password to confirm" }
                 else -> {
                     val who = when (scope) { "all" -> "everyone"; "team" -> "the team of $teamManager"; else -> "${pickedUsers.size} selected ${if (pickedUsers.size == 1) "person" else "people"}" }
                     AlertDialog.Builder(this).setTitle("Send this SMS?").setMessage("To $who:\n\n$text")
                         .setPositiveButton("Send") { _, _ ->
-                            msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Sending…"
+                            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Sending…"
                             val body = JSONObject().put("action", "adminSmsSend").put("scope", scope).put("message", text).put("adminPassword", etPw2.text.toString())
                             if (scope == "team") body.put("target", teamManager)
                             if (scope == "users") body.put("target", JSONArray(pickedUsers.toList()))
                             api(body) { r, e ->
                                 if (r != null) {
                                     toast(SmsUi.summary(r)); loadSms()
-                                } else { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = e }
+                                } else { msg.setTextColor(Pal.c("#DC2626")); msg.text = e }
                             }
                         }
                         .setNegativeButton("Cancel", null).show()
@@ -1279,10 +1279,10 @@ class AdminActivity : AppCompatActivity() {
         f1.addView(label("People can submit their night hold only inside these hours. Now: ${res.optString("label")}. If the closing hour is earlier than the opening hour, the hours run through midnight (for example 9 PM to 6 AM).", 13f, "#6C7293", false))
         f1.addView(btnOpen); f1.addView(btnClose)
         f1.addView(bigButton("💾  Save night hold hours") {
-            msgHours.setTextColor(Color.parseColor("#6C7293")); msgHours.text = "Saving…"
+            msgHours.setTextColor(Pal.c("#6C7293")); msgHours.text = "Saving…"
             api(JSONObject().put("action", "adminSetNightHours").put("open", open).put("close", close)) { r, err ->
                 if (r != null) { toast("Saved: ${r.optString("label")}"); dropSavedCopies(); loadEntry() }
-                else { msgHours.setTextColor(Color.parseColor("#DC2626")); msgHours.text = err }
+                else { msgHours.setTextColor(Pal.c("#DC2626")); msgHours.text = err }
             }
         })
         f1.addView(msgHours)
@@ -1354,19 +1354,19 @@ class AdminActivity : AppCompatActivity() {
         f2.addView(bigButton("✅  Open this date") {
             val pw = etAdminPw.text.toString()
             when {
-                pickedDate.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the date first" }
-                scope == "team" && teamManager.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose the manager whose team may enter it" }
-                scope == "users" && pickedUsers.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Choose at least one person" }
-                pw.isEmpty() -> { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = "Enter your own password to confirm" }
+                pickedDate.isEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose the date first" }
+                scope == "team" && teamManager.isEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose the manager whose team may enter it" }
+                scope == "users" && pickedUsers.isEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose at least one person" }
+                pw.isEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Enter your own password to confirm" }
                 else -> {
-                    msg.setTextColor(Color.parseColor("#6C7293")); msg.text = "Saving…"
+                    msg.setTextColor(Pal.c("#6C7293")); msg.text = "Saving…"
                     val body = JSONObject().put("action", "adminAllowAdd").put("kind", kind).put("date", pickedDate).put("scope", scope)
                         .put("time", etTime.text.toString().trim()).put("adminPassword", pw)
                     if (scope == "team") body.put("target", teamManager)
                     if (scope == "users") body.put("target", JSONArray(pickedUsers.toList()))
                     api(body) { r, err ->
                         if (r != null) { toast("Date opened"); loadEntry() }
-                        else { msg.setTextColor(Color.parseColor("#DC2626")); msg.text = err }
+                        else { msg.setTextColor(Pal.c("#DC2626")); msg.text = err }
                     }
                 }
             }
@@ -1448,7 +1448,7 @@ class AdminActivity : AppCompatActivity() {
         row.addView(text)
         if (active) {
             row.addView(TextView(this).apply {
-                this.text = "✕"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.parseColor("#DC2626"))
+                this.text = "✕"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Pal.c("#DC2626"))
                 isClickable = true; isFocusable = true
                 layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
                 setOnClickListener {

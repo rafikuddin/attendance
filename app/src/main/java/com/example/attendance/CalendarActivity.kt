@@ -114,7 +114,7 @@ class CalendarActivity : AppCompatActivity() {
     private fun cell(text: String) = TextView(this).apply {
         this.text = text
         gravity = Gravity.CENTER
-        setTextColor(Color.parseColor("#111827"))
+        setTextColor(Pal.c("#111827"))
         layoutParams = GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply {
             width = 0; height = dp(44); setMargins(dp(2), dp(2), dp(2), dp(2))
         }
@@ -123,7 +123,7 @@ class CalendarActivity : AppCompatActivity() {
     private fun circle(fill: String?, stroke: Boolean) = GradientDrawable().apply {
         shape = GradientDrawable.OVAL
         if (fill != null) setColor(Color.parseColor(fill))
-        if (stroke) setStroke(dp(2), Color.parseColor("#4F46E5"))
+        if (stroke) setStroke(dp(2), Pal.c("#4F46E5"))
     }
 
     // Friday and admin-set holidays are days off — never counted as absent. To add Saturday too,
@@ -139,7 +139,7 @@ class CalendarActivity : AppCompatActivity() {
         tvMonth.text = "${dFmt.format(periodStart.time)} – ${dFmt.format(periodEnd.time)} ${yFmt.format(periodEnd.time)}"
 
         for (d in listOf("S", "M", "T", "W", "T", "F", "S"))
-            grid.addView(cell(d).apply { setTypeface(null, Typeface.BOLD); setTextColor(Color.parseColor("#6B7280")) })
+            grid.addView(cell(d).apply { setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B7280")) })
         repeat(periodStart.get(Calendar.DAY_OF_WEEK) - 1) { grid.addView(cell("")) }
 
         val now = Calendar.getInstance()
@@ -165,7 +165,7 @@ class CalendarActivity : AppCompatActivity() {
                 lv != null -> {
                     val approved = lv.optString("status") == "Approved"
                     if (approved) leave++
-                    c.setTextColor(if (approved) Color.WHITE else Color.parseColor("#78350F"))
+                    c.setTextColor(if (approved) Color.WHITE else Pal.c("#78350F"))
                     c.background = circle(if (approved) "#F59E0B" else "#FDE68A", isToday)
                     c.setOnClickListener { show(key) }
                 }
@@ -176,7 +176,7 @@ class CalendarActivity : AppCompatActivity() {
                 }
                 isFriday -> {
                     off++
-                    c.setTextColor(Color.parseColor("#374151")); c.background = circle("#E5E7EB", isToday)
+                    c.setTextColor(Pal.c("#374151")); c.background = circle("#E5E7EB", isToday)
                     c.setOnClickListener { show(key) }
                 }
                 key < todayKey || (isToday && isAfterCutoff) -> {

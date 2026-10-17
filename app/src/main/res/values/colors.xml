@@ -13,4 +13,37 @@
     <color name="sky_top">#3B3FC4</color>
     <color name="glass">#F5FFFFFF</color>
     <color name="glass_edge">#99FFFFFF</color>
+    <!-- new: colours that have a Night twin in values-night -->
+    <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#000000</color>
+    <color name="tile_fill">#F4F6FF</color>
+    <color name="tile_edge">#D5DAF3</color>
+    <color name="nav_fill">#F7FFFFFF</color>
+    <color name="nav_edge">#CCFFFFFF</color>
+    <color name="btn_white">#FFFFFF</color>
+    <color name="app_top">#3B3FC4</color>
+    <color name="app_mid">#A9A5F4</color>
+    <color name="app_end">#F0EEFD</color>
+    <color name="lilac_a">#E9E6FF</color>
+    <color name="lilac_b">#F9E4F1</color>
+    <color name="mint_a">#D6F6F4</color>
+    <color name="mint_b">#F8F3D0</color>
+    <color name="peach_a">#FFE6F4</color>
+    <color name="peach_b">#FFE4D2</color>
+    <color name="link">#2563EB</color>
+    <color name="upd_bg">#E8F0FE</color>
+    <color name="upd_t1">#1E3A8A</color>
+    <color name="upd_t2">#1D4ED8</color>
+    <color name="note_bg">#FFF4E5</color>
+    <color name="note_t1">#7C2D12</color>
+    <color name="note_t2">#9A3412</color>
+    <color name="note_t3">#C2410C</color>
+    <color name="danger">#DC2626</color>
+    <color name="danger2">#B91C1C</color>
+    <color name="ok_bg">#DCFCE7</color>
+    <color name="ok_text">#166534</color>
+    <color name="warn_bg">#FEF3C7</color>
+    <color name="warn_t1">#78350F</color>
+    <color name="warn_t2">#92400E</color>
+    <color name="track">#E6E9F7</color>
 </resources>

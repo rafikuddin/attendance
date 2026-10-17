@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
             SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date())
         findViewById<TextView>(R.id.btnRefresh).setOnClickListener { loadStatus() }
         findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
+        if (Pal.reopenMenu) { Pal.reopenMenu = false; findViewById<TextView>(R.id.btnMenu).postDelayed({ if (!isFinishing) showMenu(null) }, 350) }   // the Light / Dark switch restarts the screen: bring the menu back
         findViewById<android.view.View>(R.id.cardAvatar).setOnClickListener { open(ProfileActivity::class.java) }
         findViewById<TextView>(R.id.btnBell).setOnClickListener { open(NoticesActivity::class.java) }
 
@@ -78,22 +79,36 @@ class MainActivity : AppCompatActivity() {
         setupBottomNav(Tab.HOME)
     }
 
-    private fun showMenu(anchor: android.view.View) {
-        val items = ArrayList<MenuEntry>()
-        items.add(MenuEntry("👤", "My Profile", "#1E2247") { open(ProfileActivity::class.java) })
-        items.add(MenuEntry("🎯", "Target vs Collection", "#1E2247") { open(TargetActivity::class.java) })
-        items.add(MenuEntry("📊", "My Reports", "#1E2247") { open(ReportActivity::class.java) })
-        items.add(MenuEntry("🔑", "Change Password", "#1E2247") { ChangePasswordDialog.show(this, session) })
-        items.add(MenuEntry("🔔", "Attendance reminders: ${if (Reminders.enabled(this)) "On" else "Off"}", "#1E2247") { toggleReminders() })
+    /** The side menu (👤 button): search, the menus, Light / Dark switch, who is signed in and Logout. */
+    private fun showMenu(@Suppress("UNUSED_PARAMETER") anchor: android.view.View?) {
+        val items = ArrayList<SideItem>()
+        val bell = findViewById<TextView>(R.id.tvBellBadge)
+        val unread = if (bell.visibility == android.view.View.VISIBLE) (bell.text.toString().toIntOrNull() ?: 0) else 0
+        items.add(SideItem("🏠", "Home", "Menu", current = true) { })
+        items.add(SideItem("📸", "Attendance", "Menu", locked = isLocked("attendance")) { open(AttendanceActivity::class.java) })
+        items.add(SideItem("🌴", "Leave", "Menu", locked = isLocked("leave")) { open(LeaveActivity::class.java) })
+        items.add(SideItem("🌙", "Night Hold", "Menu", locked = isLocked("night")) { open(NightHoldActivity::class.java) })
+        items.add(SideItem("📅", "Calendar", "Menu", locked = isLocked("calendar")) { open(CalendarActivity::class.java) })
+        if (session.isManager) items.add(SideItem("👥", "Team", "Menu", locked = isLocked("team")) { open(TeamActivity::class.java) })
+        items.add(SideItem("🔔", "Notices", "Menu", badge = unread, locked = isLocked("notices")) { open(NoticesActivity::class.java) })
+        items.add(SideItem("📊", "My Reports", "Menu", locked = isLocked("reports")) { open(ReportActivity::class.java) })
+        items.add(SideItem("🎯", "Target vs Collection", "Menu", locked = isLocked("target")) { open(TargetActivity::class.java) })
+
+        items.add(SideItem("👤", "My Profile", "Settings", locked = isLocked("profile")) { open(ProfileActivity::class.java) })
+        items.add(SideItem("🔑", "Change Password", "Settings") { ChangePasswordDialog.show(this, session) })
+        items.add(SideItem("⏰", "Attendance reminders: ${if (Reminders.enabled(this)) "On" else "Off"}", "Settings") { toggleReminders() })
         allowances?.takeIf { it.length() > 0 && !isLocked("manual") }?.let { a ->
-            items.add(MenuEntry("📝", "Manual entry (${a.length()})", "#7C3AED", true) { showManualEntries(a) })
+            items.add(SideItem("📝", "Manual entry (${a.length()})", "Settings", tint = "#7C3AED") { showManualEntries(a) })
         }
         pendingUpdate?.let { u ->
-            items.add(MenuEntry("⬆️", "Update app (v${u.optString("versionName")})", "#2563EB", true) { AppUpdate.offer(this, u) })
+            items.add(SideItem("⬆️", "Update app (v${u.optString("versionName")})", "Settings", tint = "#2563EB") { AppUpdate.offer(this, u) })
         }
-        if (AdminFlag.get(this) && !isLocked("admin")) items.add(MenuEntry("🛠", "Admin Panel", "#1E2247") { open(AdminActivity::class.java) })
-        items.add(MenuEntry("🚪", "Logout", "#DC2626", true) { logout() })
-        showHomeMenu(anchor, items, "SAM BOND · App version $versionName")
+        if (AdminFlag.get(this) && !isLocked("admin")) items.add(SideItem("🛠", "Admin Panel", "Settings") { open(AdminActivity::class.java) })
+        val role = if (AdminFlag.get(this)) "Admin" else if (session.isManager) "Manager" else "Employee"
+        showSideMenu(items, session.name, "@${session.username} · $role", "SAM BOND · App version $versionName") {
+            androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Log out?").setMessage("You will have to sign in again.")
+                .setPositiveButton("Log out") { _, _ -> logout() }.setNegativeButton("Cancel", null).show()
+        }
     }
 
     /** Android 13 and newer need the person's OK before any notification can show. Asked once. */
@@ -173,16 +188,16 @@ class MainActivity : AppCompatActivity() {
         val tvToday = findViewById<TextView>(R.id.tvNightToday)
         if (tonight != null) {
             tvToday.text = "✅ Submitted · ${tonight.optString("time")}"
-            tvToday.setTextColor(Color.parseColor("#16A34A"))
+            tvToday.setTextColor(Pal.c("#16A34A"))
         } else {
             tvToday.text = "Not submitted tonight"
-            tvToday.setTextColor(Color.parseColor("#6C7293"))
+            tvToday.setTextColor(Pal.c("#6C7293"))
         }
 
         if (rows.isEmpty()) {
             list.addView(TextView(this).apply {
                 text = "No night hold submitted this month. Tap to submit one."
-                textSize = 13f; setTextColor(Color.parseColor("#6C7293")); setPadding(0, dp(10), 0, 0)
+                textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(0, dp(10), 0, 0)
             })
             return
         }
@@ -194,11 +209,11 @@ class MainActivity : AppCompatActivity() {
             }
             line.addView(TextView(this).apply {
                 text = "🌙  $dateText"; textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.parseColor("#1B1E3B"))
+                setTextColor(Pal.c("#1B1E3B"))
             })
             line.addView(TextView(this).apply {
                 text = "🏨 ${o.optString("hotel")} · ${o.optString("thana")}, ${o.optString("district")}"
-                textSize = 13f; setTextColor(Color.parseColor("#6C7293")); setPadding(dp(28), 0, 0, 0)
+                textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(dp(28), 0, 0, 0)
             })
             list.addView(line)
         }
@@ -382,13 +397,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             when {
-                todayTime != null && todayLate -> { tvStatus.text = "⏰ Late Present · $todayTime"; tvStatus.setTextColor(Color.parseColor("#D97706")) }
-                todayTime != null -> { tvStatus.text = "✅ Present · $todayTime"; tvStatus.setTextColor(Color.parseColor("#16A34A")) }
-                leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Color.parseColor("#D97706")) }
-                holidayToday != null -> { tvStatus.text = "🎉 Holiday · $holidayToday"; tvStatus.setTextColor(Color.parseColor("#7C3AED")) }
-                isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Color.parseColor("#6B7280")) }
-                isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Color.parseColor("#B91C1C")) }
-                else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Color.parseColor("#DC2626")) }
+                todayTime != null && todayLate -> { tvStatus.text = "⏰ Late Present · $todayTime"; tvStatus.setTextColor(Pal.c("#D97706")) }
+                todayTime != null -> { tvStatus.text = "✅ Present · $todayTime"; tvStatus.setTextColor(Pal.c("#16A34A")) }
+                leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Pal.c("#D97706")) }
+                holidayToday != null -> { tvStatus.text = "🎉 Holiday · $holidayToday"; tvStatus.setTextColor(Pal.c("#7C3AED")) }
+                isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Pal.c("#6B7280")) }
+                isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Pal.c("#B91C1C")) }
+                else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Pal.c("#DC2626")) }
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
