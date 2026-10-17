@@ -154,9 +154,12 @@ class TargetActivity : AppCompatActivity() {
             content.addView(cardOf(c))
             if (res.has("unassigned") && (res.optDouble("unassigned") != 0.0 || res.optDouble("unknownUser") != 0.0)) {
                 val w = column()
-                if (res.optDouble("unassigned") != 0.0) w.addView(label("⚠️  ${taka(res.optDouble("unassigned"))} of the collection has no Username in the file, so it is not counted for anyone.", 12f, "#B45309", false))
+                if (res.optDouble("unassigned") != 0.0) {
+                    w.addView(label("⚠️  ${taka(res.optDouble("unassigned"))} of the collection has no Username in the file, so it is not counted for anyone.", 12f, "#B45309", false))
+                    w.addView(label("Tap to see these by dealer", 11f, "#9AA0C0", false).apply { setPadding(0, dp(4), 0, 0) })
+                }
                 if (res.optDouble("unknownUser") != 0.0) w.addView(label("⚠️  ${taka(res.optDouble("unknownUser"))} belongs to a Username that is not an app user.", 12f, "#B45309", false).apply { setPadding(0, dp(4), 0, 0) })
-                content.addView(cardOf(w))
+                content.addView(cardOf(w, if (res.optDouble("unassigned") != 0.0) ({ detail("", "No Username in the file", true) }) else null))
             }
             content.addView(label("PEOPLE", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(10), dp(6), dp(6)) })
             val rows = res.getJSONArray("rows")
@@ -208,6 +211,8 @@ class TargetActivity : AppCompatActivity() {
         val nm = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         nm.addView(label(o.optString("name"), if (big) 16f else 15f, "#111827", true))
         if (!big) nm.addView(label("@" + o.optString("username"), 12f, "#6B7280", false))
+        val base = listOf(o.optString("baseCode"), o.optString("baseName")).filter { it.isNotBlank() }.joinToString(" · ")
+        if (base.isNotEmpty()) nm.addView(label("Base: $base", 12f, "#6B7280", false))
         c.addView(row(nm, label(pctText(o), if (big) 26f else 18f, pctColor(p), true)))
         c.addView(bar(p))
         val stats = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(4), 0, 0) }
@@ -221,8 +226,8 @@ class TargetActivity : AppCompatActivity() {
         return cardOf(c) { detail(o.optString("username"), o.optString("name")) }
     }
 
-    private fun detail(username: String, name: String) {
-        api(JSONObject().put("action", "targetDetail").put("username", username)) { res, err ->
+    private fun detail(username: String, name: String, unassigned: Boolean = false) {
+        api(JSONObject().put("action", "targetDetail").put("username", username).put("unassigned", unassigned)) { res, err ->
             if (res == null) { toast(err ?: "Could not load"); return@api }
             val sb = StringBuilder()
             sb.append("Collected ${taka(res.optDouble("collected"))}")
@@ -232,6 +237,19 @@ class TargetActivity : AppCompatActivity() {
             val days = res.optJSONArray("days")
             if (days == null || days.length() == 0) sb.append("No collection yet.\n")
             else for (i in 0 until days.length()) { val d = days.getJSONObject(i); sb.append("${niceDate(d.optString("d"))}   ${taka(d.optDouble("a"))}\n") }
+            val dealers = res.optJSONArray("dealers")
+            if (dealers != null && dealers.length() > 0) {
+                val n = res.optInt("dealerCount")
+                sb.append("\nBY DEALER ($n)\n")
+                for (i in 0 until dealers.length()) {
+                    val d = dealers.getJSONObject(i)
+                    val code = d.optString("code"); val nm = d.optString("name")
+                    sb.append((listOf(code, nm).filter { it.isNotBlank() }.joinToString(" · ").ifEmpty { "(no dealer)" }) + "   " + taka(d.optDouble("amount")) + "\n")
+                    val b = listOf(d.optString("baseCode"), d.optString("baseName")).filter { it.isNotBlank() }.joinToString(" · ")
+                    if (b.isNotEmpty()) sb.append("   Base: $b\n")
+                }
+                if (n > dealers.length()) sb.append("…and ${n - dealers.length()} more dealers\n")
+            }
             val types = res.optJSONArray("types")
             if (types != null && types.length() > 0) {
                 sb.append("\nBY TYPE\n")

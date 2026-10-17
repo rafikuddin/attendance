@@ -5,10 +5,14 @@ object TargetImport {
     class TargetRow(val username: String, val name: String, val baseCode: String, val baseName: String, val target: Double)
     class TargetResult(val rows: List<TargetRow>, val total: Double, val skipped: Int)
 
-    class CollectionRow(val date: String, val username: String, val type: String, val amount: Double, val count: Int)
+    class CollectionRow(
+        val date: String, val username: String, val type: String, val amount: Double, val count: Int,
+        val name: String = "", val baseCode: String = "", val baseName: String = "", val dealerCode: String = "", val dealerName: String = ""
+    )
     class CollectionResult(
         val rows: List<CollectionRow>, val fileRows: Int, val from: String, val to: String,
-        val total: Double, val unassigned: Double, val unassignedRows: Int, val people: Int, val skipped: Int, val types: Map<String, Double>
+        val total: Double, val unassigned: Double, val unassignedRows: Int, val people: Int, val skipped: Int, val types: Map<String, Double>,
+        val dealers: Int = 0, val hasDealer: Boolean = false
     )
 
     private fun key(h: String) = h.lowercase().filter { it.isLetterOrDigit() }
@@ -68,9 +72,14 @@ object TargetImport {
         val d = m["collectiondate"]!!; val a = m["collectionamount"]!!
         val ty = m["col:collectiontype"] ?: m["col:type"]
         val us = m["col:username"]
+        val nm = m["col:name"]; val bc = m["col:basecode"]; val bn = m["col:basename"]
+        val dc = m["col:dealercode"] ?: m["col:customercode"]; val dn = m["col:dealername"] ?: m["col:customername"]
+        fun cell(r: List<String>, i: Int?) = if (i == null) "" else userOf(r.getOrElse(i) { "" })
         class Acc(var amount: Double = 0.0, var count: Int = 0)
         val acc = LinkedHashMap<String, Acc>()
-        val parts = HashMap<String, Triple<String, String, String>>()
+        class Part(val date: String, val user: String, val type: String, val name: String, val bc: String, val bn: String, val dc: String, val dn: String)
+        val parts = HashMap<String, Part>()
+        val dealerSet = HashSet<String>()
         var fileRows = 0; var skipped = 0
         var from = ""; var to = ""; var total = 0.0; var unassigned = 0.0; var unassignedRows = 0
         val people = HashSet<String>(); val types = LinkedHashMap<String, Double>()
@@ -83,8 +92,10 @@ object TargetImport {
             if (date == null || amt == null) { skipped++; continue }
             val user = if (us == null) "" else userOf(r.getOrElse(us) { "" })
             val type = (if (ty == null) "" else r.getOrElse(ty) { "" }).trim().ifEmpty { "Other" }
-            val k = "$date|${user.lowercase()}|$type"
-            val e = acc.getOrPut(k) { parts[k] = Triple(date, user, type); Acc() }
+            val dCode = cell(r, dc); val dName = cell(r, dn)
+            val k = "$date|${user.lowercase()}|$type|${dCode.lowercase()}|${if (dCode.isEmpty()) dName.lowercase() else ""}"
+            if (dCode.isNotEmpty() || dName.isNotEmpty()) dealerSet.add(if (dCode.isNotEmpty()) dCode.lowercase() else dName.lowercase())
+            val e = acc.getOrPut(k) { parts[k] = Part(date, user, type, cell(r, nm), cell(r, bc), cell(r, bn), dCode, dName); Acc() }
             e.amount += amt; e.count++
             if (from.isEmpty() || date < from) from = date
             if (to.isEmpty() || date > to) to = date
@@ -92,8 +103,8 @@ object TargetImport {
             if (user.isEmpty()) { unassigned += amt; unassignedRows++ } else people.add(user.lowercase())
         }
         if (acc.isEmpty()) throw IllegalArgumentException("No row has both a Collection Date and a Collection Amount.")
-        val rows = acc.map { (k, v) -> val p = parts[k]!!; CollectionRow(p.first, p.second, p.third, Math.round(v.amount * 100) / 100.0, v.count) }
-        return CollectionResult(rows, fileRows, from, to, total, unassigned, unassignedRows, people.size, skipped, types)
+        val rows = acc.map { (k, v) -> val p = parts[k]!!; CollectionRow(p.date, p.user, p.type, Math.round(v.amount * 100) / 100.0, v.count, p.name, p.bc, p.bn, p.dc, p.dn) }
+        return CollectionResult(rows, fileRows, from, to, total, unassigned, unassignedRows, people.size, skipped, types, dealerSet.size, dc != null || dn != null)
     }
 
     private val MONTHS = listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")

@@ -948,8 +948,10 @@ class AdminActivity : AppCompatActivity() {
                     summary = "Target file\n\n${r.rows.size} people\nTotal target ${taka(r.total)}" + (if (r.skipped > 0) "\n${r.skipped} rows skipped (no Username or no Target number)" else "")
                 } else {
                     val r = TargetImport.parseCollection(table)
-                    r.rows.forEach { arr.put(JSONObject().put("d", it.date).put("u", it.username).put("k", it.type).put("a", it.amount).put("c", it.count)) }
+                    r.rows.forEach { arr.put(JSONObject().put("d", it.date).put("u", it.username).put("k", it.type).put("a", it.amount).put("c", it.count)
+                        .put("n", it.name).put("bc", it.baseCode).put("bn", it.baseName).put("dc", it.dealerCode).put("dn", it.dealerName)) }
                     summary = "Sale Collection report\n\n${r.fileRows} rows in the file · ${r.from} to ${r.to}\nTotal ${taka(r.total)}\n${r.people} people have a Username"
+                    summary += if (r.hasDealer) "\n${r.dealers} dealers (Dealer Code and Dealer Name are saved, with Base Code, Base Name and Name)" else "\n⚠️ No Customer Code / Customer Name (dealer) columns found, so no dealer details are saved."
                     if (r.unassignedRows > 0) summary += "\n\n⚠️ ${r.unassignedRows} rows (${taka(r.unassigned)}) have NO Username. They cannot be given to anyone and will not count."
                     if (r.skipped > 0) summary += "\n${r.skipped} rows skipped (no valid date or amount)"
                     summary += "\n\nTypes: " + r.types.entries.joinToString(", ") { "${it.key} ${taka(it.value)}" }
