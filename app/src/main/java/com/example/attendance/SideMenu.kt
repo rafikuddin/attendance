@@ -29,8 +29,8 @@ class SideItem(
 )
 
 /**
- * The side menu on Home (the 👤 button): a floating panel that slides in from the left with a search box, the menus,
- * a ☀️ Light / 🌙 Dark switch and the signed-in person with a logout button at the bottom. The ‹ button folds it into a slim
+ * The side menu on Home (the 👤 button): a panel that slides in from the right edge, top to bottom, with a search box, the menus,
+ * a ☀️ Light / 🌙 Dark switch and the signed-in person with a logout button at the bottom. The › button folds it into a slim
  * icon strip (and the choice is remembered). Works in both Day and Night colours.
  */
 fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: String, footer: String, onLogout: () -> Unit) {
@@ -44,13 +44,15 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
     val frame = FrameLayout(this)
     val panel = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        background = GradientDrawable().apply { cornerRadius = dp(28).toFloat(); setColor(Pal.card) }
+        background = GradientDrawable().apply {            // flush with the top, bottom and right edge; only the left corners are rounded
+            val r = dp(28).toFloat(); cornerRadii = floatArrayOf(r, r, 0f, 0f, 0f, 0f, r, r); setColor(Pal.card)
+        }
         elevation = dp(18).toFloat()
-        setPadding(dp(14), dp(16), dp(14), dp(12))
+        setPadding(dp(14), dp(12), dp(14), dp(10))
         isClickable = true
     }
     fun panelWidth() = if (collapsed) dp(78) else dp(296)
-    frame.addView(panel, FrameLayout.LayoutParams(panelWidth(), ViewGroup.LayoutParams.MATCH_PARENT).apply { setMargins(dp(10), dp(24), 0, dp(14)) })
+    frame.addView(panel, FrameLayout.LayoutParams(panelWidth(), ViewGroup.LayoutParams.MATCH_PARENT).apply { gravity = Gravity.END })
     dialog.setContentView(frame)
     dialog.window?.apply {
         setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -61,7 +63,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
     }
 
     fun close(then: (() -> Unit)? = null) {
-        panel.animate().translationX(-(panel.width + dp(24)).toFloat()).setDuration(170).withEndAction {
+        panel.animate().translationX((panel.width + dp(24)).toFloat()).setDuration(170).withEndAction {
             try { dialog.dismiss() } catch (e: Exception) { }
             then?.invoke()
         }.start()
@@ -140,7 +142,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
             }
         }, LinearLayout.LayoutParams(dp(38), dp(38)))
         val fold = TextView(this).apply {
-            text = if (collapsed) "›" else "‹"; textSize = 18f; setTextColor(Color.WHITE); gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD)
+            text = if (collapsed) "‹" else "›"; textSize = 18f; setTextColor(Color.WHITE); gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD)
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(accent) }
             isClickable = true; isFocusable = true
             setOnClickListener { collapsed = !collapsed; prefs.edit().putBoolean("side_collapsed", collapsed).apply(); render() }
@@ -245,6 +247,6 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
     render()
 
     dialog.show()
-    panel.translationX = -dp(330).toFloat()
+    panel.translationX = dp(330).toFloat()
     panel.animate().translationX(0f).setDuration(220).start()
 }
