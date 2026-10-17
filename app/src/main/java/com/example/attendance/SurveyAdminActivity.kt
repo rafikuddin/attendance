@@ -391,10 +391,22 @@ class SurveyAdminActivity : AppCompatActivity() {
                 ids.add(u.optString("username").lowercase()); names.add("${u.optString("name")}  (@${u.optString("username")})")
             }
             val checked = BooleanArray(ids.size) { audSet.contains(ids[it]) }
-            AlertDialog.Builder(this).setTitle("Who should answer?")
+            val dlg = AlertDialog.Builder(this).setTitle("Who should answer?")
                 .setMultiChoiceItems(names.toTypedArray(), checked) { _, i, on -> checked[i] = on }
                 .setPositiveButton("OK") { _, _ -> audSet.clear(); ids.forEachIndexed { i, id -> if (checked[i]) audSet.add(id) }; renderBuilder() }
-                .setNegativeButton("Cancel", null).show()
+                .setNeutralButton("Select all", null)
+                .setNegativeButton("Cancel", null).create()
+            dlg.setOnShowListener {
+                val all = dlg.getButton(AlertDialog.BUTTON_NEUTRAL)
+                fun label() { all.text = if (checked.all { it }) "Clear all" else "Select all" }
+                label()
+                all.setOnClickListener {         // does not close the dialog
+                    val on = !checked.all { it }
+                    for (i in checked.indices) { checked[i] = on; dlg.listView.setItemChecked(i, on) }
+                    label()
+                }
+            }
+            dlg.show()
         }
         val have = people
         if (have != null) show(have) else api(JSONObject().put("action", "surveyPeople")) { r, e ->

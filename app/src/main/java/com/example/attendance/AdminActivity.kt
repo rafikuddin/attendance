@@ -1407,16 +1407,27 @@ class AdminActivity : AppCompatActivity() {
                 return v
             }
         }
+        // "Select all" works on the people currently listed (type in the search box first to select only a group, e.g. "Md.").
+        val selectAll = CheckBox(this).apply { textSize = 15f; setPadding(dp(4), dp(6), dp(4), dp(6)) }
+        fun syncAll() {
+            selectAll.text = "Select all (${shown.size} shown)"
+            selectAll.setOnCheckedChangeListener(null)
+            selectAll.isChecked = shown.isNotEmpty() && shown.all { chosen.contains(it.first) }
+            selectAll.setOnCheckedChangeListener { _, on ->
+                shown.forEach { if (on) chosen.add(it.first) else chosen.remove(it.first) }
+                adapter.notifyDataSetChanged(); syncAll()
+            }
+        }
         fun refill(q: String) {
             shown = if (q.isEmpty()) rows else rows.filter { it.second.contains(q, ignoreCase = true) }
-            adapter.clear(); adapter.addAll(shown.map { it.second }); adapter.notifyDataSetChanged()
+            adapter.clear(); adapter.addAll(shown.map { it.second }); adapter.notifyDataSetChanged(); syncAll()
         }
         refill("")
         val list = ListView(this).apply { this.adapter = adapter }
         list.setOnItemClickListener { _, _, pos, _ ->
             val u = shown[pos].first
             if (!chosen.add(u)) chosen.remove(u)
-            adapter.notifyDataSetChanged()
+            adapter.notifyDataSetChanged(); syncAll()
         }
         search.addTextChangedListener(object : android.text.TextWatcher {
             override fun afterTextChanged(e: android.text.Editable?) { refill(e?.toString()?.trim() ?: "") }
@@ -1427,7 +1438,8 @@ class AdminActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(8), dp(16), 0)
             addView(search)
-            addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(360)))
+            addView(selectAll)
+            addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(320)))
         }
         AlertDialog.Builder(this).setTitle("Choose the people").setView(box)
             .setPositiveButton("OK") { _, _ -> done() }
