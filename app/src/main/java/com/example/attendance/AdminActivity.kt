@@ -1102,7 +1102,7 @@ class AdminActivity : AppCompatActivity() {
         return cardOf(col)
     }
 
-    // ---------- SMS (free text messages through httpSMS) ----------
+    // ---------- SMS (text messages through SimGate) ----------
 
     private fun loadSms() {
         val id = ++loadId
@@ -1128,30 +1128,30 @@ class AdminActivity : AppCompatActivity() {
         st.addView(label("📱  SMS to people's phones", 16f, "#111827", true))
         if (configured) {
             st.addView(label("✅  Ready", 15f, "#166534", true).apply { setPadding(0, dp(6), 0, 0) })
-            st.addView(label("Sends from ${res.optString("from")} · key ${res.optString("keyHint")}", 13f, "#6C7293", false))
+            st.addView(label("Device ${res.optString("deviceId")} · key ${res.optString("keyHint")}", 13f, "#6C7293", false))
             st.addView(label("This month (${res.optString("month")}): ${res.optInt("used")} sent · ${res.optInt("left")} left of ${res.optInt("limit")}", 13f, "#6C7293", false))
         } else {
             st.addView(label("⚠️  Not set up yet. Follow the steps below.", 14f, "#B45309", true).apply { setPadding(0, dp(6), 0, 0) })
         }
-        st.addView(label("Free with httpSMS: your own Android phone (with a SIM) sends the texts. The free plan allows 200 messages a month.", 13f, "#6C7293", false).apply { setPadding(0, dp(8), 0, 0) })
+        st.addView(label("Through SimGate: your own Android phone (with a SIM) sends the texts. The monthly limit below is a safety limit counted by this app.", 13f, "#6C7293", false).apply { setPadding(0, dp(8), 0, 0) })
         content.addView(cardOf(st))
 
         // ---- 2. setup ----
-        val etKey = field("API key from httpsms.com > Settings" + (if (res.optBoolean("hasKey")) " (leave empty to keep the saved one)" else ""),
+        val etKey = field("API key from the SimGate app" + (if (res.optBoolean("hasKey")) " (leave empty to keep the saved one)" else ""),
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
-        val etFrom = field("Phone number of the httpSMS phone" + (if (res.optString("from").isNotEmpty()) " (now ${res.optString("from")})" else ""), InputType.TYPE_CLASS_PHONE)
-        val etLimit = field("Monthly limit (free plan: 200)", InputType.TYPE_CLASS_NUMBER)
+        val etFrom = field("Device ID from the SimGate app" + (if (res.optString("deviceId").isNotEmpty()) " (now ${res.optString("deviceId")})" else ""), InputType.TYPE_CLASS_TEXT)
+        val etLimit = field("Monthly limit (default 200)", InputType.TYPE_CLASS_NUMBER)
         val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         val msgSetup = label("", 14f, "#DC2626", false)
         val setup = column()
         setup.addView(label("Set up", 16f, "#111827", true))
-        setup.addView(label("1. On a spare Android phone with a SIM, install the httpSMS app and sign in at httpsms.com.\n2. At httpsms.com > Settings copy your API key.\n3. Paste the key and that phone's number here and Save.\n4. In the Google Apps Script editor run authorizeSms once (Run, then Review permissions).\nThe key is kept privately on the server. It is never shown again, never in the app and never in the Sheet.", 13f, "#6C7293", false))
+        setup.addView(label("1. On a spare Android phone with a SIM, install the SimGate app and register the device.\n2. In the SimGate app copy the API key and the Device ID.\n3. Paste both here and Save.\n4. In the Google Apps Script editor run authorizeSms once (Run, then Review permissions).\nThe key is kept privately on the server. It is never shown again, never in the app and never in the Sheet.", 13f, "#6C7293", false))
         setup.addView(etKey); setup.addView(etFrom); setup.addView(etLimit); setup.addView(etPw)
         setup.addView(bigButton("💾  Save SMS settings") {
             if (etPw.text.isNullOrEmpty()) { msgSetup.setTextColor(Pal.c("#DC2626")); msgSetup.text = "Enter your own password to confirm"; return@bigButton }
             msgSetup.setTextColor(Pal.c("#6C7293")); msgSetup.text = "Saving…"
             val body = JSONObject().put("action", "adminSmsSave").put("apiKey", etKey.text.toString().trim())
-                .put("from", etFrom.text.toString().trim()).put("adminPassword", etPw.text.toString())
+                .put("deviceId", etFrom.text.toString().trim()).put("adminPassword", etPw.text.toString())
             etLimit.text.toString().trim().takeIf { it.isNotEmpty() }?.let { body.put("limit", it) }
             api(body) { r, e ->
                 if (r != null) { toast("SMS settings saved"); loadSms() } else { msgSetup.setTextColor(Pal.c("#DC2626")); msgSetup.text = e }
