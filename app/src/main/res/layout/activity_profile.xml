@@ -138,8 +138,8 @@
                     android:textColor="@color/primary" android:letterSpacing="0.06" android:layout_marginTop="20dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:hint="Base Name" android:layout_marginTop="8dp"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:hint="Base Name (tap to choose)" android:layout_marginTop="8dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.TextInputEditText android:id="@+id/etBaseName"
                         android:inputType="none" android:focusable="false" android:cursorVisible="false" android:clickable="true"

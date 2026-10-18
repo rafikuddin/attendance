@@ -57,6 +57,7 @@ class NightHoldActivity : AppCompatActivity() {
     private var openHour = 21
     private var closeHour = 6
     private lateinit var tvHours: TextView          // "Open every night from ... to ...": follows the hours the admin set
+    private val cycleNights = ArrayList<JSONObject>()      // this cycle's night holds (newest first), shown in the summary at the top
     private var forDate: String? = null            // set when an admin opened a past night for this person (manual entry)
 
     private fun showHours() {
@@ -163,12 +164,64 @@ class NightHoldActivity : AppCompatActivity() {
         apiCached(
             cacheKey = ResponseCache.nightKey(session.username),
             body = JSONObject().put("action", "nights").put("username", session.username)
-                .put("from", yesterday),
+                .put("from", minOf(yesterday, cycleStartKey())),
             maxAgeMs = 24 * HOUR_MS,
             busy = findViewById<View>(R.id.btnRefresh),
             onData = { res -> applyStatus(res) },
             onError = { err, hadSaved -> if (!hadSaved) msg("Couldn't check tonight's status: ${err ?: "no connection"}", false) }
         )
+    }
+
+    /** First day of the current cycle: the 26th of this or last month (keep in sync with PERIOD_START_DAY in Code.gs). */
+    private fun cycleStartKey(): String {
+        val c = Calendar.getInstance()
+        if (c.get(Calendar.DAY_OF_MONTH) < 26) c.add(Calendar.MONTH, -1)
+        c.set(Calendar.DAY_OF_MONTH, 26)
+        return isoDay(c)
+    }
+
+    private fun cycleEndKey(): String {
+        val c = Calendar.getInstance()
+        if (c.get(Calendar.DAY_OF_MONTH) < 26) c.add(Calendar.MONTH, -1)
+        c.set(Calendar.DAY_OF_MONTH, 1); c.add(Calendar.MONTH, 1); c.set(Calendar.DAY_OF_MONTH, 25)
+        return isoDay(c)
+    }
+
+    /** The summary card at the top: how many nights were submitted in this cycle, and where (hotel, thana, district; tap = map). */
+    private fun renderSummary() {
+        val card = findViewById<View>(R.id.cardSummary)
+        if (forDate != null) { card.visibility = View.GONE; return }
+        val from = cycleStartKey(); val to = cycleEndKey()
+        val rows = cycleNights.filter { it.optString("date") in from..to }.sortedByDescending { it.optString("date") }
+        val inFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val shortFmt = SimpleDateFormat("dd MMM", Locale.getDefault())
+        val dayFmt = SimpleDateFormat("EEE, dd MMM", Locale.getDefault())
+        card.visibility = View.VISIBLE
+        findViewById<TextView>(R.id.tvSumHeading).text = "NIGHT HOLD · ${shortFmt.format(inFmt.parse(from) ?: Date())} – ${shortFmt.format(inFmt.parse(to) ?: Date())}"
+        findViewById<TextView>(R.id.tvSumCount).text = if (rows.size == 1) "1 night" else "${rows.size} nights"
+        val list = findViewById<android.widget.LinearLayout>(R.id.sumList)
+        list.removeAllViews()
+        if (rows.isEmpty()) {
+            list.addView(TextView(this).apply { text = "No night hold submitted yet in this cycle."; textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(0, dp(8), 0, 0) })
+            return
+        }
+        rows.forEach { o ->
+            val row = android.widget.LinearLayout(this).apply { orientation = android.widget.LinearLayout.VERTICAL; setPadding(0, dp(10), 0, 0) }
+            val day = try { dayFmt.format(inFmt.parse(o.optString("date"))!!) } catch (e: Exception) { o.optString("date") }
+            row.addView(TextView(this).apply { text = "🌙  $day" + (if (o.optString("time").isNotEmpty()) "  ·  ${o.optString("time")}" else ""); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#111827")) })
+            val place = listOf(o.optString("thana"), o.optString("district")).filter { it.isNotBlank() }.joinToString(", ")
+            row.addView(TextView(this).apply { text = "🏨 ${o.optString("hotel")}\n📍 $place"; textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(0, dp(2), 0, 0) })
+            val lat = o.optString("lat").toDoubleOrNull(); val lng = o.optString("lng").toDoubleOrNull()
+            if (lat != null && lng != null) {
+                row.isClickable = true
+                row.setOnClickListener {
+                    try { startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("geo:$lat,$lng?q=$lat,$lng(" + android.net.Uri.encode(o.optString("hotel")) + ")"))) }
+                    catch (e: Exception) { Toast.makeText(this, "No maps app found.", Toast.LENGTH_SHORT).show() }
+                }
+            }
+            list.addView(row)
+        }
+        list.addView(TextView(this).apply { text = "Tap a night to see its location on the map."; textSize = 11f; setTextColor(Pal.c("#9AA0C0")); setPadding(0, dp(10), 0, 0) })
     }
 
     private fun applyStatus(res: JSONObject) {
@@ -184,6 +237,9 @@ class NightHoldActivity : AppCompatActivity() {
             }
         }
         record = found
+        cycleNights.clear()
+        if (arr != null) for (i in 0 until arr.length()) cycleNights.add(arr.getJSONObject(i))
+        renderSummary()
         statusKnown = true
         renderState()
     }
@@ -344,6 +400,11 @@ class NightHoldActivity : AppCompatActivity() {
                 val saved = JSONObject().put("date", res.optString("date")).put("time", res.optString("time"))
                         .put("hotel", hotel).put("thana", t).put("district", d).put("address", address)
                 record = saved
+                if (forDate == null) {
+                    cycleNights.removeAll { it.optString("date") == saved.optString("date") }
+                    cycleNights.add(JSONObject(saved.toString()).put("lat", loc.latitude.toString()).put("lng", loc.longitude.toString()))
+                    renderSummary()
+                }
                 showDone(saved)
             } else {
                 msg("❌ $err", false)

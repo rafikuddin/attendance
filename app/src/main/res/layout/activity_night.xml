@@ -8,6 +8,27 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical" android:paddingTop="4dp" android:paddingBottom="24dp">
 
+        <!-- Summary of this cycle (26th to 25th): how many night holds and where -->
+        <com.google.android.material.card.MaterialCardView android:id="@+id/cardSummary" android:visibility="gone"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginBottom="12dp"
+            app:cardCornerRadius="24dp" app:cardElevation="6dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="18dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:id="@+id/tvSumHeading" android:text="NIGHT HOLD" android:textSize="12sp" android:textStyle="bold"
+                        android:textColor="@color/primary" android:letterSpacing="0.06"
+                        android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
+                    <TextView android:id="@+id/tvSumCount" android:text="" android:textSize="22sp" android:textStyle="bold"
+                        android:textColor="@color/ink"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                </LinearLayout>
+                <LinearLayout android:id="@+id/sumList" android:orientation="vertical"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Shown instead of the form once today's night hold has been submitted -->
         <com.google.android.material.card.MaterialCardView android:id="@+id/cardDone" android:visibility="gone"
             android:layout_width="match_parent" android:layout_height="wrap_content"
