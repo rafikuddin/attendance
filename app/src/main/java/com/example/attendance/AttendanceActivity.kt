@@ -43,6 +43,7 @@ class AttendanceActivity : AppCompatActivity() {
     private var captureTime: Date? = null
     private var location: Location? = null
     private var address: String = "Address unavailable"
+    private var entryHidden = false           // today is already Present / Late / Absent: no camera, no Submit
     private var forDate: String? = null          // set when an admin opened a past day for this person (manual entry)
 
     private val dateFmt = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
@@ -82,6 +83,11 @@ class AttendanceActivity : AppCompatActivity() {
             tvSummary.setTextColor(Pal.c("#3730A3"))
             tvSummary.text = "📝 Manual attendance for $d\nAn admin opened this day for you. Take your selfie as usual."
         }
+        if (!entryHidden) ensureCamera()
+    }
+
+    /** Starts the camera, asking for the camera and location permissions first when needed. */
+    private fun ensureCamera() {
         val perms = arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_FINE_LOCATION)
         if (perms.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED })
             startCamera() else permLauncher.launch(perms)
@@ -96,6 +102,7 @@ class AttendanceActivity : AppCompatActivity() {
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
             val provider = future.get()
+            if (entryHidden) { provider.unbindAll(); return@addListener }      // nothing to capture today
             val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
             imageCapture = ImageCapture.Builder().build()
             val selector = if (provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA))
@@ -271,6 +278,10 @@ class AttendanceActivity : AppCompatActivity() {
             } else {
                 val already = err?.contains("already", ignoreCase = true) == true
                 btnSubmit.isEnabled = !already          // a second submit for the same day can never work
+                if (already) {                           // the saved copy of Home was out of date: refresh the status card, which then hides the form
+                    ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
+                    loadTodayStatus()
+                }
                 cardSummary.setCardBackgroundColor(Pal.c(if (already) "#E3F2FD" else "#FFEBEE"))
                 tvSummary.setTextColor(Pal.c(if (already) "#0D47A1" else "#B71C1C"))
                 tvSummary.text = if (already) "ℹ️ $err" else "❌ $err"
@@ -339,6 +350,9 @@ class AttendanceActivity : AppCompatActivity() {
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             showTodayDetail(todayRecord)
+            // Already submitted (Present / Late), or marked Absent: there is nothing left to capture or submit today.
+            val absentToday = todayTime == null && leaveType == null && holidayToday == null && !isFridayToday && isAfterCutoff
+            setEntryVisible(!(todayTime != null || absentToday))
         }
 
         apiCached(
@@ -350,6 +364,22 @@ class AttendanceActivity : AppCompatActivity() {
             onData = { res -> render(res) },
             onError = { err, hadSaved -> if (!hadSaved) { tvStatus.text = "Offline"; tvMonth.text = err ?: "" } }
         )
+    }
+
+    /** Camera, Capture Selfie, the live date/time/location card and Submit are only shown while attendance can still be marked. */
+    private fun setEntryVisible(show: Boolean) {
+        if (forDate != null) return                       // a manual day opened by an admin always shows the form
+        val wasHidden = entryHidden
+        entryHidden = !show
+        if (show && wasHidden) ensureCamera()              // a saved copy said "done", the fresh answer says it is not
+        val v = if (show) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.cardCamera).visibility = v
+        findViewById<View>(R.id.cardLive).visibility = v
+        btnCapture.visibility = v
+        btnSubmit.visibility = v
+        if (!show) {
+            try { ProcessCameraProvider.getInstance(this).get().unbindAll() } catch (e: Exception) { }
+        }
     }
 
     /** Small round selfie, address and coordinates of today's attendance; back to the pin until it is marked. */
