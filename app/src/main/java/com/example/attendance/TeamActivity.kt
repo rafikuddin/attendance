@@ -87,7 +87,7 @@ class TeamActivity : AppCompatActivity() {
         canDecide = res.optBoolean("canDecide", res.optBoolean("isOwn"))
         val leaves = res.getJSONArray("leaves")
         if (leaves.length() == 0) listLeaves.addView(note("No leave requests here."))
-        else for (i in 0 until leaves.length()) listLeaves.addView(leaveCard(leaves.getJSONObject(i)))
+        else for (o in pendingFirst(leaves)) listLeaves.addView(leaveCard(o))
     }
 
     // Shows today's selfie (loaded privately through the Apps Script photo proxy) when present,
@@ -272,6 +272,9 @@ class TeamActivity : AppCompatActivity() {
         if (o.optString("reason").isNotEmpty())
             col.addView(TextView(this).apply { text = o.optString("reason"); textSize = 13f; setTextColor(Pal.c("#6B7280")) })
         if (o.optString("application").isNotEmpty()) col.addView(applicationLink(session, o.optString("application")))
+        decidedLine(o).takeIf { it.isNotEmpty() }?.let { line ->
+            col.addView(TextView(this).apply { text = line; textSize = 13f; setTextColor(Pal.c(fg)); setPadding(0, dp(6), 0, 0) })
+        }
 
         if (status == "Pending" && canDecide) {
             val btnRow = LinearLayout(this).apply {

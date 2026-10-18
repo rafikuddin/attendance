@@ -248,7 +248,7 @@ class LeaveActivity : AppCompatActivity() {
         renderBalance(res)
         val arr = res.getJSONArray("leaves")
         if (arr.length() == 0) list.addView(TextView(this).apply { text = "No leave requests yet."; setTextColor(Pal.c("#6B7280")) })
-        for (i in 0 until arr.length()) list.addView(card(arr.getJSONObject(i)))
+        for (o in pendingFirst(arr)) list.addView(card(o))
     }
 
     /** Four balance tiles in a 2 x 2 grid: type, days left (big), a bar of what is left, and used / pending. */
@@ -340,10 +340,33 @@ class LeaveActivity : AppCompatActivity() {
             background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Pal.c(bg)) }
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
         })
+        decidedLine(o).takeIf { it.isNotEmpty() }?.let { line ->
+            col.addView(TextView(this).apply { text = line; textSize = 13f; setTextColor(Pal.c(fg)); setPadding(0, dp(6), 0, 0) })
+        }
         return MaterialCardView(this).apply {
             radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.card)
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
             addView(col)
         }
     }
+}
+
+/** Applications waiting for a decision first, then the rest; the order inside each group is kept. */
+fun pendingFirst(arr: org.json.JSONArray): List<JSONObject> {
+    val all = ArrayList<JSONObject>()
+    for (i in 0 until arr.length()) all.add(arr.getJSONObject(i))
+    return all.sortedBy { if (it.optString("status", "Pending") == "Pending") 0 else 1 }
+}
+
+/** "✅ Approved by Name · 18 Oct 2026, 06:00 PM" (or Rejected). Empty while pending or when nobody is recorded (a hand-edited sheet). */
+fun decidedLine(o: JSONObject): String {
+    val status = o.optString("status", "Pending")
+    val by = o.optString("decidedBy")
+    if (status == "Pending" || by.isEmpty()) return ""
+    val on = o.optString("decidedOn")
+    val nice = try {
+        val d = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(on.take(10))
+        if (d == null) "" else java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(d) + (if (on.length > 11) ", " + on.substring(11).trim() else "")
+    } catch (e: Exception) { "" }
+    return (if (status == "Approved") "✅ Approved by " else "❌ Rejected by ") + by + (if (nice.isNotEmpty()) " · $nice" else "")
 }

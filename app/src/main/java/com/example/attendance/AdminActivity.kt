@@ -229,7 +229,8 @@ class AdminActivity : AppCompatActivity() {
                         it.optString("username").lowercase(Locale.getDefault()).contains(needle) ||
                         it.optString("manager").lowercase(Locale.getDefault()).contains(needle)
                 }
-                countLine.text = if (needle.isEmpty()) "${list.size} USERS" else "${shown.size} OF ${list.size} USERS"
+                val off = list.count { it.optBoolean("inactive") }
+                countLine.text = if (needle.isEmpty()) "${list.size - off} ACTIVE USERS" + (if (off > 0) " · $off INACTIVE" else "") else "${shown.size} OF ${list.size} USERS"
                 results.removeAllViews()
                 if (shown.isEmpty()) results.addView(note("No user matches \"${q.trim()}\"."))
                 else shown.forEach { results.addView(userCard(it)) }
