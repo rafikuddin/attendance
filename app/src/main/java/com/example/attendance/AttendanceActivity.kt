@@ -263,14 +263,26 @@ class AttendanceActivity : AppCompatActivity() {
                 tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}${if (res.optBoolean("manual")) " (manual)" else ""}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
                     "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
+                popup(if (late) "⏰ Late Present" else "✅ Attendance submitted",
+                    (if (late) "Your attendance was recorded as late.\n\n" else "Your attendance was submitted successfully.\n\n") +
+                    "Date: ${res.optString("date")}\nTime: ${res.optString("time")}")
             } else {
-                btnSubmit.isEnabled = true
-                cardSummary.setCardBackgroundColor(Pal.c("#FFEBEE"))
-                tvSummary.setTextColor(Pal.c("#B71C1C"))
-                tvSummary.text = "❌ $err"
+                val already = err?.contains("already", ignoreCase = true) == true
+                btnSubmit.isEnabled = !already          // a second submit for the same day can never work
+                cardSummary.setCardBackgroundColor(Pal.c(if (already) "#E3F2FD" else "#FFEBEE"))
+                tvSummary.setTextColor(Pal.c(if (already) "#0D47A1" else "#B71C1C"))
+                tvSummary.text = if (already) "ℹ️ $err" else "❌ $err"
+                if (already) popup("ℹ️ Already submitted", err ?: "Your attendance for today is already submitted.")
             }
         }
     }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
+
+    /** A small pop-up after submitting: success, or "already submitted". */
+    private fun popup(title: String, message: String) {
+        if (isFinishing || isDestroyed) return
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(title).setMessage(message)
+            .setPositiveButton("OK", null).show()
+    }
 }

@@ -57,6 +57,9 @@ class NightHoldActivity : AppCompatActivity() {
     private var openHour = 21
     private var closeHour = 6
     private lateinit var tvHours: TextView          // "Open every night from ... to ...": follows the hours the admin set
+    private var cycleOffset = 0                           // 0 = this cycle, -1 = the one before, ... (never in the future)
+    private val otherNights = ArrayList<JSONObject>()     // the night holds of the cycle being looked at when it is not the current one
+    private var otherLoading = false
     private val cycleNights = ArrayList<JSONObject>()      // this cycle's night holds (newest first), shown in the summary at the top
     private var forDate: String? = null            // set when an admin opened a past night for this person (manual entry)
 
@@ -173,38 +176,74 @@ class NightHoldActivity : AppCompatActivity() {
     }
 
     /** First day of the current cycle: the 26th of this or last month (keep in sync with PERIOD_START_DAY in Code.gs). */
-    private fun cycleStartKey(): String {
+    private fun cycleStartKey(offset: Int = 0): String {
         val c = Calendar.getInstance()
-        if (c.get(Calendar.DAY_OF_MONTH) < 26) c.add(Calendar.MONTH, -1)
+        c.set(Calendar.DAY_OF_MONTH, 1)                    // (avoids the 31st rolling over while months are added)
+        val today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+        if (today < 26) c.add(Calendar.MONTH, -1)
+        c.add(Calendar.MONTH, offset)
         c.set(Calendar.DAY_OF_MONTH, 26)
         return isoDay(c)
     }
 
-    private fun cycleEndKey(): String {
+    private fun cycleEndKey(offset: Int = 0): String {
         val c = Calendar.getInstance()
-        if (c.get(Calendar.DAY_OF_MONTH) < 26) c.add(Calendar.MONTH, -1)
-        c.set(Calendar.DAY_OF_MONTH, 1); c.add(Calendar.MONTH, 1); c.set(Calendar.DAY_OF_MONTH, 25)
+        c.set(Calendar.DAY_OF_MONTH, 1)
+        val today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+        if (today < 26) c.add(Calendar.MONTH, -1)
+        c.add(Calendar.MONTH, offset + 1)
+        c.set(Calendar.DAY_OF_MONTH, 25)
         return isoDay(c)
+    }
+
+    /** ‹ / › : look at the night holds of an earlier cycle (the server returns everything from a date on, so the others are asked for when needed). */
+    private fun moveCycle(delta: Int) {
+        val next = cycleOffset + delta
+        if (next > 0) return
+        cycleOffset = next
+        otherNights.clear()
+        if (cycleOffset == 0) { renderSummary(); return }
+        otherLoading = true
+        renderSummary()
+        val wanted = cycleOffset
+        api(JSONObject().put("action", "nights").put("username", session.username).put("from", cycleStartKey(wanted))) { res, err ->
+            if (wanted != cycleOffset) return@api                  // the person moved on meanwhile
+            otherLoading = false
+            val arr = res?.optJSONArray("nights")
+            if (res == null) Toast.makeText(this, err ?: "Could not load that cycle.", Toast.LENGTH_SHORT).show()
+            otherNights.clear()
+            if (arr != null) for (i in 0 until arr.length()) otherNights.add(arr.getJSONObject(i))
+            renderSummary()
+        }
     }
 
     /** The summary card at the top: how many nights were submitted in this cycle, and where (hotel, thana, district; tap = map). */
     private fun renderSummary() {
         val card = findViewById<View>(R.id.cardSummary)
         if (forDate != null) { card.visibility = View.GONE; return }
-        val from = cycleStartKey(); val to = cycleEndKey()
-        val rows = cycleNights.filter { it.optString("date") in from..to }.sortedByDescending { it.optString("date") }
+        val from = cycleStartKey(cycleOffset); val to = cycleEndKey(cycleOffset)
+        val source = if (cycleOffset == 0) cycleNights else otherNights
+        val rows = source.filter { it.optString("date") in from..to }.sortedByDescending { it.optString("date") }
+        findViewById<View>(R.id.btnCyclePrev).setOnClickListener { moveCycle(-1) }
+        findViewById<View>(R.id.btnCycleNext).apply { setOnClickListener { moveCycle(1) }; alpha = if (cycleOffset == 0) 0.25f else 1f }
         val inFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val shortFmt = SimpleDateFormat("dd MMM", Locale.getDefault())
         val dayFmt = SimpleDateFormat("EEE, dd MMM", Locale.getDefault())
         card.visibility = View.VISIBLE
         findViewById<TextView>(R.id.tvSumHeading).text = "NIGHT HOLD · ${shortFmt.format(inFmt.parse(from) ?: Date())} – ${shortFmt.format(inFmt.parse(to) ?: Date())}"
         findViewById<TextView>(R.id.tvSumCount).text = if (rows.size == 1) "1 night" else "${rows.size} nights"
+        val last = rows.firstOrNull()
+        findViewById<TextView>(R.id.tvSumHint).text = if (otherLoading) "Loading…"
+            else if (last == null) (if (cycleOffset == 0) "No night hold submitted yet in this cycle." else "No night hold in this cycle.")
+            else "Last: " + (try { dayFmt.format(inFmt.parse(last.optString("date"))!!) } catch (e: Exception) { last.optString("date") }) +
+                 (last.optString("district").takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")
+        // the details go in their own card below the form
+        val details = findViewById<View>(R.id.cardDetails)
+        details.visibility = if (rows.isEmpty()) View.GONE else View.VISIBLE
+        findViewById<TextView>(R.id.tvDetHeading).text = if (cycleOffset == 0) "NIGHT HOLDS IN THIS CYCLE" else "NIGHT HOLDS · ${shortFmt.format(inFmt.parse(from) ?: Date())} – ${shortFmt.format(inFmt.parse(to) ?: Date())}"
         val list = findViewById<android.widget.LinearLayout>(R.id.sumList)
         list.removeAllViews()
-        if (rows.isEmpty()) {
-            list.addView(TextView(this).apply { text = "No night hold submitted yet in this cycle."; textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(0, dp(8), 0, 0) })
-            return
-        }
+        if (rows.isEmpty()) return
         rows.forEach { o ->
             val row = android.widget.LinearLayout(this).apply { orientation = android.widget.LinearLayout.VERTICAL; setPadding(0, dp(10), 0, 0) }
             val day = try { dayFmt.format(inFmt.parse(o.optString("date"))!!) } catch (e: Exception) { o.optString("date") }

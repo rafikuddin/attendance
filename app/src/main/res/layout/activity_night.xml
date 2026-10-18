@@ -15,16 +15,24 @@
             app:cardCornerRadius="24dp" app:cardElevation="6dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:padding="18dp">
+                <!-- previous / next cycle -->
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:id="@+id/btnCyclePrev" android:text="‹" android:textSize="28sp" android:textStyle="bold"
+                        android:textColor="@color/primary" android:gravity="center" android:clickable="true" android:focusable="true"
+                        android:layout_width="44dp" android:layout_height="44dp" />
                     <TextView android:id="@+id/tvSumHeading" android:text="NIGHT HOLD" android:textSize="12sp" android:textStyle="bold"
-                        android:textColor="@color/primary" android:letterSpacing="0.06"
+                        android:textColor="@color/primary" android:letterSpacing="0.06" android:gravity="center"
                         android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
-                    <TextView android:id="@+id/tvSumCount" android:text="" android:textSize="22sp" android:textStyle="bold"
-                        android:textColor="@color/ink"
-                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    <TextView android:id="@+id/btnCycleNext" android:text="›" android:textSize="28sp" android:textStyle="bold"
+                        android:textColor="@color/primary" android:gravity="center" android:clickable="true" android:focusable="true"
+                        android:layout_width="44dp" android:layout_height="44dp" />
                 </LinearLayout>
-                <LinearLayout android:id="@+id/sumList" android:orientation="vertical"
+                <TextView android:id="@+id/tvSumCount" android:text="" android:textSize="26sp" android:textStyle="bold"
+                    android:textColor="@color/ink" android:gravity="center"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" />
+                <TextView android:id="@+id/tvSumHint" android:text="" android:textSize="13sp" android:textColor="@color/muted"
+                    android:layout_marginTop="4dp" android:gravity="center"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -110,6 +118,21 @@
                     android:text="Submit Night Hold" android:enabled="false"
                     android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" />
                 <TextView android:id="@+id/tvNightMsg" android:gravity="center" android:textSize="14sp" android:layout_marginTop="10dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- The details of this cycle's night holds (date, hotel, location), below the form -->
+        <com.google.android.material.card.MaterialCardView android:id="@+id/cardDetails" android:visibility="gone"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:layout_marginTop="12dp"
+            app:cardCornerRadius="24dp" app:cardElevation="6dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="18dp">
+                <TextView android:id="@+id/tvDetHeading" android:text="NIGHT HOLDS IN THIS CYCLE" android:textSize="12sp" android:textStyle="bold"
+                    android:textColor="@color/primary" android:letterSpacing="0.06"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <LinearLayout android:id="@+id/sumList" android:orientation="vertical"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
