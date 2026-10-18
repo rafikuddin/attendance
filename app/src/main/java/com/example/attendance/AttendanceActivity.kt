@@ -74,6 +74,7 @@ class AttendanceActivity : AppCompatActivity() {
             if (photoFile != null) retake() else captureSelfie()
         }
         btnSubmit.setOnClickListener { submit() }
+        if (forDate == null) loadTodayStatus() else findViewById<View>(R.id.atStatusCard).visibility = View.GONE   // a manual day is not "today"
 
         forDate?.let { d ->
             cardSummary.visibility = View.VISIBLE
@@ -263,6 +264,7 @@ class AttendanceActivity : AppCompatActivity() {
                 tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}${if (res.optBoolean("manual")) " (manual)" else ""}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
                     "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
+                loadTodayStatus()      // the card on top now shows the new attendance
                 popup(if (late) "⏰ Late Present" else "✅ Attendance submitted",
                     (if (late) "Your attendance was recorded as late.\n\n" else "Your attendance was submitted successfully.\n\n") +
                     "Date: ${res.optString("date")}\nTime: ${res.optString("time")}")
@@ -277,12 +279,123 @@ class AttendanceActivity : AppCompatActivity() {
         }
     }
 
+    /** Today's Status (same card and rules as on Home): status, present/absent count of the 26th–25th period, selfie and location. */
+    private fun loadTodayStatus() {
+        val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val now = Calendar.getInstance()
+        val today = fmt.format(now.time)
+        val isFridayToday = now.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
+        val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18          // matches Code.gs ABSENT_AFTER_HOUR
+        val periodStart = (now.clone() as Calendar).apply {
+            if (get(Calendar.DAY_OF_MONTH) < 26) add(Calendar.MONTH, -1)
+            set(Calendar.DAY_OF_MONTH, 26)
+        }
+        val periodEnd = (periodStart.clone() as Calendar).apply { add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, 25) }
+        val startKey = fmt.format(periodStart.time)
+        val endKey = fmt.format(periodEnd.time)
+        val tvStatus = findViewById<TextView>(R.id.atStatus)
+        val tvMonth = findViewById<TextView>(R.id.atMonth)
+
+        val render: (JSONObject) -> Unit = render@{ res ->
+            var present = 0
+            var todayTime: String? = null
+            var todayLate = false
+            var todayRecord: JSONObject? = null
+            val presentDays = HashSet<String>()
+            val recs = res.optJSONArray("records") ?: return@render
+            for (i in 0 until recs.length()) {
+                val r = recs.getJSONObject(i); val d = r.getString("date")
+                if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late"); todayRecord = r }
+                if (d >= startKey && d <= endKey) { present++; presentDays.add(d) }
+            }
+            val leaves = res.optJSONArray("leaves")
+            fun leaveOn(dateKey: String): String? {
+                if (leaves != null) for (i in 0 until leaves.length()) {
+                    val l = leaves.getJSONObject(i)
+                    if (l.optString("status") == "Approved" && dateKey >= l.getString("from") && dateKey <= l.getString("to")) return l.optString("type")
+                }
+                return null
+            }
+            val holidays = HashMap<String, String>()
+            res.optJSONArray("holidays")?.let { h -> for (i in 0 until h.length()) { val o = h.getJSONObject(i); holidays[o.optString("date")] = o.optString("name") } }
+            var absent = 0
+            val cursor = periodStart.clone() as Calendar
+            val yesterday = (now.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, -1) }
+            while (!cursor.after(yesterday)) {
+                val k = fmt.format(cursor.time)
+                if (cursor.get(Calendar.DAY_OF_WEEK) != Calendar.FRIDAY && !holidays.containsKey(k) && !presentDays.contains(k) && leaveOn(k) == null) absent++
+                cursor.add(Calendar.DAY_OF_MONTH, 1)
+            }
+            val leaveType = leaveOn(today)
+            val holidayToday = holidays[today]
+            when {
+                todayTime != null && todayLate -> { tvStatus.text = "⏰ Late Present · $todayTime"; tvStatus.setTextColor(Pal.c("#D97706")) }
+                todayTime != null -> { tvStatus.text = "✅ Present · $todayTime"; tvStatus.setTextColor(Pal.c("#16A34A")) }
+                leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Pal.c("#D97706")) }
+                holidayToday != null -> { tvStatus.text = "🎉 Holiday · $holidayToday"; tvStatus.setTextColor(Pal.c("#7C3AED")) }
+                isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Pal.c("#6B7280")) }
+                isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Pal.c("#B91C1C")) }
+                else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Pal.c("#DC2626")) }
+            }
+            tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
+            showTodayDetail(todayRecord)
+        }
+
+        apiCached(
+            cacheKey = ResponseCache.homeKey(session.username),
+            body = JSONObject().put("action", "history").put("username", session.username)
+                .put("from", startKey).put("nights", true)
+                .put("appVersion", AppUpdate.installedName(this)).put("appCode", AppUpdate.installedCode(this)),
+            maxAgeMs = 24 * HOUR_MS,
+            onData = { res -> render(res) },
+            onError = { err, hadSaved -> if (!hadSaved) { tvStatus.text = "Offline"; tvMonth.text = err ?: "" } }
+        )
+    }
+
+    /** Small round selfie, address and coordinates of today's attendance; back to the pin until it is marked. */
+    private fun showTodayDetail(rec: JSONObject?) {
+        val box = findViewById<View>(R.id.atDetail)
+        val mini = findViewById<ImageView>(R.id.atMini)
+        val pin = findViewById<View>(R.id.atPin)
+        val miniCard = findViewById<MaterialCardView>(R.id.atMiniCard)
+        miniCard.clipToOutline = true
+        if (rec == null) {
+            box.visibility = View.GONE
+            mini.visibility = View.GONE; pin.visibility = View.VISIBLE
+            miniCard.setOnClickListener(null); miniCard.isClickable = false
+            return
+        }
+        box.visibility = View.VISIBLE
+        val selfie = rec.optString("selfie")
+        if (selfie.isNotEmpty()) {
+            pin.visibility = View.GONE; mini.visibility = View.VISIBLE
+            PhotoLoader.load(this, session, selfie, mini, 200)
+            miniCard.isClickable = true
+            miniCard.setOnClickListener {
+                val big = ImageView(this).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    layoutParams = android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, (320 * resources.displayMetrics.density).toInt())
+                }
+                PhotoLoader.load(this, session, selfie, big, 640)
+                androidx.appcompat.app.AlertDialog.Builder(this).setView(big).setPositiveButton("Close", null).show()
+            }
+        } else { mini.visibility = View.GONE; pin.visibility = View.VISIBLE }
+        val addr = rec.optString("address")
+        val coords = "${rec.optString("lat")}, ${rec.optString("lng")}"
+        findViewById<TextView>(R.id.atLoc).text = "📍 " + (if (addr.isNotEmpty() && addr != "Address unavailable") "$addr\n$coords" else coords)
+    }
+
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
 
     /** A small pop-up after submitting: success, or "already submitted". */
     private fun popup(title: String, message: String) {
         if (isFinishing || isDestroyed) return
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(title).setMessage(message)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this).setTitle(title).setMessage(message)
             .setPositiveButton("OK", null).show()
+        // Closes by itself after 5 seconds (OK closes it sooner).
+        val closer = Runnable { if (dialog.isShowing && !isFinishing && !isDestroyed) dialog.dismiss() }
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        handler.postDelayed(closer, 5000)
+        dialog.setOnDismissListener { handler.removeCallbacks(closer) }
     }
 }

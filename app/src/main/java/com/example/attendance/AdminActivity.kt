@@ -277,6 +277,8 @@ class AdminActivity : AppCompatActivity() {
         names.addView(label("@$username" + if (mgr.isNotEmpty()) "  ·  Manager: $mgr" else "", 13f, "#6B7280", false))
         top.addView(names)
         if (o.optBoolean("isAdmin")) top.addView(pill("Admin", "#5B21B6", "#EDE9FE"))
+        val inactive = o.optBoolean("inactive")
+        top.addView(if (inactive) pill("Inactive", "#B91C1C", "#FEE2E2") else pill("Active", "#166534", "#DCFCE7"))
         col.addView(top)
         col.addView(versionLine(o))
         if (!o.optBoolean("active", true)) col.addView(label("⛔ No password set — this account cannot sign in", 12f, "#B91C1C", false).apply { setPadding(0, dp(6), 0, 0) })
@@ -318,6 +320,22 @@ class AdminActivity : AppCompatActivity() {
             setOnClickListener { accessDialog(listOf(username), lockedNow, grantsNow) }
         })
         if (!username.equals(session.username, ignoreCase = true)) {
+            col.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                text = if (inactive) "✅  Make Active" else "⛔  Make Inactive"
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+                setOnClickListener {
+                    AlertDialog.Builder(this@AdminActivity)
+                        .setTitle(if (inactive) "Make ${o.optString("name")} active?" else "Make ${o.optString("name")} inactive?")
+                        .setMessage(if (inactive) "They will be able to sign in again."
+                            else "They can no longer sign in, and any phone where they are signed in is signed out now. Their data is kept. You can make them active again at any time.")
+                        .setPositiveButton(if (inactive) "Make Active" else "Make Inactive") { _, _ ->
+                            api(JSONObject().put("action", "adminSetActive").put("username", username).put("active", inactive)) { res, err ->
+                                if (res != null) { toast(if (inactive) "Active again" else "Now inactive"); loadUsers() } else toast(err ?: "Could not save")
+                            }
+                        }
+                        .setNegativeButton("Cancel", null).show()
+                }
+            })
             col.addView(MaterialButton(this).apply {
                 text = "🔑  Reset password"
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
@@ -1405,7 +1423,7 @@ class AdminActivity : AppCompatActivity() {
 
     /** A multi-pick list with a search box. [chosen] is updated in place; [done] runs when the admin taps OK. */
     private fun pickPeople(chosen: MutableSet<String>, done: () -> Unit) {
-        val rows = users.map { Pair(it.optString("username"), "${it.optString("name")}  (${it.optString("username")})") }
+        val rows = users.filter { !it.optBoolean("inactive") }.map { Pair(it.optString("username"), "${it.optString("name")}  (${it.optString("username")})") }
         var shown: List<Pair<String, String>> = rows
         val search = EditText(this).apply { hint = "Type to search"; inputType = InputType.TYPE_CLASS_TEXT; setSingleLine() }
         val adapter = object : ArrayAdapter<String>(this, android.R.layout.simple_list_item_multiple_choice, ArrayList<String>()) {
