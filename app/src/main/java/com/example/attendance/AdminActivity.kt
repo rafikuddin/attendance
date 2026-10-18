@@ -306,6 +306,8 @@ class AdminActivity : AppCompatActivity() {
         val grantsNow = o.optJSONArray("grants")
         if (!o.optBoolean("isAdmin") && grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "surveys" })
             col.addView(label("📋 Can create & manage surveys", 12f, "#4338CA", true).apply { setPadding(0, dp(8), 0, 0) })
+        if (grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "teamview" })
+            col.addView(label("🪪 Can see Profile & Calendar of own team", 12f, "#4338CA", true).apply { setPadding(0, dp(8), 0, 0) })
         if (lockedNow != null && lockedNow.length() > 0) {
             val names = (0 until lockedNow.length()).joinToString(", ") { Access.name(lockedNow.optString(it)) }
             col.addView(label("🔒 Locked: $names", 12f, "#B45309", true).apply { setPadding(0, dp(8), 0, 0) })
@@ -349,6 +351,12 @@ class AdminActivity : AppCompatActivity() {
             isChecked = grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "surveys" }
         }
         form.addView(cbSurvey)
+        val cbTeam = CheckBox(this).apply {
+            text = "🪪  Can see Profile & Calendar of own team (line manager)"; textSize = 15f
+            isChecked = grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "teamview" }
+        }
+        form.addView(cbTeam)
+        form.addView(label("A line manager with this tick gets 🪪 Team members in the menu: only the people below them, read only.", 12f, "#9AA0C0", false))
         form.addView(label(if (names.size == 1) "Admins can always do this. Everybody else only with this tick; they then see ⚙️ Manage surveys inside Surveys."
             else "Applies to all ${names.size} chosen people (admins can always do this).", 12f, "#9AA0C0", false))
         val title = if (names.size == 1) "Menu access: " + (users.firstOrNull { it.optString("username").equals(names[0], true) }?.optString("name") ?: names[0])
@@ -357,14 +365,14 @@ class AdminActivity : AppCompatActivity() {
             .setPositiveButton("Save") { _, _ ->
                 val body = JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names))
                     .put("locks", JSONArray(boxes.filter { !it.value.isChecked }.keys.toList()))
-                    .put("grants", JSONArray(if (cbSurvey.isChecked) listOf("surveys") else listOf()))
+                    .put("grants", JSONArray(listOfNotNull(if (cbSurvey.isChecked) "surveys" else null, if (cbTeam.isChecked) "teamview" else null)))
                 api(body) { res, err ->
                     if (res != null) { toast("Saved for ${res.optInt("updated")} ${if (res.optInt("updated") == 1) "person" else "people"}"); loadUsers() }
                     else toast(err ?: "Could not save")
                 }
             }
             .setNeutralButton("Unlock all") { _, _ -> boxes.values.forEach { it.isChecked = true }
-                api(JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names)).put("locks", JSONArray()).put("grants", JSONArray(if (cbSurvey.isChecked) listOf("surveys") else listOf()))) { res, err ->
+                api(JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names)).put("locks", JSONArray()).put("grants", JSONArray(listOfNotNull(if (cbSurvey.isChecked) "surveys" else null, if (cbTeam.isChecked) "teamview" else null)))) { res, err ->
                     if (res != null) { toast("Everything unlocked"); loadUsers() } else toast(err ?: "Could not save") }
             }
             .setNegativeButton("Cancel", null).show()

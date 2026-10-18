@@ -22,6 +22,8 @@ class CalendarActivity : AppCompatActivity() {
         /** Set by the Admin Panel: show this person's calendar (read-only) instead of my own. */
         const val EXTRA_USER = "targetUser"
         const val EXTRA_NAME = "targetName"
+        /** A line manager (allowed by an admin) looking at the calendar of someone below them. */
+        const val EXTRA_VIEW_ONLY = "viewOnly"
     }
     private var target: String? = null
     private val iso = SimpleDateFormat("yyyy-MM-dd", Locale.US)
@@ -68,7 +70,7 @@ class CalendarActivity : AppCompatActivity() {
             tvCount.text = "Loading..."
             val refresh = findViewById<View>(R.id.btnRefresh)
             Spin.start(refresh, true)
-            api(JSONObject().put("action", "adminHistory").put("targetUsername", t)) { res, err ->
+            api(JSONObject().put("action", if (intent.getBooleanExtra(EXTRA_VIEW_ONLY, false)) "teamHistory" else "adminHistory").put("targetUsername", t)) { res, err ->
                 Spin.stop(refresh)
                 if (res != null) showHistory(res) else tvCount.text = err ?: "Could not load."
             }

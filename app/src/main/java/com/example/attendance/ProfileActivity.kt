@@ -36,7 +36,10 @@ class ProfileActivity : AppCompatActivity() {
         /** Set by the Admin Panel: the username whose profile the admin is viewing / editing. Absent = the signed-in person's own profile. */
         const val EXTRA_USER = "targetUser"
         const val EXTRA_NAME = "targetName"
+        /** A line manager (allowed by an admin) looking at the profile of someone below them: nothing can be changed. */
+        const val EXTRA_VIEW_ONLY = "viewOnly"
     }
+    private var viewOnly = false
 
     private var target: String? = null               // null = my own profile; otherwise an admin is editing this person
     private lateinit var session: Session
@@ -84,7 +87,8 @@ class ProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
         target = intent.getStringExtra(EXTRA_USER)?.takeIf { it.isNotBlank() }
-        setupHeader(if (target == null) "My Profile" else "Edit Profile") { loadProfile() }
+        viewOnly = target != null && intent.getBooleanExtra(EXTRA_VIEW_ONLY, false)
+        setupHeader(if (target == null) "My Profile" else if (viewOnly) "Profile" else "Edit Profile") { loadProfile() }
         setupBottomNav(null)
         if (target == null) enforceAccess("profile")
         session = Session(this)
@@ -100,7 +104,7 @@ class ProfileActivity : AppCompatActivity() {
         btnSave = findViewById(R.id.btnSaveProfile); btnTake = findViewById(R.id.btnTakePhoto); btnPick = findViewById(R.id.btnPickPhoto)
 
         findViewById<TextView>(R.id.tvProfileName).text = shownName
-        findViewById<TextView>(R.id.tvProfileUser).text = if (target == null) "@${session.username}" else "@$target  ·  editing as admin"
+        findViewById<TextView>(R.id.tvProfileUser).text = if (target == null) "@${session.username}" else if (viewOnly) "@$target  ·  view only" else "@$target  ·  editing as admin"
         tvInitial.text = shownName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
         setRelationChoices()
@@ -112,12 +116,17 @@ class ProfileActivity : AppCompatActivity() {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCamera()
             else cameraPermission.launch(Manifest.permission.CAMERA)
         }
+        if (viewOnly) {                                   // read only: no typing, no photo change, no save
+            listOf<View>(etOfficial, etPersonal, etEmail, etEmergency, ddRelation, etOther, etBike, etLaptop, ddTshirt, etBaseName).forEach { it.isEnabled = false }
+            btnSave.visibility = View.GONE; btnTake.visibility = View.GONE; btnPick.visibility = View.GONE
+        }
         loadProfile()
     }
 
     /** Own profile: profile / saveProfile / saveProfilePhoto. Admin editing someone: adminProfile / adminSaveProfile / adminSaveProfilePhoto + the username. */
     private fun request(action: String): JSONObject {
         val t = target ?: return JSONObject().put("action", action)
+        if (viewOnly) return JSONObject().put("action", "team" + action.replaceFirstChar { it.uppercaseChar() }).put("targetUsername", t)
         return JSONObject().put("action", "admin" + action.replaceFirstChar { it.uppercaseChar() }).put("targetUsername", t)
     }
 

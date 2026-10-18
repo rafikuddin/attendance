@@ -32,12 +32,16 @@ object Access {
 
     /** Keeps the locked menus the server sent in a reply (it adds "locks" to every answer). Replies without it change nothing. */
     fun remember(ctx: Context, reply: JSONObject?) {
+        if (reply != null && reply.has("teamView")) prefs(ctx).edit().putBoolean("tv_" + Session(ctx).username.lowercase(), reply.optBoolean("teamView")).apply()
         if (reply != null && reply.has("surveyAdmin")) prefs(ctx).edit().putBoolean("sa_" + Session(ctx).username.lowercase(), reply.optBoolean("surveyAdmin")).apply()
         val a = reply?.optJSONArray("locks") ?: return
         prefs(ctx).edit().putString(prefKey(ctx), (0 until a.length()).joinToString(",") { a.optString(it) }).apply()
     }
 
     /** May this person create, edit and read the results of surveys? (An admin, or somebody an admin gave the right.) The server checks again. */
+    /** May this line manager open the Profile and Calendar of the people below them? (Given by an admin; the server checks again.) */
+    fun canViewTeam(ctx: Context): Boolean = prefs(ctx).getBoolean("tv_" + Session(ctx).username.lowercase(), false)
+
     fun canManageSurveys(ctx: Context): Boolean = prefs(ctx).getBoolean("sa_" + Session(ctx).username.lowercase(), false)
 
     fun isLocked(ctx: Context, key: String): Boolean =
