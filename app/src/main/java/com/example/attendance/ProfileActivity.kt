@@ -52,6 +52,9 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var tilOther: TextInputLayout
     private lateinit var etOther: EditText
     private lateinit var etBike: EditText
+    private lateinit var etBaseName: EditText
+    private lateinit var etBaseCode: EditText
+    private lateinit var ddTshirt: MaterialAutoCompleteTextView
     private lateinit var tilLaptop: TextInputLayout
     private lateinit var etLaptop: EditText
     private lateinit var btnSave: MaterialButton
@@ -60,6 +63,9 @@ class ProfileActivity : AppCompatActivity() {
 
     private var relations: List<String> = listOf("Wife", "Son", "Brother", "Mother", "Father", "Daughter")
     private var canLaptop = false
+    private var bases: List<Pair<String, String>> = emptyList()      // code to name, from the server's Bases list
+    private var baseCode = ""                                        // the chosen Base Code ("" = none)
+    private var tshirtSizes: List<String> = listOf("S", "M", "L", "XL", "XXL", "2XL")
     private var cameraFile: File? = null
     private var loaded = false          // the form is only saved after the server's copy has been shown, so nothing is overwritten by blanks
 
@@ -88,6 +94,8 @@ class ProfileActivity : AppCompatActivity() {
         etOfficial = findViewById(R.id.etOfficial); etPersonal = findViewById(R.id.etPersonal); etEmail = findViewById(R.id.etEmail)
         etEmergency = findViewById(R.id.etEmergency); ddRelation = findViewById(R.id.ddRelation)
         tilOther = findViewById(R.id.tilOther); etOther = findViewById(R.id.etOther)
+        etBaseName = findViewById(R.id.etBaseName); etBaseCode = findViewById(R.id.etBaseCode); ddTshirt = findViewById(R.id.ddTshirt)
+        etBaseName.setOnClickListener { chooseBase() }
         etBike = findViewById(R.id.etBike); tilLaptop = findViewById(R.id.tilLaptop); etLaptop = findViewById(R.id.etLaptop)
         btnSave = findViewById(R.id.btnSaveProfile); btnTake = findViewById(R.id.btnTakePhoto); btnPick = findViewById(R.id.btnPickPhoto)
 
@@ -96,6 +104,7 @@ class ProfileActivity : AppCompatActivity() {
         tvInitial.text = shownName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
         setRelationChoices()
+        setTshirtChoices()
         ddRelation.setOnItemClickListener { _, _, _, _ -> updateOtherBox() }
         btnSave.setOnClickListener { save() }
         btnPick.setOnClickListener { pickPicture.launch("image/*") }
@@ -120,6 +129,32 @@ class ProfileActivity : AppCompatActivity() {
         tilOther.visibility = if (ddRelation.text.toString() == "Other") View.VISIBLE else View.GONE
     }
 
+    private fun setTshirtChoices() {
+        ddTshirt.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, tshirtSizes))
+    }
+
+    /** Base Name: a searchable list; choosing one fills in the Base Code. Names used by several bases show their code too. */
+    private fun chooseBase() {
+        if (!loaded) { msg("Please wait until your profile has loaded.", false); return }
+        if (bases.isEmpty()) { msg("The base list is not available. Pull to refresh and try again.", false); return }
+        val dup = bases.groupingBy { it.second }.eachCount()
+        val none = "— No base —"
+        val labels = ArrayList<String>(); val codes = ArrayList<String>()
+        labels.add(none); codes.add("")
+        bases.forEach { (code, name) -> labels.add(if ((dup[name] ?: 0) > 1) "$name  ($code)" else name); codes.add(code) }
+        PickerDialog.show(this, "Choose the Base Name", labels) { picked ->
+            val i = labels.indexOf(picked)
+            if (i >= 0) showBase(codes[i])
+        }
+    }
+
+    private fun showBase(code: String) {
+        baseCode = code
+        val name = bases.firstOrNull { it.first == code }?.second
+        etBaseName.setText(name ?: "")
+        etBaseCode.setText(if (name != null) code else "")
+    }
+
     private fun loadProfile() {
         msg("Loading...", true)
         api(request("profile")) { res, err ->
@@ -129,11 +164,21 @@ class ProfileActivity : AppCompatActivity() {
             if (list != null && list.length() > 0) relations = (0 until list.length()).map { list.getString(it) }
             setRelationChoices()
             canLaptop = res.optBoolean("canLaptop")
+            val bl = res.optJSONArray("bases")
+            if (bl != null) bases = (0 until bl.length()).map { val b = bl.getJSONArray(it); Pair(b.getString(0), b.getString(1)) }
+            val tl = res.optJSONArray("tshirtSizes")
+            if (tl != null && tl.length() > 0) tshirtSizes = (0 until tl.length()).map { tl.getString(it) }
+            setTshirtChoices()
             tilLaptop.visibility = if (canLaptop) View.VISIBLE else View.GONE
             val p = res.getJSONObject("profile")
             etOfficial.setText(p.optString("officialPhone")); etPersonal.setText(p.optString("personalPhone"))
             etEmail.setText(p.optString("email")); etEmergency.setText(p.optString("emergencyPhone"))
             etBike.setText(p.optString("bike")); etLaptop.setText(p.optString("laptop"))
+            val savedCode = p.optString("baseCode")
+            if (savedCode.isNotEmpty() && bases.none { it.first == savedCode }) {       // a base removed from the list since: show what was saved
+                baseCode = savedCode; etBaseName.setText(p.optString("baseName")); etBaseCode.setText(savedCode)
+            } else showBase(savedCode)
+            ddTshirt.setText(p.optString("tshirt"), false)
             val rel = p.optString("relation")
             when {
                 rel.isEmpty() -> { ddRelation.setText("", false); etOther.setText("") }
@@ -162,6 +207,7 @@ class ProfileActivity : AppCompatActivity() {
             .put("officialPhone", etOfficial.text.toString().trim()).put("personalPhone", etPersonal.text.toString().trim())
             .put("email", etEmail.text.toString().trim()).put("emergencyPhone", emergency).put("relation", relation)
             .put("bike", etBike.text.toString().trim()).put("laptop", etLaptop.text.toString().trim())
+            .put("baseCode", baseCode).put("tshirt", ddTshirt.text.toString().trim())
         btnSave.isEnabled = false
         msg("Saving...", true)
         api(body) { res, err ->

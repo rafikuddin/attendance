@@ -134,6 +134,34 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <TextView android:text="WORK &amp; SIZE" android:textSize="12sp" android:textStyle="bold"
+                    android:textColor="@color/primary" android:letterSpacing="0.06" android:layout_marginTop="20dp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:hint="Base Name" android:layout_marginTop="8dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/etBaseName"
+                        android:inputType="none" android:focusable="false" android:cursorVisible="false" android:clickable="true"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:hint="Base Code (fills in by itself)" android:layout_marginTop="12dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/etBaseCode"
+                        android:inputType="none" android:focusable="false" android:cursorVisible="false" android:clickable="false"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:hint="T-shirt size" android:layout_marginTop="12dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/ddTshirt"
+                        android:inputType="none"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+
                 <TextView android:text="VEHICLE &amp; EQUIPMENT" android:textSize="12sp" android:textStyle="bold"
                     android:textColor="@color/primary" android:letterSpacing="0.06" android:layout_marginTop="20dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />

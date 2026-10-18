@@ -37,7 +37,9 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
   - **change your profile photo** (📷 *Take photo* or 🖼 *Choose picture*) — this is separate from your daily attendance selfie, and it replaces the letter in the round avatar on Home;
   - keep your **official phone**, **personal phone** and **email address**;
   - set an **emergency contact**: phone number plus **relation** from a drop-down (*Wife, Son, Brother, Mother, Father, Daughter, Other*). Choose **Other** and a box appears where you write the relation yourself;
+  - choose your **Base Name** from a searchable list — the **Base Code** fills in by itself (a name used by several bases shows its code in the list) — and your **T-shirt size** (S, M, L, XL, XXL, 2XL).
   - add your **bike number**, and — **for managers only** — your **laptop model**.
+  - The base list is the **Bases** tab of the Sheet (BaseCode, BaseName; made automatically with the 161 bases). Edit that tab to add, rename or remove bases. Saved in the Profiles tab columns K–M (BaseName, BaseCode, TShirt).
   
   Every field is optional (an emergency phone and its relation go together). Phone numbers are checked (digits, 8–15, optional `+`) and email addresses too. Only you can change your own profile.
 - **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, 🎉 holidays, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
@@ -86,7 +88,7 @@ The app uses a **glass / gradient** style: a soft indigo → lavender gradient b
 | **Team** *(managers only)* | Team status, roll-ups, drill-down, leave approvals |
 | **Calendar** | Pay-period view of attendance, leave and night holds |
 | **Night Hold** | Overnight stay report with location, district/thana and hotel |
-| **My Profile** | Change your photo; phones, email, emergency contact + relation, bike number, laptop model (managers) |
+| **My Profile** | Change your photo; phones, email, emergency contact + relation, Base Name (+ Base Code), T-shirt size, bike number, laptop model (managers) |
 | **Notices** | Everything admins and your manager have posted; managers can post a team notice |
 | **My Reports** | Download your own (managers: or your team's) attendance / night hold Excel file |
 | **Admin Panel** *(admins only)* | Add users, reset passwords, post notices, add holidays, publish app updates |
