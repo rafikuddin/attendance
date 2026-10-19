@@ -284,6 +284,10 @@ class AdminActivity : AppCompatActivity() {
         names.addView(label(o.optString("name"), 16f, "#111827", true))
         val mgr = o.optString("manager")
         names.addView(label("ID: $username" + if (mgr.isNotEmpty()) "  ·  Manager: $mgr" else "", 13f, "#6B7280", false))
+        if (o.optBoolean("inactive") && o.optString("lastWorkingDay").isNotEmpty()) {
+            val lwd = try { nice.format(iso.parse(o.optString("lastWorkingDay"))!!) } catch (e: Exception) { o.optString("lastWorkingDay") }
+            names.addView(label("Last working day: $lwd" + (if (o.optString("inactiveRemarks").isNotEmpty()) "\nRemarks: ${o.optString("inactiveRemarks")}" else ""), 12f, "#B91C1C", false))
+        }
         top.addView(names)
         if (o.optBoolean("isAdmin")) top.addView(pill("Admin", "#5B21B6", "#EDE9FE"))
         val inactive = o.optBoolean("inactive")
@@ -333,13 +337,13 @@ class AdminActivity : AppCompatActivity() {
                 text = if (inactive) "✅  Make Active" else "⛔  Make Inactive"
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
                 setOnClickListener {
-                    AlertDialog.Builder(this@AdminActivity)
-                        .setTitle(if (inactive) "Make ${o.optString("name")} active?" else "Make ${o.optString("name")} inactive?")
-                        .setMessage(if (inactive) "They will be able to sign in again."
-                            else "They can no longer sign in, and any phone where they are signed in is signed out now. Their data is kept. You can make them active again at any time.")
-                        .setPositiveButton(if (inactive) "Make Active" else "Make Inactive") { _, _ ->
-                            api(JSONObject().put("action", "adminSetActive").put("username", username).put("active", inactive)) { res, err ->
-                                if (res != null) { toast(if (inactive) "Active again" else "Now inactive"); loadUsers() } else toast(err ?: "Could not save")
+                    if (!inactive) inactiveDialog(o)
+                    else AlertDialog.Builder(this@AdminActivity)
+                        .setTitle("Make ${o.optString("name")} active?")
+                        .setMessage("They will be able to sign in again.")
+                        .setPositiveButton("Make Active") { _, _ ->
+                            api(JSONObject().put("action", "adminSetActive").put("username", username).put("active", true)) { res, err ->
+                                if (res != null) { toast("Active again"); loadUsers() } else toast(err ?: "Could not save")
                             }
                         }
                         .setNegativeButton("Cancel", null).show()
@@ -547,9 +551,52 @@ class AdminActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    /** Make Inactive: asks the Last working day and a remark, then the server saves both and e-mails the person's line managers and all admins. */
+    private fun inactiveDialog(user: JSONObject) {
+        val target = user.optString("username")
+        val info = label("${user.optString("name")} (Employee ID $target) will not be able to sign in, and any phone where they are signed in is signed out now. Their data is kept. " +
+            "An e-mail is sent to all their line managers and all admins.", 14f, "#6C7293", false)
+        var picked = ""
+        val btnDate = chipButton("📅  Last working day (choose the date)") {}
+        btnDate.setOnClickListener {
+            val c = Calendar.getInstance()
+            DatePickerDialog(this, { _, y, m, d ->
+                picked = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                btnDate.text = "📅  Last working day: " + (try { nice.format(iso.parse(picked)!!) } catch (e: Exception) { picked })
+            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
+        }
+        val etRemarks = field("Remarks (for example: resigned, transferred, terminated)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
+        val error = label("", 14f, "#DC2626", false)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Make ${user.optString("name")} inactive?")
+            .setView(scrollable(info, btnDate, etRemarks, error))
+            .setPositiveButton("Make Inactive", null)
+            .setNegativeButton("Cancel", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val remarks = etRemarks.text.toString().trim()
+                if (picked.isEmpty()) { error.setTextColor(Pal.c("#DC2626")); error.text = "Choose the last working day"; return@setOnClickListener }
+                if (remarks.length < 3) { error.setTextColor(Pal.c("#DC2626")); error.text = "Write a short remark"; return@setOnClickListener }
+                error.setTextColor(Pal.c("#6C7293")); error.text = "Saving and sending e-mails…"
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                api(JSONObject().put("action", "adminSetActive").put("username", target).put("active", false).put("lastWorkingDay", picked).put("remarks", remarks)) { res, err ->
+                    if (res != null) {
+                        dialog.dismiss()
+                        val sent = res.optInt("emailed"); val none = res.optInt("noEmail"); val failed = res.optInt("mailFailed")
+                        toast("Now inactive. " + (if (sent > 0) "E-mailed $sent people" else "No e-mail sent") +
+                            (if (none > 0) " ($none have no e-mail saved)" else "") + (if (failed > 0) " ($failed could not be sent)" else "") + ".")
+                        loadUsers()
+                    } else { dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true; error.setTextColor(Pal.c("#DC2626")); error.text = err }
+                }
+            }
+        }
+        dialog.show()
+    }
+
     private fun resetDialog(user: JSONObject) {
         val target = user.optString("username")
-        val info = label("Set a temporary password for ${user.optString("name")} (@$target). They will be signed out everywhere and must choose their own password next time.", 14f, "#6C7293", false)
+        val info = label("Set a temporary password for ${user.optString("name")} (Employee ID $target). They will be signed out everywhere and must choose their own password next time.", 14f, "#6C7293", false)
         val etPass = field("Temporary password (blank = make one for me)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
         val etAdminPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         val error = label("", 14f, "#DC2626", false)
@@ -571,7 +618,7 @@ class AdminActivity : AppCompatActivity() {
                         dialog.dismiss()
                         val temp = res.optString("tempPassword")
                         if (temp.isNotEmpty()) showTempPassword("Password reset", target, temp)
-                        else toast("Password reset for @$target.")
+                        else toast("Password reset for Employee ID $target.")
                         loadUsers()
                     } else error.text = err
                 }
