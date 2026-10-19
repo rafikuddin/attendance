@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (AdminFlag.get(this) && !isLocked("admin")) items.add(SideItem("🛠", "Admin Panel", "Settings") { open(AdminActivity::class.java) })
         val role = if (AdminFlag.get(this)) "Admin" else if (session.isManager) "Manager" else "Employee"
-        showSideMenu(items, session.name, "@${session.username} · $role", "SAM BOND · App version $versionName") {
+        showSideMenu(items, session.name, "ID: ${session.username} · $role", "SAM BOND · App version $versionName") {
             androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Log out?").setMessage("You will have to sign in again.")
                 .setPositiveButton("Log out") { _, _ -> logout() }.setNegativeButton("Cancel", null).show()
         }

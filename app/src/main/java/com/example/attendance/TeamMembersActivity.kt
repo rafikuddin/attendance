@@ -58,7 +58,7 @@ class TeamMembersActivity : AppCompatActivity() {
                 return@api
             }
             etSearch = EditText(this).apply {
-                hint = "Search by name or username"; inputType = InputType.TYPE_CLASS_TEXT; setSingleLine()
+                hint = "Search by name or Employee ID"; inputType = InputType.TYPE_CLASS_TEXT; setSingleLine()
                 addTextChangedListener(object : TextWatcher {
                     override fun afterTextChanged(e: Editable?) { fill(e?.toString()?.trim().orEmpty()) }
                     override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -85,7 +85,7 @@ class TeamMembersActivity : AppCompatActivity() {
         val username = o.optString("username"); val name = o.optString("name")
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
         col.addView(label(name, 16f, "#111827", true))
-        col.addView(label("@$username" + (if (o.optBoolean("isManager")) "  ·  manager" else "") + (if (o.optString("manager").isNotBlank()) "  ·  reports to ${o.optString("manager")}" else ""), 12f, "#6C7293"))
+        col.addView(label("ID: $username" + (if (o.optBoolean("isManager")) "  ·  manager" else "") + (if (o.optString("manager").isNotBlank()) "  ·  reports to ${o.optString("manager")}" else ""), 12f, "#6C7293"))
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
         row.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
             text = "👤 Profile"

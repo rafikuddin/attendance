@@ -22,10 +22,10 @@ object ForgotPasswordDialog {
         fun field(label: String, type: Int) = EditText(activity).apply { hint = label; inputType = type }
 
         val info = TextView(activity).apply {
-            text = "Enter your username. We will e-mail a 6-digit code to the e-mail address saved in your My Profile."
+            text = "Enter your Employee ID. We will e-mail a 6-digit code to the e-mail address saved in your My Profile."
             setTextColor(Pal.c("#6C7293"))
         }
-        val etUser = field("Username", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS).apply { setText(presetUser) }
+        val etUser = field("Employee ID", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS).apply { setText(presetUser) }
         val etCode = field("6-digit code from the e-mail", InputType.TYPE_CLASS_NUMBER).apply { visibility = View.GONE }
         val etNew = field("New password (at least $MIN_LENGTH characters)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD).apply { visibility = View.GONE }
         val etNew2 = field("Confirm new password", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD).apply { visibility = View.GONE }
@@ -47,7 +47,7 @@ object ForgotPasswordDialog {
 
         fun sendCode(btn: android.widget.Button) {
             val u = etUser.text.toString().trim()
-            if (u.isEmpty()) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Enter your username"; return }
+            if (u.isEmpty()) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Enter your Employee ID"; return }
             btn.isEnabled = false
             msg.setTextColor(Pal.c("#6C7293")); msg.text = "Sending…"
             activity.api(JSONObject().put("action", "resetRequest").put("username", u)) { res, err ->

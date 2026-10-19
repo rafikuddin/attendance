@@ -104,7 +104,7 @@ class ProfileActivity : AppCompatActivity() {
         btnSave = findViewById(R.id.btnSaveProfile); btnTake = findViewById(R.id.btnTakePhoto); btnPick = findViewById(R.id.btnPickPhoto)
 
         findViewById<TextView>(R.id.tvProfileName).text = shownName
-        findViewById<TextView>(R.id.tvProfileUser).text = if (target == null) "@${session.username}" else if (viewOnly) "@$target  ·  view only" else "@$target  ·  editing as admin"
+        findViewById<TextView>(R.id.tvProfileUser).text = if (target == null) "ID: ${session.username}" else if (viewOnly) "ID: $target  ·  view only" else "ID: $target  ·  editing as admin"
         tvInitial.text = shownName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
         setRelationChoices()

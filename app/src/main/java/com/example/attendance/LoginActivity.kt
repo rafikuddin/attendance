@@ -26,7 +26,7 @@ class LoginActivity : AppCompatActivity() {
         intent.getStringExtra(EXTRA_MESSAGE)?.let { tvErr.text = it }
 
         findViewById<TextView>(R.id.tvSignup).setOnClickListener {
-            SignupDialog.show(this) { message -> tvErr.setTextColor(Pal.c("#166534")); tvErr.text = message }
+            startActivity(Intent(this, SignupActivity::class.java))
         }
         findViewById<TextView>(R.id.tvForgot).setOnClickListener {
             ForgotPasswordDialog.show(this, etUser.text.toString().trim()) { u ->
@@ -37,7 +37,7 @@ class LoginActivity : AppCompatActivity() {
         btn.setOnClickListener {
             val u = etUser.text.toString().trim()
             val p = etPass.text.toString()
-            if (u.isEmpty() || p.isEmpty()) { tvErr.text = "Enter username and password"; return@setOnClickListener }
+            if (u.isEmpty() || p.isEmpty()) { tvErr.text = "Enter Employee ID and password"; return@setOnClickListener }
             btn.isEnabled = false
             tvErr.setTextColor(Pal.c("#DC2626"))
             tvErr.text = "Signing in..."

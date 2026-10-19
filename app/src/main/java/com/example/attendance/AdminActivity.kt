@@ -219,7 +219,7 @@ class AdminActivity : AppCompatActivity() {
             latestName = res.optJSONObject("latest")?.optString("versionName") ?: ""
             // Search by name, username or manager. The list below is rebuilt on every keystroke.
             val search = EditText(this).apply {
-                hint = "🔍  Search name, username or manager"
+                hint = "🔍  Search name, Employee ID or manager"
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
                 maxLines = 1; isSingleLine = true; textSize = 15f
                 imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
@@ -283,7 +283,7 @@ class AdminActivity : AppCompatActivity() {
         }
         names.addView(label(o.optString("name"), 16f, "#111827", true))
         val mgr = o.optString("manager")
-        names.addView(label("@$username" + if (mgr.isNotEmpty()) "  ·  Manager: $mgr" else "", 13f, "#6B7280", false))
+        names.addView(label("ID: $username" + if (mgr.isNotEmpty()) "  ·  Manager: $mgr" else "", 13f, "#6B7280", false))
         top.addView(names)
         if (o.optBoolean("isAdmin")) top.addView(pill("Admin", "#5B21B6", "#EDE9FE"))
         val inactive = o.optBoolean("inactive")
@@ -406,7 +406,7 @@ class AdminActivity : AppCompatActivity() {
     }
 
     private fun addUserDialog() {
-        val etUser = field("Username (letters, numbers, . _ -)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
+        val etUser = field("Employee ID (letters, numbers, . _ -)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
         val etName = field("Full name", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
         var manager = ""
         val btnManager = chipButton("Manager: none  ▾") {}
@@ -439,7 +439,7 @@ class AdminActivity : AppCompatActivity() {
                 val n = etName.text.toString().trim()
                 val adminPw = etAdminPw.text.toString()
                 when {
-                    u.isEmpty() -> error.text = "Enter a username"
+                    u.isEmpty() -> error.text = "Enter an Employee ID"
                     n.isEmpty() -> error.text = "Enter the full name"
                     adminPw.isEmpty() -> error.text = "Enter your own password to confirm"
                     else -> {
@@ -589,7 +589,7 @@ class AdminActivity : AppCompatActivity() {
         }
         AlertDialog.Builder(this)
             .setTitle(title)
-            .setMessage("Username: $username\n\nGive the person this temporary password. It is shown only now. They choose their own password when they sign in.")
+            .setMessage("Employee ID: $username\n\nGive the person this temporary password. It is shown only now. They choose their own password when they sign in.")
             .setView(tv)
             .setPositiveButton("Copy") { _, _ ->
                 val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
