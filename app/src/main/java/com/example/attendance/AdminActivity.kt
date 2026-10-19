@@ -192,6 +192,14 @@ class AdminActivity : AppCompatActivity() {
         val id = ++loadId
         content.removeAllViews()
         content.addView(bigButton("➕  Add new user") { addUserDialog() })
+        val signupBtn = chipButton("📝  Sign-up requests") { signupDialog() }
+        content.addView(signupBtn)
+        api(JSONObject().put("action", "adminSignups")) { res, _ ->
+            if (res != null && id == loadId) {
+                val n = res.optJSONArray("requests")?.length() ?: 0
+                signupBtn.text = "📝  Sign-up requests" + (if (n > 0) "  ($n waiting)" else "") + (if (!res.optBoolean("open", true)) "  ·  sign-up is OFF" else "")
+            }
+        }
         content.addView(chipButton("🔐  Menu access for several people") {
             if (users.isEmpty()) { toast("Wait until the users have loaded."); return@chipButton }
             val chosen = LinkedHashSet<String>()
@@ -450,6 +458,89 @@ class AdminActivity : AppCompatActivity() {
                             } else error.text = err
                         }
                     }
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    /** People who asked for an account on the login page (they already proved their e-mail). Approve creates the account; Reject tells them no. */
+    private fun signupDialog() {
+        api(JSONObject().put("action", "adminSignups")) { res, err ->
+            if (res == null) { toast(err ?: "Could not load the requests"); return@api }
+            val arr = res.optJSONArray("requests")
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
+            var dlg: AlertDialog? = null
+            val open = CheckBox(this).apply { text = "Let people create accounts on the login page"; textSize = 15f; isChecked = res.optBoolean("open", true) }
+            open.setOnCheckedChangeListener { _, on ->
+                api(JSONObject().put("action", "adminSignupSetting").put("open", on)) { r2, e2 ->
+                    if (r2 == null) { toast(e2 ?: "Could not save"); open.isChecked = !on } else { toast(if (on) "Sign-up is ON" else "Sign-up is OFF"); loadUsers() }
+                }
+            }
+            col.addView(open)
+            col.addView(label("A new account only works after you approve it here.", 12f, "#9AA0C0", false))
+            if (arr == null || arr.length() == 0) col.addView(note("No requests are waiting."))
+            else for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(12), 0, 0) }
+                box.addView(label(o.optString("name"), 16f, "#111827", true))
+                box.addView(label("@${o.optString("username")}  ·  ${o.optString("email")}", 13f, "#6B7280", false))
+                box.addView(label("Asked on ${o.optString("on")}", 12f, "#9AA0C0", false))
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(6), 0, 0) }
+                row.addView(MaterialButton(this).apply {
+                    text = "✓ Approve"; setBackgroundColor(Pal.c("#16A34A"))
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(6) }
+                    setOnClickListener { dlg?.dismiss(); approveSignupDialog(o) }
+                })
+                row.addView(MaterialButton(this).apply {
+                    text = "✕ Reject"; setBackgroundColor(Pal.c("#DC2626"))
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(6) }
+                    setOnClickListener {
+                        AlertDialog.Builder(this@AdminActivity).setTitle("Reject ${o.optString("name")}?")
+                            .setMessage("They will get an e-mail saying the request was not approved.")
+                            .setPositiveButton("Reject") { _, _ ->
+                                api(JSONObject().put("action", "adminSignupDecide").put("username", o.optString("username")).put("decision", "reject")) { r2, e2 ->
+                                    if (r2 != null) { toast("Rejected"); dlg?.dismiss(); loadUsers(); signupDialog() } else toast(e2 ?: "Could not save")
+                                }
+                            }.setNegativeButton("Cancel", null).show()
+                    }
+                })
+                box.addView(row); col.addView(box)
+            }
+            dlg = AlertDialog.Builder(this).setTitle("Sign-up requests").setView(ScrollView(this).apply { addView(col) })
+                .setNegativeButton("Close", null).show()
+        }
+    }
+
+    private fun approveSignupDialog(o: JSONObject) {
+        var manager = ""
+        val btnManager = chipButton("Manager: none  ▾") {}
+        btnManager.setOnClickListener {
+            if (users.isEmpty()) { toast("Wait until the users have loaded."); return@setOnClickListener }
+            val none = "— No manager —"
+            val labels = ArrayList<String>()
+            labels.add(none)
+            users.forEach { labels.add("${it.optString("name")}  (${it.optString("username")})") }
+            PickerDialog.show(this, "Choose the manager", labels) { picked ->
+                val which = labels.indexOf(picked)
+                manager = if (which <= 0) "" else users[which - 1].optString("username")
+                btnManager.text = if (which <= 0) "Manager: none  ▾" else "Manager: $manager  ▾"
+            }
+        }
+        val etAdminPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val error = label("", 14f, "#DC2626", false)
+        val info = label("${o.optString("name")} (@${o.optString("username")}) will be able to sign in with the password they chose. Pick their line manager now (you can change it later).", 14f, "#6C7293", false)
+        val dialog = AlertDialog.Builder(this).setTitle("Approve account")
+            .setView(scrollable(info, btnManager, etAdminPw, error))
+            .setPositiveButton("Approve", null).setNegativeButton("Cancel") { _, _ -> signupDialog() }.create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val pw = etAdminPw.text.toString()
+                if (pw.isEmpty()) { error.text = "Enter your own password to confirm"; return@setOnClickListener }
+                error.text = "Creating…"
+                api(JSONObject().put("action", "adminSignupDecide").put("username", o.optString("username")).put("decision", "approve")
+                    .put("manager", manager).put("adminPassword", pw)) { res, err ->
+                    if (res != null) { dialog.dismiss(); toast("Account created. They were told by e-mail."); loadUsers() } else error.text = err
                 }
             }
         }

@@ -25,6 +25,9 @@ class LoginActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvVersion).text = "Version " + (try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { "" })
         intent.getStringExtra(EXTRA_MESSAGE)?.let { tvErr.text = it }
 
+        findViewById<TextView>(R.id.tvSignup).setOnClickListener {
+            SignupDialog.show(this) { message -> tvErr.setTextColor(Pal.c("#166534")); tvErr.text = message }
+        }
         findViewById<TextView>(R.id.tvForgot).setOnClickListener {
             ForgotPasswordDialog.show(this, etUser.text.toString().trim()) { u ->
                 etUser.setText(u); etPass.setText("")
