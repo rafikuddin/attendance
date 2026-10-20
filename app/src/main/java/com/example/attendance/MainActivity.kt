@@ -265,6 +265,8 @@ class MainActivity : AppCompatActivity() {
     /** A banner when the server offers a newer app version than the one installed. Hidden when this phone is up to date. */
     private fun showUpdate(info: JSONObject?) {
         val card = findViewById<android.view.View>(R.id.cardUpdate)
+        AppUpdate.remember(this, info)
+        if (AppUpdate.enforce(this)) return
         if (!AppUpdate.isNewer(this, info) || info == null) { pendingUpdate = null; card.visibility = android.view.View.GONE; return }
         pendingUpdate = info
         findViewById<TextView>(R.id.tvUpdateTitle).text = "Update available · v${info.optString("versionName")}"

@@ -42,6 +42,36 @@ object AppUpdate {
     /** True when the server's published version is higher than the one installed on this phone. */
     fun isNewer(ctx: Context, info: JSONObject?): Boolean = info != null && info.optLong("versionCode") > installedCode(ctx)
 
+    // ---- Compulsory updates ----
+    // When the admin publishes a COMPULSORY version, every phone with an older build is stopped on the "Update required" screen
+    // (ForceUpdateActivity) and can use nothing else. The requirement is remembered here (plain, not secret) so it also holds
+    // offline and after the app is closed; it disappears as soon as the new build is installed, or when the server says the
+    // update is no longer compulsory (checked on Home and on the Update screen's "Check again").
+    private fun forcePrefs(ctx: Context) = ctx.getSharedPreferences("app_update_force", Context.MODE_PRIVATE)
+
+    /** Call with the server's `update` object (or null) whenever it is received. Keeps or clears the stored requirement. */
+    fun remember(ctx: Context, info: JSONObject?) {
+        val p = forcePrefs(ctx).edit()
+        if (info != null && info.optBoolean("mandatory") && isNewer(ctx, info)) p.putString("info", info.toString()) else p.remove("info")
+        p.apply()
+    }
+
+    /** The compulsory update this phone still has to install, or null. Self-clears once the installed build is new enough. */
+    fun required(ctx: Context): JSONObject? {
+        val raw = forcePrefs(ctx).getString("info", null) ?: return null
+        val info = try { JSONObject(raw) } catch (e: Exception) { forcePrefs(ctx).edit().remove("info").apply(); return null }
+        if (!isNewer(ctx, info)) { forcePrefs(ctx).edit().remove("info").apply(); return null }
+        return info
+    }
+
+    /** Opens the "Update required" screen on top of [activity] when a compulsory update is waiting. Returns true when it did. */
+    fun enforce(activity: android.app.Activity): Boolean {
+        if (activity is ForceUpdateActivity || activity is LoginActivity || activity is SignupActivity) return false
+        if (!Session(activity).loggedIn || required(activity) == null) return false
+        activity.startActivity(Intent(activity, ForceUpdateActivity::class.java))
+        return true
+    }
+
     private fun updatesDir(ctx: Context): File = File(ctx.cacheDir, "updates").apply { mkdirs() }
 
     /** Removes a downloaded or half-prepared APK (they are 6 MB or more). Safe to call at any time. */
@@ -68,7 +98,7 @@ object AppUpdate {
             .setNegativeButton("Later", null).show()
     }
 
-    private fun start(activity: AppCompatActivity, info: JSONObject) {
+    fun start(activity: AppCompatActivity, info: JSONObject) {
         if (!mayInstall(activity)) {
             AlertDialog.Builder(activity).setTitle("Allow installing")
                 .setMessage("Android needs your permission before this app can install its own update. On the next screen turn on \"Allow from this source\", then come back and tap Update again.")

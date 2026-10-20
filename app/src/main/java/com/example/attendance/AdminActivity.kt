@@ -1681,6 +1681,10 @@ class AdminActivity : AppCompatActivity() {
             col.addView(label("Version ${u.optString("versionName")}  (build ${u.optLong("versionCode")})", 16f, "#111827", true))
             col.addView(label("%.1f MB · uploaded ${u.optString("uploadedOn")}".format(u.optLong("size") / 1048576.0), 13f, "#6B7280", false))
             if (u.optString("notes").isNotEmpty()) col.addView(label(u.optString("notes"), 13f, "#374151", false).apply { setPadding(0, dp(6), 0, 0) })
+            val mandatory = u.optBoolean("mandatory")
+            col.addView(label(if (mandatory) "🔒 COMPULSORY: phones with an older build can use nothing until they install it" else "Optional: people see an Update button on Home and can install it later",
+                13f, if (mandatory) "#B91C1C" else "#6B7280", true).apply { setPadding(0, dp(8), 0, 0) })
+            col.addView(chipButton(if (mandatory) "Make it optional" else "Make it compulsory") { mandatoryDialog(!mandatory) })
             col.addView(chipButton("Stop offering this update") { removeUpdateDialog() })
             holder.addView(cardOf(col))
         }
@@ -1743,10 +1747,13 @@ class AdminActivity : AppCompatActivity() {
         }
         val info = label("Version $name (build $code)\n%.1f MB".format(size / 1048576.0) + "\n\nEveryone on an older build will be offered this update." + warn, 14f, "#374151", false)
         val etNotes = field("What's new? (optional, shown to users)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
+        val cbForce = android.widget.CheckBox(this).apply {
+            text = "Compulsory: people cannot use the app until they install it"; isChecked = true; setTextColor(Pal.c("#111827"))
+        }
         val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
         val error = label("", 14f, "#DC2626", false)
         val dialog = AlertDialog.Builder(this).setTitle("Publish this version?")
-            .setView(scrollable(info, etNotes, etPw, error))
+            .setView(scrollable(info, etNotes, cbForce, etPw, error))
             .setPositiveButton("Publish", null)
             .setNegativeButton("Cancel") { _, _ -> AppUpdate.cleanUp(applicationContext) }
             .setCancelable(false)
@@ -1756,14 +1763,14 @@ class AdminActivity : AppCompatActivity() {
                 val pw = etPw.text.toString()
                 if (pw.isEmpty()) { error.text = "Enter your own password to confirm"; return@setOnClickListener }
                 dialog.dismiss()
-                upload(name, code, size, sha, etNotes.text.toString().trim(), pw)
+                upload(name, code, size, sha, etNotes.text.toString().trim(), pw, cbForce.isChecked)
             }
         }
         dialog.show()
     }
 
     /** Uploads the picked APK in 512 KB pieces, then publishes it. Runs in the background with a progress bar. */
-    private fun upload(name: String, code: Long, size: Long, sha: String, notes: String, adminPw: String) {
+    private fun upload(name: String, code: Long, size: Long, sha: String, notes: String, adminPw: String, mandatory: Boolean) {
         val chunks = ((size + AppUpdate.PIECE - 1) / AppUpdate.PIECE).toInt()
         var cancelled = false
         val box = AppUpdate.ProgressBox(this, "Publishing update", chunks + 1) { cancelled = true }
@@ -1787,7 +1794,7 @@ class AdminActivity : AppCompatActivity() {
             }
             try {
                 val begin = send(JSONObject().put("action", "adminAppBegin").put("versionCode", code).put("versionName", name)
-                    .put("notes", notes).put("size", size).put("chunks", chunks).put("sha256", sha).put("adminPassword", adminPw))
+                    .put("notes", notes).put("size", size).put("chunks", chunks).put("sha256", sha).put("adminPassword", adminPw).put("mandatory", mandatory))
                 if (begin != null) {
                     val uploadId = begin.getString("uploadId")
                     FileInputStream(AppUpdate.uploadFile(app)).use { input ->
@@ -1823,13 +1830,34 @@ class AdminActivity : AppCompatActivity() {
                     e != null -> AlertDialog.Builder(this).setTitle("Upload failed").setMessage(e).setPositiveButton("OK", null).show()
                     else -> {
                         AlertDialog.Builder(this).setTitle("Published ✅")
-                            .setMessage("Version $name is now offered to everyone. They see an Update button on Home next time they open or refresh the app.")
+                            .setMessage(if (mandatory) "Version $name is now COMPULSORY. Next time a phone opens or refreshes Home, it shows the Update required screen and nothing else works until the update is installed."
+                                else "Version $name is now offered to everyone. They see an Update button on Home next time they open or refresh the app.")
                             .setPositiveButton("OK", null).show()
                         loadApp()
                     }
                 }
             }
         }.start()
+    }
+
+    /** Switch the published update between compulsory and optional (needs the admin's own password). */
+    private fun mandatoryDialog(makeCompulsory: Boolean) {
+        val info = label(if (makeCompulsory) "Phones with an older build will be stopped on an \"Update required\" screen and can use nothing else until they install this version. This happens the next time each phone opens or refreshes Home."
+                         else "Phones will only be offered the update (an Update button on Home). Phones already showing the Update required screen are released when they tap Check again or reopen the app.", 14f, "#374151", false)
+        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val error = label("", 14f, "#DC2626", false)
+        val dialog = AlertDialog.Builder(this).setTitle(if (makeCompulsory) "Make the update compulsory?" else "Make the update optional?")
+            .setView(scrollable(info, etPw, error)).setPositiveButton("Yes", null).setNegativeButton("Cancel", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val pw = etPw.text.toString()
+                if (pw.isEmpty()) { error.text = "Enter your own password to confirm"; return@setOnClickListener }
+                api(JSONObject().put("action", "adminAppMandatory").put("mandatory", makeCompulsory).put("adminPassword", pw)) { res, err ->
+                    if (res != null) { dialog.dismiss(); toast(if (makeCompulsory) "Now compulsory" else "Now optional"); loadApp() } else error.text = err
+                }
+            }
+        }
+        dialog.show()
     }
 
     private fun removeUpdateDialog() {
