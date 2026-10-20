@@ -108,21 +108,12 @@
             app:cardCornerRadius="24dp" app:cardElevation="8dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:padding="20dp" android:gravity="center_horizontal">
-                <TextView android:text="📧" android:textSize="40sp" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <TextView android:text="Check your e-mail" android:textSize="20sp" android:textStyle="bold" android:textColor="@color/ink"
-                    android:layout_marginTop="6dp" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <TextView android:id="@+id/tvSuSentTo" android:textSize="14sp" android:textColor="@color/muted" android:gravity="center"
-                    android:layout_marginTop="6dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.Sam.Field"
-                    android:hint="6-digit code" android:layout_marginTop="16dp"
-                    android:layout_width="match_parent" android:layout_height="wrap_content">
-                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/suCode"
-                        android:inputType="number" android:maxLength="6" android:gravity="center" android:textSize="28sp"
-                        android:letterSpacing="0.3" android:layout_width="match_parent" android:layout_height="wrap_content" />
-                </com.google.android.material.textfield.TextInputLayout>
-                <com.google.android.material.button.MaterialButton android:id="@+id/btnSuConfirm" android:text="Confirm and send for approval"
-                    android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="16dp" />
+                <com.example.attendance.OtpView android:id="@+id/suOtp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" />
+                <!-- the real input: invisible, it only collects the digits and shows the keyboard; OtpView draws them -->
+                <EditText android:id="@+id/suCode" android:importantForAccessibility="no" android:background="@null"
+                    android:inputType="number" android:maxLength="6" android:cursorVisible="false" android:alpha="0"
+                    android:textColor="#00000000" android:layout_width="1dp" android:layout_height="1dp" />
                 <TextView android:id="@+id/tvSuError2" android:textColor="@color/danger" android:gravity="center"
                     android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" />
                 <TextView android:id="@+id/tvSuResend" android:text="Send a new code" android:textColor="@color/accent"
