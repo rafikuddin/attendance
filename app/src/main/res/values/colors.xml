@@ -8,6 +8,8 @@
     <color name="white">#FFFFFF</color>
     <color name="ink">#1B1E3B</color>
     <color name="muted">#6C7293</color>
+    <color name="field_line">#B7BCDC</color>
+    <color name="field_focus">#4F46E5</color>
     <color name="chip">#E7E6FB</color>
     <color name="btn_disabled">#C9CCE0</color>
     <color name="sky_top">#3B3FC4</color>

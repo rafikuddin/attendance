@@ -206,7 +206,7 @@ class SurveyAdminActivity : AppCompatActivity() {
     }
 
     private fun confirmDelete(id: String, name: String, answers: Int) {
-        val pw = EditText(this).apply { hint = "Your own password"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
+        val pw = FloatField(this, "Your own password", password = true)
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
         box.addView(label("This deletes “$name” and its $answers answer${if (answers == 1) "" else "s"} (and attachments) for good.", 13f, "#1E2247"))
         box.addView(pw)

@@ -18,11 +18,7 @@ object PickerDialog {
         val density = ctx.resources.displayMetrics.density
         val pad = (16 * density).toInt()
 
-        val search = EditText(ctx).apply {
-            hint = "Type to search"
-            inputType = InputType.TYPE_CLASS_TEXT
-            setSingleLine()
-        }
+        val search = SeekField(ctx, "Type to search", openOnShow = true)
         val adapter = ArrayAdapter(ctx, android.R.layout.simple_list_item_1, ArrayList(items))
         val list = ListView(ctx).apply { this.adapter = adapter }
 

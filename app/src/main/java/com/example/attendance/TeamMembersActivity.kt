@@ -23,7 +23,7 @@ import org.json.JSONObject
 class TeamMembersActivity : AppCompatActivity() {
     private lateinit var session: Session
     private lateinit var content: LinearLayout
-    private lateinit var etSearch: EditText
+    private lateinit var etSearch: SeekField
     private val members = ArrayList<JSONObject>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,9 +57,8 @@ class TeamMembersActivity : AppCompatActivity() {
                 content.addView(label("Nobody reports to you yet.", 15f, "#6C7293").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
                 return@api
             }
-            etSearch = EditText(this).apply {
-                hint = "Search by name or Employee ID"; inputType = InputType.TYPE_CLASS_TEXT; setSingleLine()
-                addTextChangedListener(object : TextWatcher {
+            etSearch = SeekField(this, "Search by name or Employee ID").also {
+                it.addTextChangedListener(object : TextWatcher {
                     override fun afterTextChanged(e: Editable?) { fill(e?.toString()?.trim().orEmpty()) }
                     override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                     override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}

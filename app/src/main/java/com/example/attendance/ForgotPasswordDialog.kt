@@ -19,7 +19,7 @@ object ForgotPasswordDialog {
 
     fun show(activity: AppCompatActivity, presetUser: String, onDone: (String) -> Unit) {
         val pad = (16 * activity.resources.displayMetrics.density).toInt()
-        fun field(label: String, type: Int) = EditText(activity).apply { hint = label; inputType = type }
+        fun field(label: String, type: Int) = FloatField(activity, label, type, password = (type and InputType.TYPE_MASK_VARIATION) == InputType.TYPE_TEXT_VARIATION_PASSWORD)
 
         val info = TextView(activity).apply {
             text = "Enter your Employee ID. We will e-mail a 6-digit code to the e-mail address saved in your My Profile."

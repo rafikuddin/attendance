@@ -4,6 +4,8 @@
     <color name="primary">#E8EAFF</color>
     <color name="ink">#E8EAFF</color>
     <color name="muted">#A9AFD3</color>
+    <color name="field_line">#4A4F7D</color>
+    <color name="field_focus">#8B93FF</color>
     <color name="chip">#2A2F5C</color>
     <color name="accent_soft">#2A2F5C</color>
     <color name="bg">#0B0D24</color>

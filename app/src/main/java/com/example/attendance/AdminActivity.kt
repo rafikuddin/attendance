@@ -160,6 +160,9 @@ class AdminActivity : AppCompatActivity() {
         inputType = type
     }
 
+    /** A password box in the "Label input" style: the label lifts into the top edge on focus, with a show/hide eye. Read it with .text. */
+    private fun passField(hint: String) = FloatField(this, hint, password = true)
+
     private fun chipButton(text: String, onClick: () -> Unit) = TextView(this).apply {
         this.text = text; textSize = 15f; setTextColor(Pal.c("#1E2247"))
         setPadding(dp(14), dp(12), dp(14), dp(12))
@@ -218,15 +221,7 @@ class AdminActivity : AppCompatActivity() {
             latestCode = res.optJSONObject("latest")?.optLong("versionCode") ?: 0L
             latestName = res.optJSONObject("latest")?.optString("versionName") ?: ""
             // Search by name, username or manager. The list below is rebuilt on every keystroke.
-            val search = EditText(this).apply {
-                hint = "🔍  Search name, Employee ID or manager"
-                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-                maxLines = 1; isSingleLine = true; textSize = 15f
-                imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
-                setPadding(dp(16), dp(12), dp(16), dp(12))
-                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
-            }
+            val search = SeekField(this, "Search name, Employee ID or manager")
             val countLine = heading("")
             val results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             content.addView(search); content.addView(countLine); content.addView(results)
@@ -428,7 +423,7 @@ class AdminActivity : AppCompatActivity() {
         }
         val etPass = field("Temporary password (blank = make one for me)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
         val cbAdmin = CheckBox(this).apply { text = "Make this person an admin" }
-        val etAdminPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etAdminPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
 
         val dialog = AlertDialog.Builder(this)
@@ -531,7 +526,7 @@ class AdminActivity : AppCompatActivity() {
                 btnManager.text = if (which <= 0) "Manager: none  ▾" else "Manager: $manager  ▾"
             }
         }
-        val etAdminPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etAdminPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
         val info = label("${o.optString("name")} (@${o.optString("username")}) will be able to sign in with the password they chose. Pick their line manager now (you can change it later).", 14f, "#6C7293", false)
         val dialog = AlertDialog.Builder(this).setTitle("Approve account")
@@ -598,7 +593,7 @@ class AdminActivity : AppCompatActivity() {
         val target = user.optString("username")
         val info = label("Set a temporary password for ${user.optString("name")} (Employee ID $target). They will be signed out everywhere and must choose their own password next time.", 14f, "#6C7293", false)
         val etPass = field("Temporary password (blank = make one for me)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
-        val etAdminPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etAdminPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
         val dialog = AlertDialog.Builder(this)
             .setTitle("Reset password")
@@ -1140,7 +1135,7 @@ class AdminActivity : AppCompatActivity() {
             } catch (e: OutOfMemoryError) { problem = "This file is too big to read on the phone." }
             runOnUiThread {
                 if (problem != null || rows == null) { AlertDialog.Builder(this).setTitle("Cannot use this file").setMessage(problem ?: "Unknown problem").setPositiveButton("OK", null).show(); return@runOnUiThread }
-                val pw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+                val pw = passField("Your own password (to confirm)")
                 val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(4), dp(20), 0) }
                 box.addView(label(summary + "\n\nThis REPLACES the " + (if (kind == "target") "targets" else "collection data") + " now loaded.", 13f, "#1E2247", false))
                 box.addView(pw)
@@ -1205,7 +1200,7 @@ class AdminActivity : AppCompatActivity() {
                 } else pickPeople(pickedUsers) { refreshWho() }
             }
         }
-        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etPw = passField("Your own password (to confirm)")
         val msg = label("", 14f, "#DC2626", false).apply { setPadding(0, dp(8), 0, 0) }
 
         fun fail(t: String) { msg.setTextColor(Pal.c("#DC2626")); msg.text = t }
@@ -1315,11 +1310,10 @@ class AdminActivity : AppCompatActivity() {
         content.addView(cardOf(st))
 
         // ---- 2. setup ----
-        val etKey = field("API key from the SimGate app" + (if (res.optBoolean("hasKey")) " (leave empty to keep the saved one)" else ""),
-            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etKey = passField("API key from the SimGate app" + (if (res.optBoolean("hasKey")) " (leave empty to keep the saved one)" else ""))
         val etFrom = field("Device ID from the SimGate app" + (if (res.optString("deviceId").isNotEmpty()) " (now ${res.optString("deviceId")})" else ""), InputType.TYPE_CLASS_TEXT)
         val etLimit = field("Monthly limit (default 200)", InputType.TYPE_CLASS_NUMBER)
-        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etPw = passField("Your own password (to confirm)")
         val msgSetup = label("", 14f, "#DC2626", false)
         val setup = column()
         setup.addView(label("Set up", 16f, "#111827", true))
@@ -1377,7 +1371,7 @@ class AdminActivity : AppCompatActivity() {
         val etText = field("Message (up to 300 characters)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES).apply {
             minLines = 3; filters = arrayOf(android.text.InputFilter.LengthFilter(300))
         }
-        val etPw2 = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etPw2 = passField("Your own password (to confirm)")
         val msg = label("", 14f, "#DC2626", false)
         val send = column()
         send.addView(label("Send a text message", 16f, "#111827", true))
@@ -1518,7 +1512,7 @@ class AdminActivity : AppCompatActivity() {
         }
 
         val etTime = field("Time to record (optional, 24-hour, for example 09:00)", InputType.TYPE_CLASS_TEXT)
-        val etAdminPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etAdminPw = passField("Your own password (to confirm)")
         val msg = label("", 14f, "#DC2626", false)
         val f2 = column()
         f2.addView(label("Open a date for manual entry", 16f, "#111827", true))
@@ -1564,7 +1558,7 @@ class AdminActivity : AppCompatActivity() {
     private fun pickPeople(chosen: MutableSet<String>, done: () -> Unit) {
         val rows = users.filter { !it.optBoolean("inactive") }.map { Pair(it.optString("username"), "${it.optString("name")}  (${it.optString("username")})") }
         var shown: List<Pair<String, String>> = rows
-        val search = EditText(this).apply { hint = "Type to search"; inputType = InputType.TYPE_CLASS_TEXT; setSingleLine() }
+        val search = SeekField(this, "Type to search", openOnShow = true)
         val adapter = object : ArrayAdapter<String>(this, android.R.layout.simple_list_item_multiple_choice, ArrayList<String>()) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val v = super.getView(position, convertView, parent) as android.widget.CheckedTextView
@@ -1750,7 +1744,7 @@ class AdminActivity : AppCompatActivity() {
         val cbForce = android.widget.CheckBox(this).apply {
             text = "Compulsory: people cannot use the app until they install it"; isChecked = true; setTextColor(Pal.c("#111827"))
         }
-        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
         val dialog = AlertDialog.Builder(this).setTitle("Publish this version?")
             .setView(scrollable(info, etNotes, cbForce, etPw, error))
@@ -1844,7 +1838,7 @@ class AdminActivity : AppCompatActivity() {
     private fun mandatoryDialog(makeCompulsory: Boolean) {
         val info = label(if (makeCompulsory) "Phones with an older build will be stopped on an \"Update required\" screen and can use nothing else until they install this version. This happens the next time each phone opens or refreshes Home."
                          else "Phones will only be offered the update (an Update button on Home). Phones already showing the Update required screen are released when they tap Check again or reopen the app.", 14f, "#374151", false)
-        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
         val dialog = AlertDialog.Builder(this).setTitle(if (makeCompulsory) "Make the update compulsory?" else "Make the update optional?")
             .setView(scrollable(info, etPw, error)).setPositiveButton("Yes", null).setNegativeButton("Cancel", null).create()
@@ -1861,7 +1855,7 @@ class AdminActivity : AppCompatActivity() {
     }
 
     private fun removeUpdateDialog() {
-        val etPw = field("Your own password (to confirm)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
+        val etPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
         val dialog = AlertDialog.Builder(this).setTitle("Stop offering this update?")
             .setView(scrollable(label("Phones will no longer be offered this version. The uploaded file is deleted.", 14f, "#6C7293", false), etPw, error))

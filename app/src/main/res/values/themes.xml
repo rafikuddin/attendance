@@ -54,4 +54,22 @@
         <item name="android:letterSpacing">0</item>
         <item name="android:minHeight">56dp</item>
     </style>
+    <!-- Labelled field ("Label input"): the label sits in the field as its placeholder, then lifts into the top edge and the outline parts around it.
+         Soft 14dp corners, a quiet outline that turns to the accent colour (thicker) on focus. Used by the login and sign-up pages and by Fields.kt. -->
+    <style name="Widget.Sam.Field" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">14dp</item>
+        <item name="boxCornerRadiusTopEnd">14dp</item>
+        <item name="boxCornerRadiusBottomStart">14dp</item>
+        <item name="boxCornerRadiusBottomEnd">14dp</item>
+        <item name="boxStrokeColor">@color/field_stroke</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item>
+        <item name="hintTextColor">@color/field_focus</item>
+        <item name="android:textColorHint">@color/muted</item>
+        <item name="endIconTint">@color/muted</item>
+        <item name="helperTextTextColor">@color/muted</item>
+    </style>
+    <style name="ThemeOverlay.Sam.Field" parent="">
+        <item name="textInputStyle">@style/Widget.Sam.Field</item>
+    </style>
 </resources>

@@ -24,10 +24,7 @@ object ChangePasswordDialog {
         val ctx: Context = activity
         val pad = (16 * ctx.resources.displayMetrics.density).toInt()
 
-        fun field(label: String) = EditText(ctx).apply {
-            hint = label
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
+        fun field(label: String) = FloatField(ctx, label, password = true)
         val currentPass = field("Current password")
         val newPass = field("New password (at least $MIN_LENGTH characters)")
         val confirmPass = field("Confirm new password")

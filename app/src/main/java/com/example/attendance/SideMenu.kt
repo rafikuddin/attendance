@@ -165,24 +165,16 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
                 setOnClickListener { collapsed = false; prefs.edit().putBoolean("side_collapsed", false).apply(); render() }
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(42)).apply { topMargin = dp(14) })
         } else {
-            val box = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F3F4F6")) }
-                setPadding(dp(12), 0, dp(10), 0)
-            }
-            box.addView(txt("🔍", 15f, muted))
-            box.addView(EditText(this).apply {
-                hint = "Search…"; textSize = 14f; setSingleLine(true); background = null
-                setTextColor(ink); setHintTextColor(faint)
-                setText(query); setSelection(query.length)
+            val seek = SeekField(this, "Search…").apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply { topMargin = dp(14); bottomMargin = dp(4) }
+                setText(query)
                 addTextChangedListener(object : TextWatcher {
                     override fun afterTextChanged(s: Editable?) { query = s?.toString() ?: ""; fillList() }
                     override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
                     override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
                 })
-                setPadding(dp(8), dp(10), dp(4), dp(10))
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            panel.addView(box, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)).apply { topMargin = dp(14); bottomMargin = dp(4) })
+            }
+            panel.addView(seek)
         }
 
         // the menus
