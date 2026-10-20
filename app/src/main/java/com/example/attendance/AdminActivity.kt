@@ -93,10 +93,10 @@ class AdminActivity : AppCompatActivity() {
         current = i
         tabs.forEachIndexed { index, t ->
             val on = index == i
-            t.setTextColor(Pal.c(if (on) "#FFFFFF" else "#6C7293"))
+            t.setTextColor(Pal.c(if (on) "#FFFFFF" else "#8A5F52"))
             t.background = GradientDrawable().apply {
                 cornerRadius = dp(14).toFloat()
-                setColor(if (on) Pal.chipOn else Pal.c("#E6E9F7"))
+                setColor(if (on) Pal.chipOn else Pal.c("#F0E3A6"))
             }
         }
         findViewById<android.widget.HorizontalScrollView>(R.id.tabScroll).post {
@@ -125,9 +125,9 @@ class AdminActivity : AppCompatActivity() {
         if (bold) setTypeface(null, Typeface.BOLD)
     }
 
-    private fun note(text: String) = label(text, 14f, "#3A3F73", false).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }
+    private fun note(text: String) = label(text, 14f, "#6B352A", false).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }
 
-    private fun heading(text: String) = label(text, 13f, "#1E2247", true).apply {
+    private fun heading(text: String) = label(text, 13f, "#6B352A", true).apply {
         letterSpacing = 0.08f
         setPadding(dp(6), dp(16), dp(6), dp(8))
     }
@@ -164,9 +164,9 @@ class AdminActivity : AppCompatActivity() {
     private fun passField(hint: String) = FloatField(this, hint, password = true)
 
     private fun chipButton(text: String, onClick: () -> Unit) = TextView(this).apply {
-        this.text = text; textSize = 15f; setTextColor(Pal.c("#1E2247"))
+        this.text = text; textSize = 15f; setTextColor(Pal.c("#6B352A"))
         setPadding(dp(14), dp(12), dp(14), dp(12))
-        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
+        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F0E3A6")) }
         isClickable = true; isFocusable = true
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
         setOnClickListener { onClick() }
@@ -261,7 +261,7 @@ class AdminActivity : AppCompatActivity() {
             } catch (e: Exception) { "" }
         }
         return when {
-            v.isEmpty() -> label("📱 App version not reported yet (old version, or never opened)", 12f, "#6B7280", false)
+            v.isEmpty() -> label("📱 App version not reported yet (old version, or never opened)", 12f, "#8A5F52", false)
             latestCode > 0 && code in 1 until latestCode ->
                 label("📱 v$v$seen  ·  ⬆ needs update (latest v$latestName)", 12f, "#B45309", true)
             else -> label("📱 v$v$seen" + if (latestCode > 0 && code >= latestCode) "  ·  ✓ up to date" else "", 12f, "#15803D", true)
@@ -276,15 +276,15 @@ class AdminActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        names.addView(label(o.optString("name"), 16f, "#111827", true))
+        names.addView(label(o.optString("name"), 16f, "#3E1D16", true))
         val mgr = o.optString("manager")
-        names.addView(label("ID: $username" + if (mgr.isNotEmpty()) "  ·  Manager: $mgr" else "", 13f, "#6B7280", false))
+        names.addView(label("ID: $username" + if (mgr.isNotEmpty()) "  ·  Manager: $mgr" else "", 13f, "#8A5F52", false))
         if (o.optBoolean("inactive") && o.optString("lastWorkingDay").isNotEmpty()) {
             val lwd = try { nice.format(iso.parse(o.optString("lastWorkingDay"))!!) } catch (e: Exception) { o.optString("lastWorkingDay") }
             names.addView(label("Last working day: $lwd" + (if (o.optString("inactiveRemarks").isNotEmpty()) "\nRemarks: ${o.optString("inactiveRemarks")}" else ""), 12f, "#B91C1C", false))
         }
         top.addView(names)
-        if (o.optBoolean("isAdmin")) top.addView(pill("Admin", "#5B21B6", "#EDE9FE"))
+        if (o.optBoolean("isAdmin")) top.addView(pill("Admin", "#6B352A", "#FBEBC8"))
         val inactive = o.optBoolean("inactive")
         top.addView(if (inactive) pill("Inactive", "#B91C1C", "#FEE2E2") else pill("Active", "#166534", "#DCFCE7"))
         col.addView(top)
@@ -315,9 +315,9 @@ class AdminActivity : AppCompatActivity() {
         val lockedNow = o.optJSONArray("locks")
         val grantsNow = o.optJSONArray("grants")
         if (!o.optBoolean("isAdmin") && grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "surveys" })
-            col.addView(label("📋 Can create & manage surveys", 12f, "#4338CA", true).apply { setPadding(0, dp(8), 0, 0) })
+            col.addView(label("📋 Can create & manage surveys", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
         if (grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "teamview" })
-            col.addView(label("🪪 Can see Profile & Calendar of own team", 12f, "#4338CA", true).apply { setPadding(0, dp(8), 0, 0) })
+            col.addView(label("🪪 Can see Profile & Calendar of own team", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
         if (lockedNow != null && lockedNow.length() > 0) {
             val names = (0 until lockedNow.length()).joinToString(", ") { Access.name(lockedNow.optString(it)) }
             col.addView(label("🔒 Locked: $names", 12f, "#B45309", true).apply { setPadding(0, dp(8), 0, 0) })
@@ -360,7 +360,7 @@ class AdminActivity : AppCompatActivity() {
         val boxes = LinkedHashMap<String, CheckBox>()
         val form = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
         form.addView(label(if (names.size == 1) "Tick what this person may use. Untick to lock it. The server refuses a locked option, and the app hides the way in."
-            else "These settings REPLACE the current ones of all ${names.size} chosen people. Tick what they may use; untick to lock it.", 13f, "#6C7293", false))
+            else "These settings REPLACE the current ones of all ${names.size} chosen people. Tick what they may use; untick to lock it.", 13f, "#8A5F52", false))
         // The Admin Panel row only makes sense for admins, and never for yourself (you could not unlock it again).
         val anyAdmin = names.any { n -> users.any { it.optString("username").equals(n, true) && it.optBoolean("isAdmin") } }
         val includesMe = names.any { it.equals(session.username, true) }
@@ -369,9 +369,9 @@ class AdminActivity : AppCompatActivity() {
             val cb = CheckBox(this).apply { this.text = text; textSize = 15f; isChecked = !locked.contains(key) }
             boxes[key] = cb; form.addView(cb)
         }
-        form.addView(label("Admin Panel access always comes from the Role column, not from this list.", 12f, "#9AA0C0", false).apply { setPadding(0, dp(8), 0, 0) })
+        form.addView(label("Admin Panel access always comes from the Role column, not from this list.", 12f, "#A98578", false).apply { setPadding(0, dp(8), 0, 0) })
         // An extra right (not a menu): who may create, edit and read the results of surveys. Admins always may.
-        form.addView(label("EXTRA RIGHTS", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, dp(2)) })
+        form.addView(label("EXTRA RIGHTS", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, dp(2)) })
         val cbSurvey = CheckBox(this).apply {
             text = "📋  Can create & manage surveys"; textSize = 15f
             isChecked = grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "surveys" }
@@ -382,9 +382,9 @@ class AdminActivity : AppCompatActivity() {
             isChecked = grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "teamview" }
         }
         form.addView(cbTeam)
-        form.addView(label("A line manager with this tick gets 🪪 Team members in the menu: only the people below them, read only.", 12f, "#9AA0C0", false))
+        form.addView(label("A line manager with this tick gets 🪪 Team members in the menu: only the people below them, read only.", 12f, "#A98578", false))
         form.addView(label(if (names.size == 1) "Admins can always do this. Everybody else only with this tick; they then see ⚙️ Manage surveys inside Surveys."
-            else "Applies to all ${names.size} chosen people (admins can always do this).", 12f, "#9AA0C0", false))
+            else "Applies to all ${names.size} chosen people (admins can always do this).", 12f, "#A98578", false))
         val title = if (names.size == 1) "Menu access: " + (users.firstOrNull { it.optString("username").equals(names[0], true) }?.optString("name") ?: names[0])
                     else "Menu access: ${names.size} people"
         AlertDialog.Builder(this).setTitle(title).setView(ScrollView(this).apply { addView(form) })
@@ -477,14 +477,14 @@ class AdminActivity : AppCompatActivity() {
                 }
             }
             col.addView(open)
-            col.addView(label("A new account only works after you approve it here.", 12f, "#9AA0C0", false))
+            col.addView(label("A new account only works after you approve it here.", 12f, "#A98578", false))
             if (arr == null || arr.length() == 0) col.addView(note("No requests are waiting."))
             else for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(12), 0, 0) }
-                box.addView(label(o.optString("name"), 16f, "#111827", true))
-                box.addView(label("@${o.optString("username")}  ·  ${o.optString("email")}", 13f, "#6B7280", false))
-                box.addView(label("Asked on ${o.optString("on")}", 12f, "#9AA0C0", false))
+                box.addView(label(o.optString("name"), 16f, "#3E1D16", true))
+                box.addView(label("@${o.optString("username")}  ·  ${o.optString("email")}", 13f, "#8A5F52", false))
+                box.addView(label("Asked on ${o.optString("on")}", 12f, "#A98578", false))
                 val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(6), 0, 0) }
                 row.addView(MaterialButton(this).apply {
                     text = "✓ Approve"; setBackgroundColor(Pal.c("#16A34A"))
@@ -528,7 +528,7 @@ class AdminActivity : AppCompatActivity() {
         }
         val etAdminPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
-        val info = label("${o.optString("name")} (@${o.optString("username")}) will be able to sign in with the password they chose. Pick their line manager now (you can change it later).", 14f, "#6C7293", false)
+        val info = label("${o.optString("name")} (@${o.optString("username")}) will be able to sign in with the password they chose. Pick their line manager now (you can change it later).", 14f, "#8A5F52", false)
         val dialog = AlertDialog.Builder(this).setTitle("Approve account")
             .setView(scrollable(info, btnManager, etAdminPw, error))
             .setPositiveButton("Approve", null).setNegativeButton("Cancel") { _, _ -> signupDialog() }.create()
@@ -550,7 +550,7 @@ class AdminActivity : AppCompatActivity() {
     private fun inactiveDialog(user: JSONObject) {
         val target = user.optString("username")
         val info = label("${user.optString("name")} (Employee ID $target) will not be able to sign in, and any phone where they are signed in is signed out now. Their data is kept. " +
-            "An e-mail is sent to all their line managers and all admins.", 14f, "#6C7293", false)
+            "An e-mail is sent to all their line managers and all admins.", 14f, "#8A5F52", false)
         var picked = ""
         val btnDate = chipButton("📅  Last working day (choose the date)") {}
         btnDate.setOnClickListener {
@@ -573,7 +573,7 @@ class AdminActivity : AppCompatActivity() {
                 val remarks = etRemarks.text.toString().trim()
                 if (picked.isEmpty()) { error.setTextColor(Pal.c("#DC2626")); error.text = "Choose the last working day"; return@setOnClickListener }
                 if (remarks.length < 3) { error.setTextColor(Pal.c("#DC2626")); error.text = "Write a short remark"; return@setOnClickListener }
-                error.setTextColor(Pal.c("#6C7293")); error.text = "Saving and sending e-mails…"
+                error.setTextColor(Pal.c("#8A5F52")); error.text = "Saving and sending e-mails…"
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
                 api(JSONObject().put("action", "adminSetActive").put("username", target).put("active", false).put("lastWorkingDay", picked).put("remarks", remarks)) { res, err ->
                     if (res != null) {
@@ -591,7 +591,7 @@ class AdminActivity : AppCompatActivity() {
 
     private fun resetDialog(user: JSONObject) {
         val target = user.optString("username")
-        val info = label("Set a temporary password for ${user.optString("name")} (Employee ID $target). They will be signed out everywhere and must choose their own password next time.", 14f, "#6C7293", false)
+        val info = label("Set a temporary password for ${user.optString("name")} (Employee ID $target). They will be signed out everywhere and must choose their own password next time.", 14f, "#8A5F52", false)
         val etPass = field("Temporary password (blank = make one for me)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
         val etAdminPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
@@ -626,7 +626,7 @@ class AdminActivity : AppCompatActivity() {
     private fun showTempPassword(title: String, username: String, password: String) {
         val tv = TextView(this).apply {
             text = password; textSize = 28f; typeface = Typeface.MONOSPACE; gravity = Gravity.CENTER
-            setTextIsSelectable(true); setTextColor(Pal.c("#1E2247"))
+            setTextIsSelectable(true); setTextColor(Pal.c("#6B352A"))
             setPadding(dp(16), dp(16), dp(16), dp(16))
         }
         AlertDialog.Builder(this)
@@ -660,7 +660,7 @@ class AdminActivity : AppCompatActivity() {
         val etDays = field("Show for how many days (default 7)", InputType.TYPE_CLASS_NUMBER)
         val msg = label("", 14f, "#DC2626", false)
         val form = column()
-        form.addView(label("New notice", 16f, "#111827", true))
+        form.addView(label("New notice", 16f, "#3E1D16", true))
         val cbSms = CheckBox(this).apply { text = "📱  Also send as an SMS to everyone's phone"; textSize = 14f }
         form.addView(etTitle); form.addView(etMessage); form.addView(etDays); form.addView(cbSms)
         form.addView(bigButton("📢  Post to everyone") {
@@ -670,7 +670,7 @@ class AdminActivity : AppCompatActivity() {
             val body = JSONObject().put("action", "adminPostNotice").put("title", t).put("message", m)
                 .put("days", etDays.text.toString().trim().toIntOrNull() ?: 7)
             fun post(sms: Boolean) {
-                msg.setTextColor(Pal.c("#6C7293")); msg.text = "Posting…"
+                msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Posting…"
                 if (sms) body.put("sms", true)
                 api(body) { res, err ->
                     if (res != null) {
@@ -682,7 +682,7 @@ class AdminActivity : AppCompatActivity() {
                 }
             }
             if (!cbSms.isChecked) { post(false); return@bigButton }
-            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Checking SMS…"
+            msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Checking SMS…"
             api(JSONObject().put("action", "smsPreview").put("scope", "all")) { pv, perr ->
                 if (pv == null) { msg.setTextColor(Pal.c("#DC2626")); msg.text = perr; return@api }
                 msg.text = ""
@@ -717,10 +717,10 @@ class AdminActivity : AppCompatActivity() {
 
     private fun noticeCard(o: JSONObject): View {
         val col = column()
-        col.addView(label(o.optString("title"), 16f, "#111827", true))
-        col.addView(label(o.optString("message"), 14f, "#374151", false).apply { setPadding(0, dp(4), 0, 0) })
+        col.addView(label(o.optString("title"), 16f, "#3E1D16", true))
+        col.addView(label(o.optString("message"), 14f, "#4A241C", false).apply { setPadding(0, dp(4), 0, 0) })
         col.addView(label("Posted ${o.optString("date")} by ${o.optString("postedBy")}" +
-            (if (o.optString("expires").isNotEmpty()) " · visible until ${o.optString("expires")}" else ""), 12f, "#6C7293", false).apply { setPadding(0, dp(6), 0, 0) })
+            (if (o.optString("expires").isNotEmpty()) " · visible until ${o.optString("expires")}" else ""), 12f, "#8A5F52", false).apply { setPadding(0, dp(6), 0, 0) })
         col.addView(MaterialButton(this).apply {
             text = "🗑  Remove"; setBackgroundColor(Pal.c("#DC2626"))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
@@ -757,14 +757,14 @@ class AdminActivity : AppCompatActivity() {
         val etName = field("Holiday name (for example Eid Holiday)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
         val msg = label("", 14f, "#DC2626", false)
         val form = column()
-        form.addView(label("Add a holiday", 16f, "#111827", true))
-        form.addView(label("A holiday works like Friday: nobody is counted absent that day.", 13f, "#6C7293", false))
+        form.addView(label("Add a holiday", 16f, "#3E1D16", true))
+        form.addView(label("A holiday works like Friday: nobody is counted absent that day.", 13f, "#8A5F52", false))
         form.addView(btnDate); form.addView(etName)
         form.addView(bigButton("🎉  Add holiday") {
             val name = etName.text.toString().trim()
             if (pickedHolidayDate.isEmpty()) { msg.text = "Choose the date first"; return@bigButton }
             if (name.length < 2) { msg.text = "Enter the holiday name"; return@bigButton }
-            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Saving…"
+            msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Saving…"
             api(JSONObject().put("action", "adminAddHoliday").put("date", pickedHolidayDate).put("name", name)) { res, err ->
                 if (res != null) { toast("Holiday added"); dropSavedCopies(); loadHolidays() }
                 else { msg.setTextColor(Pal.c("#DC2626")); msg.text = err }
@@ -798,9 +798,9 @@ class AdminActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        text.addView(label(o.optString("name"), 16f, "#111827", true))
+        text.addView(label(o.optString("name"), 16f, "#3E1D16", true))
         val shown = try { nice.format(iso.parse(date)!!) } catch (e: Exception) { date }
-        text.addView(label(shown + if (date < today) "  ·  past" else "", 13f, "#6B7280", false))
+        text.addView(label(shown + if (date < today) "  ·  past" else "", 13f, "#8A5F52", false))
         row.addView(text)
         row.addView(TextView(this).apply {
             this.text = "✕"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Pal.c("#DC2626"))
@@ -857,7 +857,7 @@ class AdminActivity : AppCompatActivity() {
         var to = ""
 
         // ---- 1. what to download ----
-        val hint = label("", 13f, "#6C7293", false).apply { setPadding(0, dp(10), 0, 0) }
+        val hint = label("", 13f, "#8A5F52", false).apply { setPadding(0, dp(10), 0, 0) }
         val chipFrom = dateChip("From") { from = it }
         val chipTo = dateChip("To") { to = it }
         val options = listOf("current" to "This pay period", "previous" to "Last pay period", "custom" to "Choose dates")
@@ -866,8 +866,8 @@ class AdminActivity : AppCompatActivity() {
         fun refresh() {
             views.forEach { (k, v) ->
                 val on = k == choice
-                v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#6C7293"))
-                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#E6E9F7")) }
+                v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#8A5F52"))
+                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#F0E3A6")) }
             }
             chipFrom.visibility = if (choice == "custom") View.VISIBLE else View.GONE
             chipTo.visibility = chipFrom.visibility
@@ -889,16 +889,16 @@ class AdminActivity : AppCompatActivity() {
 
         val result = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val msg = label("", 14f, "#DC2626", false).apply { setPadding(0, dp(8), 0, 0) }
-        val infoSummary = label("", 13f, "#6C7293", false)
-        val infoDetail = label("", 13f, "#6C7293", false)
-        val infoDetailTitle = label("", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) }
+        val infoSummary = label("", 13f, "#8A5F52", false)
+        val infoDetail = label("", 13f, "#8A5F52", false)
+        val infoDetailTitle = label("", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) }
         val kindViews = HashMap<String, TextView>()
         val kindRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
         fun refreshKind() {
             kindViews.forEach { (k, v) ->
                 val on = k == kind
-                v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#6C7293"))
-                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#E6E9F7")) }
+                v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#8A5F52"))
+                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#F0E3A6")) }
             }
             if (kind == "night") {
                 infoSummary.text = "One row per person: how many night holds, how many were manual entries, days in the period."
@@ -921,15 +921,15 @@ class AdminActivity : AppCompatActivity() {
             kindViews[key] = v; kindRow.addView(v)
         }
         val form = column()
-        form.addView(label("Download as Excel", 18f, "#111827", true))
-        form.addView(label("Choose the report and the period.", 13f, "#6C7293", false))
-        form.addView(label("REPORT", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        form.addView(label("Download as Excel", 18f, "#3E1D16", true))
+        form.addView(label("Choose the report and the period.", 13f, "#8A5F52", false))
+        form.addView(label("REPORT", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
         form.addView(kindRow)
-        form.addView(label("PERIOD", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        form.addView(label("PERIOD", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
         form.addView(row); form.addView(hint); form.addView(chipFrom); form.addView(chipTo)
         form.addView(bigButton("📊  Prepare Excel file") {
             if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose the From and To dates"; return@bigButton }
-            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Preparing the file… this can take a few seconds."
+            msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Preparing the file… this can take a few seconds."
             result.removeAllViews()
             val body = JSONObject().put("action", "adminReport").put("period", choice).put("kind", kind)
             if (choice == "custom") body.put("from", from).put("to", to)
@@ -958,8 +958,8 @@ class AdminActivity : AppCompatActivity() {
 
         // ---- 2. what is inside ----
         val info = column()
-        info.addView(label("What is in the file", 16f, "#111827", true))
-        info.addView(label("📋  Summary", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        info.addView(label("What is in the file", 16f, "#3E1D16", true))
+        info.addView(label("📋  Summary", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) })
         info.addView(infoSummary)
         info.addView(infoDetailTitle)
         info.addView(infoDetail)
@@ -971,8 +971,8 @@ class AdminActivity : AppCompatActivity() {
     private fun reportReadyCard(f: File, users: Int, days: Int, from: String, to: String, records: Int = -1): View {
         val col = column()
         col.addView(label("✅  Your Excel file is ready", 16f, "#166534", true))
-        col.addView(label(f.name, 13f, "#111827", false).apply { setPadding(0, dp(6), 0, 0) })
-        col.addView(label("$users people · $days days ($from to $to)" + (if (records >= 0) " · $records night hold${if (records == 1) "" else "s"}" else ""), 13f, "#6C7293", false))
+        col.addView(label(f.name, 13f, "#3E1D16", false).apply { setPadding(0, dp(6), 0, 0) })
+        col.addView(label("$users people · $days days ($from to $to)" + (if (records >= 0) " · $records night hold${if (records == 1) "" else "s"}" else ""), 13f, "#8A5F52", false))
         val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
         buttons.addView(MaterialButton(this).apply {
             text = "💾  Save"
@@ -1025,20 +1025,20 @@ class AdminActivity : AppCompatActivity() {
         val tg = res.optJSONObject("target")
         val co = res.optJSONObject("collection")
         val head = column()
-        head.addView(label("🎯  Target vs Collection", 16f, "#111827", true))
-        head.addView(label("Upload two Excel files. Everyone then sees their own target against what they collected; managers also see their team.", 13f, "#6C7293", false).apply { setPadding(0, dp(6), 0, 0) })
+        head.addView(label("🎯  Target vs Collection", 16f, "#3E1D16", true))
+        head.addView(label("Upload two Excel files. Everyone then sees their own target against what they collected; managers also see their team.", 13f, "#8A5F52", false).apply { setPadding(0, dp(6), 0, 0) })
         content.addView(cardOf(head))
 
         val t = column()
-        t.addView(label("1.  Target file", 15f, "#111827", true))
-        t.addView(label("Columns: Username, Name, Base Code, Base Name, Target (one target per person).", 12f, "#6C7293", false))
+        t.addView(label("1.  Target file", 15f, "#3E1D16", true))
+        t.addView(label("Columns: Username, Name, Base Code, Base Name, Target (one target per person).", 12f, "#8A5F52", false))
         t.addView(label(if (tg == null) "Not uploaded yet." else "✅  ${tg.optInt("people")} people · total ${taka(tg.optDouble("total"))}\nUploaded ${tg.optString("on")} by ${tg.optString("by")}", 13f, if (tg == null) "#B45309" else "#166534", tg != null).apply { setPadding(0, dp(6), 0, 0) })
         t.addView(bigButton("📤  Upload Target file") { chooseExcel("target") })
         content.addView(cardOf(t))
 
         val c = column()
-        c.addView(label("2.  Sale Collection report", 15f, "#111827", true))
-        c.addView(label("Columns used: Collection Date, Collection Amount, Collection Type and Username (the Username decides who the money counts for).", 12f, "#6C7293", false))
+        c.addView(label("2.  Sale Collection report", 15f, "#3E1D16", true))
+        c.addView(label("Columns used: Collection Date, Collection Amount, Collection Type and Username (the Username decides who the money counts for).", 12f, "#8A5F52", false))
         if (co == null) c.addView(label("Not uploaded yet.", 13f, "#B45309", false).apply { setPadding(0, dp(6), 0, 0) })
         else {
             c.addView(label("✅  ${co.optInt("rows")} rows · ${co.optString("from")} to ${co.optString("to")}\nCounted total ${taka(co.optDouble("total"))}\nUploaded ${co.optString("on")} by ${co.optString("by")}", 13f, "#166534", true).apply { setPadding(0, dp(6), 0, 0) })
@@ -1052,10 +1052,10 @@ class AdminActivity : AppCompatActivity() {
         if (per != null) {
             val d = per.getJSONObject("days")
             val p = column()
-            p.addView(label("Period and working days", 15f, "#111827", true))
-            p.addView(label("${per.optString("from")} to ${per.optString("to")}" + (if (per.optBoolean("auto")) "  (automatic: the month of the collection report)" else "  (set by you)"), 13f, "#1E2247", true).apply { setPadding(0, dp(6), 0, 0) })
-            p.addView(label("Working days ${d.optInt("total")}  ·  passed ${d.optInt("passed")}  ·  remaining ${d.optInt("remaining")}" + (if (d.optString("asOf").isNotEmpty()) "\ncounted up to ${d.optString("asOf")}" else ""), 13f, "#4F46E5", true))
-            p.addView(label("Fridays and the holidays in the 🎉 Holiday tab are not working days. RR = (target − collection) ÷ remaining working days.", 12f, "#6C7293", false).apply { setPadding(0, dp(4), 0, 0) })
+            p.addView(label("Period and working days", 15f, "#3E1D16", true))
+            p.addView(label("${per.optString("from")} to ${per.optString("to")}" + (if (per.optBoolean("auto")) "  (automatic: the month of the collection report)" else "  (set by you)"), 13f, "#6B352A", true).apply { setPadding(0, dp(6), 0, 0) })
+            p.addView(label("Working days ${d.optInt("total")}  ·  passed ${d.optInt("passed")}  ·  remaining ${d.optInt("remaining")}" + (if (d.optString("asOf").isNotEmpty()) "\ncounted up to ${d.optString("asOf")}" else ""), 13f, "#6B352A", true))
+            p.addView(label("Fridays and the holidays in the 🎉 Holiday tab are not working days. RR = (target − collection) ÷ remaining working days.", 12f, "#8A5F52", false).apply { setPadding(0, dp(4), 0, 0) })
             var nf = ""; var nt = ""
             val chipF = dateChip("Start") { nf = it }; val chipT = dateChip("End") { nt = it }
             chipF.visibility = View.VISIBLE; chipT.visibility = View.VISIBLE
@@ -1068,7 +1068,7 @@ class AdminActivity : AppCompatActivity() {
             if (!per.optBoolean("auto")) p.addView(chipButton("↩  Use the month of the report again") {
                 api(JSONObject().put("action", "adminTargetSettings").put("auto", true)) { r, e -> if (r != null) { toast("Saved"); loadTargets() } else pmsg.text = e ?: "Could not save" }
             })
-            p.addView(label("Passed days are counted up to", 13f, "#1E2247", true).apply { setPadding(0, dp(12), 0, 0) })
+            p.addView(label("Passed days are counted up to", 13f, "#6B352A", true).apply { setPadding(0, dp(12), 0, 0) })
             val rg = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
             val rbData = RadioButton(this).apply { text = "the last date in the Collection report"; id = View.generateViewId() }
             val rbToday = RadioButton(this).apply { text = "today"; id = View.generateViewId() }
@@ -1084,8 +1084,8 @@ class AdminActivity : AppCompatActivity() {
         val types = res.optJSONArray("types")
         if (types != null && types.length() > 0) {
             val k = column()
-            k.addView(label("What counts as collected", 15f, "#111827", true))
-            k.addView(label("Tick the Collection Types that count towards the target. Untick things such as Bank Charge.", 12f, "#6C7293", false))
+            k.addView(label("What counts as collected", 15f, "#3E1D16", true))
+            k.addView(label("Tick the Collection Types that count towards the target. Untick things such as Bank Charge.", 12f, "#8A5F52", false))
             val boxes = ArrayList<Pair<String, CheckBox>>()
             for (i in 0 until types.length()) {
                 val o = types.getJSONObject(i)
@@ -1137,7 +1137,7 @@ class AdminActivity : AppCompatActivity() {
                 if (problem != null || rows == null) { AlertDialog.Builder(this).setTitle("Cannot use this file").setMessage(problem ?: "Unknown problem").setPositiveButton("OK", null).show(); return@runOnUiThread }
                 val pw = passField("Your own password (to confirm)")
                 val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(4), dp(20), 0) }
-                box.addView(label(summary + "\n\nThis REPLACES the " + (if (kind == "target") "targets" else "collection data") + " now loaded.", 13f, "#1E2247", false))
+                box.addView(label(summary + "\n\nThis REPLACES the " + (if (kind == "target") "targets" else "collection data") + " now loaded.", 13f, "#6B352A", false))
                 box.addView(pw)
                 AlertDialog.Builder(this).setTitle("Upload this file?").setView(ScrollView(this).apply { addView(box) })
                     .setPositiveButton("Upload") { _, _ ->
@@ -1204,7 +1204,7 @@ class AdminActivity : AppCompatActivity() {
         val msg = label("", 14f, "#DC2626", false).apply { setPadding(0, dp(8), 0, 0) }
 
         fun fail(t: String) { msg.setTextColor(Pal.c("#DC2626")); msg.text = t }
-        fun info(t: String) { msg.setTextColor(Pal.c("#6C7293")); msg.text = t }
+        fun info(t: String) { msg.setTextColor(Pal.c("#8A5F52")); msg.text = t }
 
         // sends 10 people per request, one request after another, so a long list never times out
         fun sendAll(ids: List<String>, per: JSONObject, pw: String) {
@@ -1229,11 +1229,11 @@ class AdminActivity : AppCompatActivity() {
         }
 
         val col = column()
-        col.addView(label("✉️  E-mail reports to staff", 18f, "#111827", true))
-        col.addView(label("Each person gets only their own report, as an Excel file, at the e-mail address in their My Profile. It uses the period chosen above.", 13f, "#6C7293", false))
-        col.addView(label("REPORTS", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        col.addView(label("✉️  E-mail reports to staff", 18f, "#3E1D16", true))
+        col.addView(label("Each person gets only their own report, as an Excel file, at the e-mail address in their My Profile. It uses the period chosen above.", 13f, "#8A5F52", false))
+        col.addView(label("REPORTS", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
         col.addView(cbAtt); col.addView(cbNight)
-        col.addView(label("WHO GETS IT", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(10), 0, 0) })
+        col.addView(label("WHO GETS IT", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(10), 0, 0) })
         col.addView(rgScope); col.addView(btnWho); col.addView(etPw)
         col.addView(bigButton("✉️  Check and send") {
             val per = period()
@@ -1298,15 +1298,15 @@ class AdminActivity : AppCompatActivity() {
         val configured = res.optBoolean("configured")
         // ---- 1. status ----
         val st = column()
-        st.addView(label("📱  SMS to people's phones", 16f, "#111827", true))
+        st.addView(label("📱  SMS to people's phones", 16f, "#3E1D16", true))
         if (configured) {
             st.addView(label("✅  Ready", 15f, "#166534", true).apply { setPadding(0, dp(6), 0, 0) })
-            st.addView(label("Device ${res.optString("deviceId")} · key ${res.optString("keyHint")}", 13f, "#6C7293", false))
-            st.addView(label("This month (${res.optString("month")}): ${res.optInt("used")} sent · ${res.optInt("left")} left of ${res.optInt("limit")}", 13f, "#6C7293", false))
+            st.addView(label("Device ${res.optString("deviceId")} · key ${res.optString("keyHint")}", 13f, "#8A5F52", false))
+            st.addView(label("This month (${res.optString("month")}): ${res.optInt("used")} sent · ${res.optInt("left")} left of ${res.optInt("limit")}", 13f, "#8A5F52", false))
         } else {
             st.addView(label("⚠️  Not set up yet. Follow the steps below.", 14f, "#B45309", true).apply { setPadding(0, dp(6), 0, 0) })
         }
-        st.addView(label("Through SimGate: your own Android phone (with a SIM) sends the texts. The monthly limit below is a safety limit counted by this app.", 13f, "#6C7293", false).apply { setPadding(0, dp(8), 0, 0) })
+        st.addView(label("Through SimGate: your own Android phone (with a SIM) sends the texts. The monthly limit below is a safety limit counted by this app.", 13f, "#8A5F52", false).apply { setPadding(0, dp(8), 0, 0) })
         content.addView(cardOf(st))
 
         // ---- 2. setup ----
@@ -1316,12 +1316,12 @@ class AdminActivity : AppCompatActivity() {
         val etPw = passField("Your own password (to confirm)")
         val msgSetup = label("", 14f, "#DC2626", false)
         val setup = column()
-        setup.addView(label("Set up", 16f, "#111827", true))
-        setup.addView(label("1. On a spare Android phone with a SIM, install the SimGate app and register the device.\n2. In the SimGate app copy the API key and the Device ID.\n3. Paste both here and Save.\n4. In the Google Apps Script editor run authorizeSms once (Run, then Review permissions).\nThe key is kept privately on the server. It is never shown again, never in the app and never in the Sheet.", 13f, "#6C7293", false))
+        setup.addView(label("Set up", 16f, "#3E1D16", true))
+        setup.addView(label("1. On a spare Android phone with a SIM, install the SimGate app and register the device.\n2. In the SimGate app copy the API key and the Device ID.\n3. Paste both here and Save.\n4. In the Google Apps Script editor run authorizeSms once (Run, then Review permissions).\nThe key is kept privately on the server. It is never shown again, never in the app and never in the Sheet.", 13f, "#8A5F52", false))
         setup.addView(etKey); setup.addView(etFrom); setup.addView(etLimit); setup.addView(etPw)
         setup.addView(bigButton("💾  Save SMS settings") {
             if (etPw.text.isNullOrEmpty()) { msgSetup.setTextColor(Pal.c("#DC2626")); msgSetup.text = "Enter your own password to confirm"; return@bigButton }
-            msgSetup.setTextColor(Pal.c("#6C7293")); msgSetup.text = "Saving…"
+            msgSetup.setTextColor(Pal.c("#8A5F52")); msgSetup.text = "Saving…"
             val body = JSONObject().put("action", "adminSmsSave").put("apiKey", etKey.text.toString().trim())
                 .put("deviceId", etFrom.text.toString().trim()).put("adminPassword", etPw.text.toString())
             etLimit.text.toString().trim().takeIf { it.isNotEmpty() }?.let { body.put("limit", it) }
@@ -1330,7 +1330,7 @@ class AdminActivity : AppCompatActivity() {
             }
         })
         if (configured) setup.addView(bigButton("✉️  Send a test text to my phone") {
-            msgSetup.setTextColor(Pal.c("#6C7293")); msgSetup.text = "Sending a test to the phone number in your My Profile…"
+            msgSetup.setTextColor(Pal.c("#8A5F52")); msgSetup.text = "Sending a test to the phone number in your My Profile…"
             api(JSONObject().put("action", "adminSmsTest")) { r, e ->
                 if (r != null) { msgSetup.setTextColor(Pal.c("#166534")); msgSetup.text = "Sent. It should reach your phone in a moment." }
                 else { msgSetup.setTextColor(Pal.c("#DC2626")); msgSetup.text = e }
@@ -1374,9 +1374,9 @@ class AdminActivity : AppCompatActivity() {
         val etPw2 = passField("Your own password (to confirm)")
         val msg = label("", 14f, "#DC2626", false)
         val send = column()
-        send.addView(label("Send a text message", 16f, "#111827", true))
-        send.addView(label("Each person gets one SMS on the Official phone in their profile (or the Personal phone if there is no Official one). Every send uses your monthly allowance and is listed on the SmsLog tab of the Sheet.", 13f, "#6C7293", false))
-        send.addView(label("Who gets it?", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        send.addView(label("Send a text message", 16f, "#3E1D16", true))
+        send.addView(label("Each person gets one SMS on the Official phone in their profile (or the Personal phone if there is no Official one). Every send uses your monthly allowance and is listed on the SmsLog tab of the Sheet.", 13f, "#8A5F52", false))
+        send.addView(label("Who gets it?", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) })
         send.addView(rgScope); send.addView(btnWho); send.addView(etText); send.addView(etPw2)
         send.addView(bigButton("📱  Send SMS") {
             val text = etText.text.toString().trim()
@@ -1389,7 +1389,7 @@ class AdminActivity : AppCompatActivity() {
                     val who = when (scope) { "all" -> "everyone"; "team" -> "the team of $teamManager"; else -> "${pickedUsers.size} selected ${if (pickedUsers.size == 1) "person" else "people"}" }
                     AlertDialog.Builder(this).setTitle("Send this SMS?").setMessage("To $who:\n\n$text")
                         .setPositiveButton("Send") { _, _ ->
-                            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Sending…"
+                            msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Sending…"
                             val body = JSONObject().put("action", "adminSmsSend").put("scope", scope).put("message", text).put("adminPassword", etPw2.text.toString())
                             if (scope == "team") body.put("target", teamManager)
                             if (scope == "users") body.put("target", JSONArray(pickedUsers.toList()))
@@ -1447,11 +1447,11 @@ class AdminActivity : AppCompatActivity() {
         btnClose.setOnClickListener { PickerDialog.show(this, "Night hold closes at", hours) { p -> close = hours.indexOf(p); btnClose.text = "Closes at: $p  ▾" } }
         val msgHours = label("", 14f, "#DC2626", false)
         val f1 = column()
-        f1.addView(label("Night hold hours", 16f, "#111827", true))
-        f1.addView(label("People can submit their night hold only inside these hours. Now: ${res.optString("label")}. If the closing hour is earlier than the opening hour, the hours run through midnight (for example 9 PM to 6 AM).", 13f, "#6C7293", false))
+        f1.addView(label("Night hold hours", 16f, "#3E1D16", true))
+        f1.addView(label("People can submit their night hold only inside these hours. Now: ${res.optString("label")}. If the closing hour is earlier than the opening hour, the hours run through midnight (for example 9 PM to 6 AM).", 13f, "#8A5F52", false))
         f1.addView(btnOpen); f1.addView(btnClose)
         f1.addView(bigButton("💾  Save night hold hours") {
-            msgHours.setTextColor(Pal.c("#6C7293")); msgHours.text = "Saving…"
+            msgHours.setTextColor(Pal.c("#8A5F52")); msgHours.text = "Saving…"
             api(JSONObject().put("action", "adminSetNightHours").put("open", open).put("close", close)) { r, err ->
                 if (r != null) { toast("Saved: ${r.optString("label")}"); dropSavedCopies(); loadEntry() }
                 else { msgHours.setTextColor(Pal.c("#DC2626")); msgHours.text = err }
@@ -1515,12 +1515,12 @@ class AdminActivity : AppCompatActivity() {
         val etAdminPw = passField("Your own password (to confirm)")
         val msg = label("", 14f, "#DC2626", false)
         val f2 = column()
-        f2.addView(label("Open a date for manual entry", 16f, "#111827", true))
-        f2.addView(label("Choose a day and who may fill it in. Those people then see \"Manual entry\" on their Home menu and submit it like normal (live selfie and GPS are still needed). Each person can fill each day once. Leave the time empty to record the real time.", 13f, "#6C7293", false))
-        f2.addView(label("What can they enter?", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        f2.addView(label("Open a date for manual entry", 16f, "#3E1D16", true))
+        f2.addView(label("Choose a day and who may fill it in. Those people then see \"Manual entry\" on their Home menu and submit it like normal (live selfie and GPS are still needed). Each person can fill each day once. Leave the time empty to record the real time.", 13f, "#8A5F52", false))
+        f2.addView(label("What can they enter?", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) })
         f2.addView(rgKind)
         f2.addView(btnDate)
-        f2.addView(label("Who can enter it?", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        f2.addView(label("Who can enter it?", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) })
         f2.addView(rgScope); f2.addView(btnWho)
         f2.addView(etTime); f2.addView(etAdminPw)
         f2.addView(bigButton("✅  Open this date") {
@@ -1531,7 +1531,7 @@ class AdminActivity : AppCompatActivity() {
                 scope == "users" && pickedUsers.isEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose at least one person" }
                 pw.isEmpty() -> { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Enter your own password to confirm" }
                 else -> {
-                    msg.setTextColor(Pal.c("#6C7293")); msg.text = "Saving…"
+                    msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Saving…"
                     val body = JSONObject().put("action", "adminAllowAdd").put("kind", kind).put("date", pickedDate).put("scope", scope)
                         .put("time", etTime.text.toString().trim()).put("adminPassword", pw)
                     if (scope == "team") body.put("target", teamManager)
@@ -1625,10 +1625,10 @@ class AdminActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        text.addView(label((if (isNight) "🌙 Night hold" else "📍 Attendance") + " · $shown", 15f, if (active) "#111827" else "#9CA3AF", true))
-        text.addView(label("For: $who", 13f, "#6B7280", false))
+        text.addView(label((if (isNight) "🌙 Night hold" else "📍 Attendance") + " · $shown", 15f, if (active) "#3E1D16" else "#B39284", true))
+        text.addView(label("For: $who", 13f, "#8A5F52", false))
         val extra = (if (o.optString("time").isNotEmpty()) "Time recorded: ${o.optString("time")} · " else "") + "by ${o.optString("createdBy")} · ${o.optString("createdOn")}"
-        text.addView(label(extra, 12f, "#9CA3AF", false))
+        text.addView(label(extra, 12f, "#B39284", false))
         row.addView(text)
         if (active) {
             row.addView(TextView(this).apply {
@@ -1646,7 +1646,7 @@ class AdminActivity : AppCompatActivity() {
                         .setNegativeButton("Cancel", null).show()
                 }
             })
-        } else row.addView(pill("OFF", "#6B7280", "#F3F4F6"))
+        } else row.addView(pill("OFF", "#8A5F52", "#F8EFC4"))
         return cardOf(row)
     }
 
@@ -1657,7 +1657,7 @@ class AdminActivity : AppCompatActivity() {
         content.removeAllViews()
         content.addView(heading("THIS PHONE"))
         content.addView(cardOf(column().apply {
-            addView(label("Installed: ${AppUpdate.installedName(this@AdminActivity)}  (build ${AppUpdate.installedCode(this@AdminActivity)})", 15f, "#111827", true))
+            addView(label("Installed: ${AppUpdate.installedName(this@AdminActivity)}  (build ${AppUpdate.installedCode(this@AdminActivity)})", 15f, "#3E1D16", true))
         }))
         content.addView(heading("OFFERED TO EVERYONE"))
         val holder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -1672,12 +1672,12 @@ class AdminActivity : AppCompatActivity() {
             val u = res.optJSONObject("update")
             if (u == null) { holder.addView(note("Nothing is published yet.")); return@api }
             val col = column()
-            col.addView(label("Version ${u.optString("versionName")}  (build ${u.optLong("versionCode")})", 16f, "#111827", true))
-            col.addView(label("%.1f MB · uploaded ${u.optString("uploadedOn")}".format(u.optLong("size") / 1048576.0), 13f, "#6B7280", false))
-            if (u.optString("notes").isNotEmpty()) col.addView(label(u.optString("notes"), 13f, "#374151", false).apply { setPadding(0, dp(6), 0, 0) })
+            col.addView(label("Version ${u.optString("versionName")}  (build ${u.optLong("versionCode")})", 16f, "#3E1D16", true))
+            col.addView(label("%.1f MB · uploaded ${u.optString("uploadedOn")}".format(u.optLong("size") / 1048576.0), 13f, "#8A5F52", false))
+            if (u.optString("notes").isNotEmpty()) col.addView(label(u.optString("notes"), 13f, "#4A241C", false).apply { setPadding(0, dp(6), 0, 0) })
             val mandatory = u.optBoolean("mandatory")
             col.addView(label(if (mandatory) "🔒 COMPULSORY: phones with an older build can use nothing until they install it" else "Optional: people see an Update button on Home and can install it later",
-                13f, if (mandatory) "#B91C1C" else "#6B7280", true).apply { setPadding(0, dp(8), 0, 0) })
+                13f, if (mandatory) "#B91C1C" else "#8A5F52", true).apply { setPadding(0, dp(8), 0, 0) })
             col.addView(chipButton(if (mandatory) "Make it optional" else "Make it compulsory") { mandatoryDialog(!mandatory) })
             col.addView(chipButton("Stop offering this update") { removeUpdateDialog() })
             holder.addView(cardOf(col))
@@ -1739,10 +1739,10 @@ class AdminActivity : AppCompatActivity() {
             code == installed -> "\n\n⚠️ This is the same build as the one on this phone, so nobody will be offered an update unless their phone has an older build."
             else -> ""
         }
-        val info = label("Version $name (build $code)\n%.1f MB".format(size / 1048576.0) + "\n\nEveryone on an older build will be offered this update." + warn, 14f, "#374151", false)
+        val info = label("Version $name (build $code)\n%.1f MB".format(size / 1048576.0) + "\n\nEveryone on an older build will be offered this update." + warn, 14f, "#4A241C", false)
         val etNotes = field("What's new? (optional, shown to users)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
         val cbForce = android.widget.CheckBox(this).apply {
-            text = "Compulsory: people cannot use the app until they install it"; isChecked = true; setTextColor(Pal.c("#111827"))
+            text = "Compulsory: people cannot use the app until they install it"; isChecked = true; setTextColor(Pal.c("#3E1D16"))
         }
         val etPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
@@ -1837,7 +1837,7 @@ class AdminActivity : AppCompatActivity() {
     /** Switch the published update between compulsory and optional (needs the admin's own password). */
     private fun mandatoryDialog(makeCompulsory: Boolean) {
         val info = label(if (makeCompulsory) "Phones with an older build will be stopped on an \"Update required\" screen and can use nothing else until they install this version. This happens the next time each phone opens or refreshes Home."
-                         else "Phones will only be offered the update (an Update button on Home). Phones already showing the Update required screen are released when they tap Check again or reopen the app.", 14f, "#374151", false)
+                         else "Phones will only be offered the update (an Update button on Home). Phones already showing the Update required screen are released when they tap Check again or reopen the app.", 14f, "#4A241C", false)
         val etPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
         val dialog = AlertDialog.Builder(this).setTitle(if (makeCompulsory) "Make the update compulsory?" else "Make the update optional?")
@@ -1858,7 +1858,7 @@ class AdminActivity : AppCompatActivity() {
         val etPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
         val dialog = AlertDialog.Builder(this).setTitle("Stop offering this update?")
-            .setView(scrollable(label("Phones will no longer be offered this version. The uploaded file is deleted.", 14f, "#6C7293", false), etPw, error))
+            .setView(scrollable(label("Phones will no longer be offered this version. The uploaded file is deleted.", 14f, "#8A5F52", false), etPw, error))
             .setPositiveButton("Stop offering", null).setNegativeButton("Cancel", null).create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {

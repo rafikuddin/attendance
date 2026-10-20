@@ -84,7 +84,7 @@ class SignupActivity : AppCompatActivity() {
             cornerRadius = 40f * resources.displayMetrics.density
             setColor(if (active) Pal.c("#FFFFFF") else if (done) Pal.c("#33FFFFFF") else Pal.c("#1AFFFFFF"))
         }
-        v.setTextColor(if (active) Pal.c("#1E2247") else Pal.c("#CCFFFFFF"))
+        v.setTextColor(if (active) Pal.c("#6B352A") else Pal.c("#CCFFFFFF"))
     }
 
     private fun setStep(s: Int) {
@@ -115,7 +115,7 @@ class SignupActivity : AppCompatActivity() {
             p1 != etPass2.text.toString() -> { err.text = "Passwords don't match"; return }
         }
         btnSend.isEnabled = false; tvResend.isEnabled = false
-        err.setTextColor(Pal.c("#6C7293")); err.text = "Sending the code…"
+        err.setTextColor(Pal.c("#8A5F52")); err.text = "Sending the code…"
         api(JSONObject().put("action", "signupStart").put("name", n).put("username", id).put("email", m).put("password", p1)) { res, e ->
             btnSend.isEnabled = true
             if (res != null) {

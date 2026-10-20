@@ -196,13 +196,13 @@ class MainActivity : AppCompatActivity() {
             tvToday.setTextColor(Pal.c("#16A34A"))
         } else {
             tvToday.text = "Not submitted tonight"
-            tvToday.setTextColor(Pal.c("#6C7293"))
+            tvToday.setTextColor(Pal.c("#8A5F52"))
         }
 
         if (rows.isEmpty()) {
             list.addView(TextView(this).apply {
                 text = "No night hold submitted this month. Tap to submit one."
-                textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(0, dp(10), 0, 0)
+                textSize = 13f; setTextColor(Pal.c("#8A5F52")); setPadding(0, dp(10), 0, 0)
             })
             return
         }
@@ -214,11 +214,11 @@ class MainActivity : AppCompatActivity() {
             }
             line.addView(TextView(this).apply {
                 text = "🌙  $dateText"; textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Pal.c("#1B1E3B"))
+                setTextColor(Pal.c("#6B352A"))
             })
             line.addView(TextView(this).apply {
                 text = "🏨 ${o.optString("hotel")} · ${o.optString("thana")}, ${o.optString("district")}"
-                textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(dp(28), 0, 0, 0)
+                textSize = 13f; setTextColor(Pal.c("#8A5F52")); setPadding(dp(28), 0, 0, 0)
             })
             list.addView(line)
         }
@@ -418,7 +418,7 @@ class MainActivity : AppCompatActivity() {
                 todayTime != null -> { tvStatus.text = "✅ Present · $todayTime"; tvStatus.setTextColor(Pal.c("#16A34A")) }
                 leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Pal.c("#D97706")) }
                 holidayToday != null -> { tvStatus.text = "🎉 Holiday · $holidayToday"; tvStatus.setTextColor(Pal.c("#7C3AED")) }
-                isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Pal.c("#6B7280")) }
+                isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Pal.c("#8A5F52")) }
                 isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Pal.c("#B91C1C")) }
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Pal.c("#DC2626")) }
             }

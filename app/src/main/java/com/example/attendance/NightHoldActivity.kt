@@ -247,9 +247,9 @@ class NightHoldActivity : AppCompatActivity() {
         rows.forEach { o ->
             val row = android.widget.LinearLayout(this).apply { orientation = android.widget.LinearLayout.VERTICAL; setPadding(0, dp(10), 0, 0) }
             val day = try { dayFmt.format(inFmt.parse(o.optString("date"))!!) } catch (e: Exception) { o.optString("date") }
-            row.addView(TextView(this).apply { text = "🌙  $day" + (if (o.optString("time").isNotEmpty()) "  ·  ${o.optString("time")}" else ""); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#111827")) })
+            row.addView(TextView(this).apply { text = "🌙  $day" + (if (o.optString("time").isNotEmpty()) "  ·  ${o.optString("time")}" else ""); textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#3E1D16")) })
             val place = listOf(o.optString("thana"), o.optString("district")).filter { it.isNotBlank() }.joinToString(", ")
-            row.addView(TextView(this).apply { text = "🏨 ${o.optString("hotel")}\n📍 $place"; textSize = 13f; setTextColor(Pal.c("#6C7293")); setPadding(0, dp(2), 0, 0) })
+            row.addView(TextView(this).apply { text = "🏨 ${o.optString("hotel")}\n📍 $place"; textSize = 13f; setTextColor(Pal.c("#8A5F52")); setPadding(0, dp(2), 0, 0) })
             val lat = o.optString("lat").toDoubleOrNull(); val lng = o.optString("lng").toDoubleOrNull()
             if (lat != null && lng != null) {
                 row.isClickable = true
@@ -260,7 +260,7 @@ class NightHoldActivity : AppCompatActivity() {
             }
             list.addView(row)
         }
-        list.addView(TextView(this).apply { text = "Tap a night to see its location on the map."; textSize = 11f; setTextColor(Pal.c("#9AA0C0")); setPadding(0, dp(10), 0, 0) })
+        list.addView(TextView(this).apply { text = "Tap a night to see its location on the map."; textSize = 11f; setTextColor(Pal.c("#A98578")); setPadding(0, dp(10), 0, 0) })
     }
 
     private fun applyStatus(res: JSONObject) {

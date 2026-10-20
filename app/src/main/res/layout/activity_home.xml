@@ -16,35 +16,35 @@
                 app:cardCornerRadius="24dp" app:cardElevation="0dp" app:cardBackgroundColor="#33FFFFFF"
                 android:clickable="true" android:focusable="true"
                 android:layout_width="48dp" android:layout_height="48dp">
-                <TextView android:id="@+id/tvAvatar" android:gravity="center" android:textColor="#FFFFFF"
+                <TextView android:id="@+id/tvAvatar" android:gravity="center" android:textColor="@color/on_dark"
                     android:textSize="20sp" android:textStyle="bold"
                     android:layout_width="match_parent" android:layout_height="match_parent" />
                 <ImageView android:id="@+id/imgAvatar" android:scaleType="centerCrop" android:visibility="gone"
                     android:contentDescription="Profile photo"
                     android:layout_width="match_parent" android:layout_height="match_parent" />
             </com.google.android.material.card.MaterialCardView>
-            <TextView android:text="SAM BOND" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="26sp"
+            <TextView android:text="SAM BOND" android:textColor="@color/on_dark" android:textStyle="bold" android:textSize="26sp"
                 android:letterSpacing="0.03" android:layout_marginStart="12dp"
                 android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
             <FrameLayout android:layout_width="42dp" android:layout_height="42dp" android:layout_marginEnd="8dp">
                 <TextView android:id="@+id/btnBell" android:text="🔔" android:textSize="18sp"
-                    android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
+                    android:textColor="@color/on_dark" android:background="@drawable/bg_icon_btn"
                     android:gravity="center" android:clickable="true" android:focusable="true"
                     android:contentDescription="Notifications"
                     android:layout_width="42dp" android:layout_height="42dp" />
                 <TextView android:id="@+id/tvBellBadge" android:visibility="gone" android:text="1"
-                    android:textColor="#FFFFFF" android:textSize="10sp" android:textStyle="bold" android:gravity="center"
+                    android:textColor="@color/on_dark" android:textSize="10sp" android:textStyle="bold" android:gravity="center"
                     android:background="@drawable/bg_badge"
                     android:layout_gravity="top|end"
                     android:minWidth="18dp" android:layout_width="wrap_content" android:layout_height="18dp"
                     android:paddingStart="4dp" android:paddingEnd="4dp" />
             </FrameLayout>
             <TextView android:id="@+id/btnRefresh" android:text="⟳" android:textSize="22sp"
-                android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
+                android:textColor="@color/on_dark" android:background="@drawable/bg_icon_btn"
                 android:gravity="center" android:clickable="true" android:focusable="true"
                 android:layout_width="42dp" android:layout_height="42dp" />
             <TextView android:id="@+id/btnMenu" android:text="👤" android:textSize="18sp"
-                android:textColor="#FFFFFF" android:background="@drawable/bg_icon_btn"
+                android:textColor="@color/on_dark" android:background="@drawable/bg_icon_btn"
                 android:gravity="center" android:layout_marginStart="8dp"
                 android:clickable="true" android:focusable="true"
                 android:layout_width="42dp" android:layout_height="42dp" />
@@ -54,11 +54,11 @@
             android:orientation="horizontal" android:gravity="bottom" android:layout_marginTop="10dp">
             <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
                 android:orientation="vertical">
-                <TextView android:text="Welcome back" android:textColor="#B3FFFFFF" android:textSize="13sp"
+                <TextView android:text="Welcome back" android:textColor="@color/on_dark_soft" android:textSize="13sp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <TextView android:id="@+id/tvName" android:textColor="#FFFFFF" android:textSize="22sp" android:textStyle="bold"
+                <TextView android:id="@+id/tvName" android:textColor="@color/on_dark" android:textSize="22sp" android:textStyle="bold"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <TextView android:id="@+id/tvDate" android:textColor="#B3FFFFFF" android:textSize="13sp" android:layout_marginTop="1dp"
+                <TextView android:id="@+id/tvDate" android:textColor="@color/on_dark_soft" android:textSize="13sp" android:layout_marginTop="1dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
             </LinearLayout>
             <LinearLayout android:background="@drawable/bg_pill_translucent" android:orientation="horizontal"
@@ -66,7 +66,7 @@
                 android:paddingStart="14dp" android:paddingEnd="14dp" android:paddingTop="8dp" android:paddingBottom="8dp"
                 android:layout_width="wrap_content" android:layout_height="wrap_content">
                 <TextClock android:format12Hour="hh:mm a" android:format24Hour="hh:mm a"
-                    android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold"
+                    android:textColor="@color/on_dark" android:textSize="20sp" android:textStyle="bold"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
             </LinearLayout>
         </LinearLayout>
@@ -154,7 +154,7 @@
                             android:maxLines="3" android:ellipsize="end"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>
-                    <TextView android:text="Update" android:textSize="13sp" android:textStyle="bold" android:textColor="#FFFFFF"
+                    <TextView android:text="Update" android:textSize="13sp" android:textStyle="bold" android:textColor="@color/on_dark"
                         android:background="@drawable/bg_update_btn" android:gravity="center"
                         android:paddingStart="14dp" android:paddingEnd="14dp" android:paddingTop="8dp" android:paddingBottom="8dp"
                         android:layout_width="wrap_content" android:layout_height="wrap_content" />

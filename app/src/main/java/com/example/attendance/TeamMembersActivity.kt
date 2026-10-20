@@ -46,7 +46,7 @@ class TeamMembersActivity : AppCompatActivity() {
 
     private fun load() {
         content.removeAllViews()
-        content.addView(label("Loading…", 14f, "#6C7293").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
+        content.addView(label("Loading…", 14f, "#8A5F52").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
         api(JSONObject().put("action", "teamMembers")) { res, err ->
             content.removeAllViews()
             if (res == null) { content.addView(label(err ?: "Could not load.", 14f, "#DC2626").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) }); return@api }
@@ -54,7 +54,7 @@ class TeamMembersActivity : AppCompatActivity() {
             val arr = res.optJSONArray("members")
             if (arr != null) for (i in 0 until arr.length()) members.add(arr.getJSONObject(i))
             if (members.isEmpty()) {
-                content.addView(label("Nobody reports to you yet.", 15f, "#6C7293").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
+                content.addView(label("Nobody reports to you yet.", 15f, "#8A5F52").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
                 return@api
             }
             etSearch = SeekField(this, "Search by name or Employee ID").also {
@@ -76,15 +76,15 @@ class TeamMembersActivity : AppCompatActivity() {
         val box = rowsBox()
         box.removeAllViews()
         val shown = members.filter { q.isEmpty() || it.optString("name").contains(q, true) || it.optString("username").contains(q, true) }
-        box.addView(label("${shown.size} ${if (shown.size == 1) "person" else "people"} below you", 12f, "#6C7293", true).apply { setPadding(dp(6), dp(10), dp(6), dp(6)) })
+        box.addView(label("${shown.size} ${if (shown.size == 1) "person" else "people"} below you", 12f, "#8A5F52", true).apply { setPadding(dp(6), dp(10), dp(6), dp(6)) })
         shown.forEach { box.addView(card(it)) }
     }
 
     private fun card(o: JSONObject): View {
         val username = o.optString("username"); val name = o.optString("name")
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
-        col.addView(label(name, 16f, "#111827", true))
-        col.addView(label("ID: $username" + (if (o.optBoolean("isManager")) "  ·  manager" else "") + (if (o.optString("manager").isNotBlank()) "  ·  reports to ${o.optString("manager")}" else ""), 12f, "#6C7293"))
+        col.addView(label(name, 16f, "#3E1D16", true))
+        col.addView(label("ID: $username" + (if (o.optBoolean("isManager")) "  ·  manager" else "") + (if (o.optString("manager").isNotBlank()) "  ·  reports to ${o.optString("manager")}" else ""), 12f, "#8A5F52"))
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
         row.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
             text = "👤 Profile"

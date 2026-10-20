@@ -79,8 +79,8 @@ class AttendanceActivity : AppCompatActivity() {
 
         forDate?.let { d ->
             cardSummary.visibility = View.VISIBLE
-            cardSummary.setCardBackgroundColor(Pal.c("#EEF2FF"))
-            tvSummary.setTextColor(Pal.c("#3730A3"))
+            cardSummary.setCardBackgroundColor(Pal.c("#FFF6C4"))
+            tvSummary.setTextColor(Pal.c("#6B352A"))
             tvSummary.text = "📝 Manual attendance for $d\nAn admin opened this day for you. Take your selfie as usual."
         }
         if (!entryHidden) ensureCamera()
@@ -344,7 +344,7 @@ class AttendanceActivity : AppCompatActivity() {
                 todayTime != null -> { tvStatus.text = "✅ Present · $todayTime"; tvStatus.setTextColor(Pal.c("#16A34A")) }
                 leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Pal.c("#D97706")) }
                 holidayToday != null -> { tvStatus.text = "🎉 Holiday · $holidayToday"; tvStatus.setTextColor(Pal.c("#7C3AED")) }
-                isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Pal.c("#6B7280")) }
+                isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Pal.c("#8A5F52")) }
                 isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Pal.c("#B91C1C")) }
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Pal.c("#DC2626")) }
             }

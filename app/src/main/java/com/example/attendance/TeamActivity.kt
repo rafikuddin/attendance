@@ -100,7 +100,7 @@ class TeamActivity : AppCompatActivity() {
         }
         val selfie = o.optString("selfie")
         if (o.optString("status") == "Present" && selfie.isNotEmpty()) {
-            card.setCardBackgroundColor(Pal.c("#E5E7EB"))
+            card.setCardBackgroundColor(Pal.c("#EBDDA0"))
             val img = ImageView(this).apply {
                 scaleType = ImageView.ScaleType.CENTER_CROP
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -109,10 +109,10 @@ class TeamActivity : AppCompatActivity() {
             card.addView(img)
             PhotoLoader.load(this, session, selfie, img)
         } else {
-            card.setCardBackgroundColor(Pal.c("#E6E9F7"))
+            card.setCardBackgroundColor(Pal.c("#F0E3A6"))
             card.addView(TextView(this).apply {
                 text = o.optString("name").trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-                gravity = Gravity.CENTER; setTextColor(Pal.c("#1E2247")); setTypeface(null, Typeface.BOLD); textSize = 16f
+                gravity = Gravity.CENTER; setTextColor(Pal.c("#6B352A")); setTypeface(null, Typeface.BOLD); textSize = 16f
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             })
         }
@@ -127,17 +127,17 @@ class TeamActivity : AppCompatActivity() {
             listOf("Present", c.optInt("present"), "#15803D", "#E6F6EC", "✅"),
             listOf("Late", c.optInt("late"), "#B45309", "#FEF3C7", "⏰"),
             listOf("On Leave", c.optInt("onLeave"), "#C2410C", "#FFEDD5", "🌴"),
-            listOf("Off", c.optInt("off"), "#4B5563", "#EEF0F5", "🗓"),
+            listOf("Off", c.optInt("off"), "#6F4A3F", "#F8EFC4", "🗓"),
             listOf("Absent", c.optInt("absent"), "#B91C1C", "#FDE8E8", "❌"),
-            listOf("Pending", c.optInt("pending"), "#4338CA", "#E8EAFF", "⏳")
+            listOf("Pending", c.optInt("pending"), "#6B352A", "#FFF1A6", "⏳")
         )
         val total = c.optInt("total", items.sumOf { v -> v[1] as Int })
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         head.addView(TextView(this).apply {
-            text = "TEAM TODAY"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#1E2247")); letterSpacing = 0.06f
+            text = "TEAM TODAY"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")); letterSpacing = 0.06f
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
-        head.addView(pill("$total member" + (if (total == 1) "" else "s"), "#1E2247", "#E6E9F7"))
+        head.addView(pill("$total member" + (if (total == 1) "" else "s"), "#6B352A", "#F0E3A6"))
         countsBox.addView(head)
         for (rowStart in listOf(0, 3)) {
             val row = LinearLayout(this).apply {
@@ -168,7 +168,7 @@ class TeamActivity : AppCompatActivity() {
     }
 
     private fun note(text: String) = TextView(this).apply {
-        this.text = text; setTextColor(Pal.c("#3A3F73"))
+        this.text = text; setTextColor(Pal.c("#6B352A"))
         setPadding(dp(4), dp(6), dp(4), dp(6))
     }
 
@@ -192,7 +192,7 @@ class TeamActivity : AppCompatActivity() {
             status == "Present" && late -> "#9A3412" to "#FFEDD5"
             status == "Present" -> "#166534" to "#DCFCE7"
             status == "On Leave" -> "#B45309" to "#FEF3C7"
-            status == "Off" -> "#374151" to "#E5E7EB"
+            status == "Off" -> "#4A241C" to "#EBDDA0"
             status == "Absent" -> "#FFFFFF" to "#B91C1C"
             else -> "#B91C1C" to "#FEE2E2"
         }
@@ -205,16 +205,16 @@ class TeamActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        nameCol.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#111827")) })
+        nameCol.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")) })
         val detail = o.optString("detail")
         nameCol.addView(TextView(this).apply {
             text = "Own attendance: ${o.optInt("presentThisMonth")} day(s) this month" + if (detail.isNotEmpty() && status == "Present") " · $detail" else ""
-            textSize = 12f; setTextColor(Pal.c("#6B7280"))
+            textSize = 12f; setTextColor(Pal.c("#8A5F52"))
         })
         val address = o.optString("address")
         if (status == "Present" && address.isNotEmpty()) {
             nameCol.addView(TextView(this).apply {
-                text = "📍 $address"; textSize = 12f; setTextColor(Pal.c("#6B7280"))
+                text = "📍 $address"; textSize = 12f; setTextColor(Pal.c("#8A5F52"))
                 maxLines = 2; setPadding(0, dp(2), 0, 0)
             })
         }
@@ -229,11 +229,11 @@ class TeamActivity : AppCompatActivity() {
             col.addView(TextView(this).apply {
                 text = "👥 Team: $p Present" + (if (lt > 0) " ($lt Late)" else "") + " · $l On Leave" +
                     (if (off > 0) " · $off Off" else "") + (if (ab > 0) " · $ab Absent" else "") + " · $pe Pending  (of $t)"
-                textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#1E2247"))
+                textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A"))
                 setPadding(0, dp(8), 0, 0)
             })
             col.addView(TextView(this).apply {
-                text = "Tap to view →"; textSize = 12f; setTextColor(Pal.c("#9CA3AF"))
+                text = "Tap to view →"; textSize = 12f; setTextColor(Pal.c("#B39284"))
                 setPadding(0, dp(2), 0, 0)
             })
         }
@@ -259,18 +259,18 @@ class TeamActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        name.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#111827")) })
-        name.addView(TextView(this).apply { text = "${o.optString("type")} · ${o.optString("days")} day(s)"; textSize = 13f; setTextColor(Pal.c("#6B7280")) })
+        name.addView(TextView(this).apply { text = o.optString("name"); textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")) })
+        name.addView(TextView(this).apply { text = "${o.optString("type")} · ${o.optString("days")} day(s)"; textSize = 13f; setTextColor(Pal.c("#8A5F52")) })
         top.addView(name)
         top.addView(pill(status, fg, bg))
         col.addView(top)
         col.addView(TextView(this).apply {
-            text = "${o.optString("from")}  →  ${o.optString("to")}"; textSize = 13f; setTextColor(Pal.c("#6B7280"))
+            text = "${o.optString("from")}  →  ${o.optString("to")}"; textSize = 13f; setTextColor(Pal.c("#8A5F52"))
             (layoutParams as? LinearLayout.LayoutParams)
             setPadding(0, dp(6), 0, 0)
         })
         if (o.optString("reason").isNotEmpty())
-            col.addView(TextView(this).apply { text = o.optString("reason"); textSize = 13f; setTextColor(Pal.c("#6B7280")) })
+            col.addView(TextView(this).apply { text = o.optString("reason"); textSize = 13f; setTextColor(Pal.c("#8A5F52")) })
         if (o.optString("application").isNotEmpty()) col.addView(applicationLink(session, o.optString("application")))
         decidedLine(o).takeIf { it.isNotEmpty() }?.let { line ->
             col.addView(TextView(this).apply { text = line; textSize = 13f; setTextColor(Pal.c(fg)); setPadding(0, dp(6), 0, 0) })

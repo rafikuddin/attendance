@@ -8,14 +8,14 @@
         android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp"
         android:paddingTop="10dp" android:paddingBottom="30dp">
         <TextView android:id="@+id/btnBack" android:text="‹" android:textSize="26sp"
-            android:textColor="#FFFFFF" android:gravity="center" android:clickable="true" android:focusable="true"
+            android:textColor="@color/on_dark" android:gravity="center" android:clickable="true" android:focusable="true"
             android:background="@drawable/bg_icon_btn"
             android:layout_width="40dp" android:layout_height="40dp" />
         <TextView android:id="@+id/tvTitle" android:textSize="22sp" android:textStyle="bold"
-            android:textColor="#FFFFFF" android:layout_marginStart="14dp"
+            android:textColor="@color/on_dark" android:layout_marginStart="14dp"
             android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
         <TextView android:id="@+id/btnRefresh" android:text="⟳" android:textSize="22sp" android:visibility="gone"
-            android:textColor="#FFFFFF" android:gravity="center" android:clickable="true" android:focusable="true"
+            android:textColor="@color/on_dark" android:gravity="center" android:clickable="true" android:focusable="true"
             android:background="@drawable/bg_icon_btn"
             android:layout_width="40dp" android:layout_height="40dp" />
     </LinearLayout>

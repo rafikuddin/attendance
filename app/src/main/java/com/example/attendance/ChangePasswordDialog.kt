@@ -35,7 +35,7 @@ object ChangePasswordDialog {
             setPadding(pad, pad, pad, 0)
             if (forced) addView(TextView(ctx).apply {
                 text = "Your password is too easy to guess, or an admin gave it to you. Choose a new one to continue."
-                setTextColor(Pal.c("#6C7293"))
+                setTextColor(Pal.c("#8A5F52"))
             })
             addView(currentPass)
             addView(newPass)

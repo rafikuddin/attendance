@@ -76,7 +76,7 @@ class OtpView @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = nul
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; isFakeBoldText = true }
-    private val digitPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; isFakeBoldText = true; color = 0xFFFFFFFF.toInt() }
+    private val digitPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; isFakeBoldText = true; color = 0xFFFFF1A6.toInt() }
     private val captionPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; isFakeBoldText = true }
     private val subPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val okPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
@@ -198,15 +198,16 @@ class OtpView @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = nul
 
     // ------------------------------------------------------------------ colours
 
-    private fun ink() = Pal.c("#1E2247")
-    private fun muted() = Pal.c("#6C7293")
-    private fun accent() = if (Pal.night) 0xFF8B93FF.toInt() else 0xFF4F46E5.toInt()
-    private fun lineColor() = if (Pal.night) 0xFF4A4F7D.toInt() else 0xFFB7BCDC.toInt()
+    private fun ink() = Pal.c("#6B352A")
+    private fun muted() = Pal.c("#8A5F52")
+    private fun accent() = if (Pal.night) 0xFFFFE680.toInt() else 0xFF6B352A.toInt()
+    private fun lineColor() = if (Pal.night) 0xFF6A453A.toInt() else 0xFFCDB88A.toInt()
     private fun green() = if (Pal.night) 0xFF22C55E.toInt() else 0xFF16A34A.toInt()
-    private val blue = 0xFF2F6FE0.toInt()
-    private val blueTop = 0xFF5B9DF5.toInt()
-    private val blueBottom = 0xFF2563EB.toInt()
-    private val yellow = 0xFFF5B400.toInt()
+    // The "blue" of the original animation is Clay Brown here (a lighter clay at night so it stands out on the dark card).
+    private val blue get() = if (Pal.night) 0xFF9A4B38.toInt() else 0xFF6B352A.toInt()
+    private val blueTop get() = if (Pal.night) 0xFFB9644A.toInt() else 0xFF8A4A3A.toInt()
+    private val blueBottom get() = if (Pal.night) 0xFF8A4333.toInt() else 0xFF5A2B21.toInt()
+    private val yellow = 0xFFE8A800.toInt()
     private val red = 0xFFDC2626.toInt()
 
     private fun mix(a: Int, b: Int, t: Float): Int {
@@ -231,7 +232,7 @@ class OtpView @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = nul
         val ts = succT * SUCCESS_MS          // milliseconds into the success scene
 
         // padlock tile
-        fill.shader = null; fill.style = Paint.Style.FILL; fill.color = Pal.c("#E8EAFF")
+        fill.shader = null; fill.style = Paint.Style.FILL; fill.color = Pal.c("#FFF1A6")
         rect.set(cx - 44 * d, iconCy - 44 * d, cx + 44 * d, iconCy + 44 * d)
         c.drawRoundRect(rect, 26 * d, 26 * d, fill)
         if (st == St.SUCCESS) drawIconSuccess(c, cx, iconCy, ts) else drawLock(c, cx, iconCy, 1f, 0f)
@@ -285,7 +286,7 @@ class OtpView @JvmOverloads constructor(ctx: Context, attrs: AttributeSet? = nul
         val n = digits.length
         // the little bars joining filled neighbours
         if (collapse < 0.3f) {
-            fill.shader = null; fill.style = Paint.Style.FILL; fill.color = 0xFF3B82F6.toInt()
+            fill.shader = null; fill.style = Paint.Style.FILL; fill.color = blue
             fill.alpha = (255 * alpha * (1f - collapse / 0.3f)).toInt()
             for (i in 0 until n - 1) {
                 val x1 = boxX(i, cx, b) + b / 2f - 2 * d

@@ -117,7 +117,7 @@ class SurveyAdminActivity : AppCompatActivity() {
         addView(inner)
     }
 
-    private fun heading(t: String) = label(t, 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(10), dp(6), dp(6)) }
+    private fun heading(t: String) = label(t, 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(10), dp(6), dp(6)) }
 
     private fun chip(text: String, fg: String, bg: String) = TextView(this).apply {
         this.text = text; textSize = 11f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(fg))
@@ -127,9 +127,9 @@ class SurveyAdminActivity : AppCompatActivity() {
     }
 
     private fun chipButton(text: String, onClick: () -> Unit) = TextView(this).apply {
-        this.text = text; textSize = 14f; setTextColor(Pal.c("#1E2247")); setTypeface(null, Typeface.BOLD)
+        this.text = text; textSize = 14f; setTextColor(Pal.c("#6B352A")); setTypeface(null, Typeface.BOLD)
         setPadding(dp(14), dp(11), dp(14), dp(11))
-        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
+        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F0E3A6")) }
         isClickable = true; setOnClickListener { onClick() }
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6); marginEnd = dp(6) }
     }
@@ -157,7 +157,7 @@ class SurveyAdminActivity : AppCompatActivity() {
     private fun loadList() {
         mode = 0
         content.removeAllViews()
-        content.addView(label("Loading…", 14f, "#6C7293").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
+        content.addView(label("Loading…", 14f, "#8A5F52").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
         api(JSONObject().put("action", "adminSurveyList")) { res, err ->
             content.removeAllViews()
             content.addView(bigButton("➕  New survey") { newDraft(); renderBuilder() })
@@ -165,8 +165,8 @@ class SurveyAdminActivity : AppCompatActivity() {
             val list = res.optJSONArray("surveys") ?: JSONArray()
             if (list.length() == 0) {
                 val c = column()
-                c.addView(label("📋  No surveys yet", 16f, "#111827", true))
-                c.addView(label("Tap “New survey” to ask your team something.", 14f, "#6C7293").apply { setPadding(0, dp(6), 0, 0) })
+                c.addView(label("📋  No surveys yet", 16f, "#3E1D16", true))
+                c.addView(label("Tap “New survey” to ask your team something.", 14f, "#8A5F52").apply { setPadding(0, dp(6), 0, 0) })
                 content.addView(cardOf(c)); return@api
             }
             for (i in 0 until list.length()) content.addView(listCard(list.getJSONObject(i)))
@@ -175,17 +175,17 @@ class SurveyAdminActivity : AppCompatActivity() {
 
     private fun listCard(o: JSONObject): View {
         val c = column()
-        c.addView(label(o.optString("title"), 16f, "#111827", true))
+        c.addView(label(o.optString("title"), 16f, "#3E1D16", true))
         val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, 0) }
         when (o.optString("state")) {
             "open" -> chips.addView(chip("● Open", "#166534", "#DCFCE7"))
             "expired" -> chips.addView(chip("Deadline passed", "#B45309", "#FEF3C7"))
-            else -> chips.addView(chip("Closed", "#374151", "#E5E7EB"))
+            else -> chips.addView(chip("Closed", "#4A241C", "#EBDDA0"))
         }
         if (o.optString("deadline").isNotBlank()) chips.addView(chip("⏰ ${niceDate(o.optString("deadline"))}", "#B45309", "#FEF3C7"))
-        if (o.optBoolean("anonymous")) chips.addView(chip("🔒 Anonymous", "#4338CA", "#EEF1FF"))
+        if (o.optBoolean("anonymous")) chips.addView(chip("🔒 Anonymous", "#6B352A", "#FFF6C4"))
         c.addView(chips)
-        c.addView(label("${o.optInt("responses")} of ${o.optInt("audience")} answered  ·  ${o.optInt("questions")} questions" + (if (o.optBoolean("everyone")) "  ·  everyone" else "  ·  chosen people"), 12f, "#6C7293").apply { setPadding(0, dp(6), 0, 0) })
+        c.addView(label("${o.optInt("responses")} of ${o.optInt("audience")} answered  ·  ${o.optInt("questions")} questions" + (if (o.optBoolean("everyone")) "  ·  everyone" else "  ·  chosen people"), 12f, "#8A5F52").apply { setPadding(0, dp(6), 0, 0) })
         return cardOf(c) { surveyMenu(o) }
     }
 
@@ -208,7 +208,7 @@ class SurveyAdminActivity : AppCompatActivity() {
     private fun confirmDelete(id: String, name: String, answers: Int) {
         val pw = FloatField(this, "Your own password", password = true)
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
-        box.addView(label("This deletes “$name” and its $answers answer${if (answers == 1) "" else "s"} (and attachments) for good.", 13f, "#1E2247"))
+        box.addView(label("This deletes “$name” and its $answers answer${if (answers == 1) "" else "s"} (and attachments) for good.", 13f, "#6B352A"))
         box.addView(pw)
         AlertDialog.Builder(this).setTitle("Delete survey?").setView(box)
             .setPositiveButton("Delete") { _, _ ->
@@ -247,7 +247,7 @@ class SurveyAdminActivity : AppCompatActivity() {
         val locked = responses > 0
         // basics
         val a = column()
-        a.addView(label(if (editId.isEmpty()) "NEW SURVEY" else "EDIT SURVEY", 12f, "#1E2247", true).apply { letterSpacing = 0.08f })
+        a.addView(label(if (editId.isEmpty()) "NEW SURVEY" else "EDIT SURVEY", 12f, "#6B352A", true).apply { letterSpacing = 0.08f })
         etTitle = field("Title (for example: Office feedback)").apply { setText(title) }
         etDesc = field("Short explanation (optional)", true).apply { setText(desc) }
         a.addView(etTitle); a.addView(etDesc)
@@ -269,14 +269,14 @@ class SurveyAdminActivity : AppCompatActivity() {
         if (shown != null) {
             pic.addView(ImageView(this).apply {
                 scaleType = ImageView.ScaleType.CENTER_CROP; clipToOutline = true
-                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
+                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F0E3A6")) }
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150)).apply { topMargin = dp(8) }
                 setImageBitmap(BitmapFactory.decodeByteArray(shown, 0, shown.size))
             })
         } else if (existingImage.isNotEmpty() && !removeImage) {
             pic.addView(ImageView(this).apply {
                 scaleType = ImageView.ScaleType.CENTER_CROP; clipToOutline = true
-                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
+                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F0E3A6")) }
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150)).apply { topMargin = dp(8) }
                 PhotoLoader.load(this@SurveyAdminActivity, session, existingImage, this, 640)
             })
@@ -293,7 +293,7 @@ class SurveyAdminActivity : AppCompatActivity() {
 
         // audience + options
         val w = column()
-        w.addView(label("WHO ANSWERS", 12f, "#1E2247", true).apply { letterSpacing = 0.08f })
+        w.addView(label("WHO ANSWERS", 12f, "#6B352A", true).apply { letterSpacing = 0.08f })
         val g = RadioGroup(this).apply { orientation = RadioGroup.VERTICAL }
         val rAll = RadioButton(this).apply { text = "Everyone"; id = View.generateViewId(); isChecked = audAll }
         val rSome = RadioButton(this).apply { text = "Chosen people"; id = View.generateViewId(); isChecked = !audAll }
@@ -321,11 +321,11 @@ class SurveyAdminActivity : AppCompatActivity() {
 
     private fun questionCard(i: Int, q: JSONObject, locked: Boolean): View {
         val c = column()
-        c.addView(label("${i + 1}  ·  ${kindName(q.optString("t"))}" + (if (q.optBoolean("req")) "  ·  required" else ""), 11f, "#6C7293", true))
-        c.addView(label(q.optString("q"), 15f, "#111827", true).apply { setPadding(0, dp(3), 0, 0) })
+        c.addView(label("${i + 1}  ·  ${kindName(q.optString("t"))}" + (if (q.optBoolean("req")) "  ·  required" else ""), 11f, "#8A5F52", true))
+        c.addView(label(q.optString("q"), 15f, "#3E1D16", true).apply { setPadding(0, dp(3), 0, 0) })
         val o = q.optJSONArray("o")
-        if (o != null && o.length() > 0) c.addView(label((0 until o.length()).joinToString("  ·  ") { o.optString(it) }, 12f, "#6C7293").apply { setPadding(0, dp(3), 0, 0) })
-        if (q.optString("t") == "rating") c.addView(label("1 to ${if (q.optInt("max") == 10) 10 else 5}", 12f, "#6C7293"))
+        if (o != null && o.length() > 0) c.addView(label((0 until o.length()).joinToString("  ·  ") { o.optString(it) }, 12f, "#8A5F52").apply { setPadding(0, dp(3), 0, 0) })
+        if (q.optString("t") == "rating") c.addView(label("1 to ${if (q.optInt("max") == 10) 10 else 5}", 12f, "#8A5F52"))
         if (!locked) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(6), 0, 0) }
             row.addView(chipButton("↑") { syncDraft(); if (i > 0) { questions.add(i - 1, questions.removeAt(i)); renderBuilder() } })
@@ -346,13 +346,13 @@ class SurveyAdminActivity : AppCompatActivity() {
     private fun editQuestion(index: Int, type: String) {
         val old = if (index >= 0) questions[index] else null
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
-        box.addView(label(kindName(type), 13f, "#6C7293", true))
+        box.addView(label(kindName(type), 13f, "#8A5F52", true))
         val et = field("Write the question", true).apply { setText(old?.optString("q").orEmpty()) }
         box.addView(et)
         val req = CheckBox(this).apply { text = "Required"; isChecked = old?.optBoolean("req") ?: false }
         box.addView(req)
         val etOpts: EditText? = if (type == "single" || type == "multi" || type == "drop") {
-            box.addView(label("Choices, one on each line (2 to 15)", 12f, "#6C7293").apply { setPadding(0, dp(8), 0, 0) })
+            box.addView(label("Choices, one on each line (2 to 15)", 12f, "#8A5F52").apply { setPadding(0, dp(8), 0, 0) })
             field("Choice 1\nChoice 2", true).apply {
                 minLines = 4
                 val o = old?.optJSONArray("o"); if (o != null) setText((0 until o.length()).joinToString("\n") { o.optString(it) })
@@ -441,8 +441,8 @@ class SurveyAdminActivity : AppCompatActivity() {
             mode = 2
             content.removeAllViews()
             val h = column()
-            h.addView(label(r.optString("title"), 20f, "#111827", true))
-            h.addView(label("${r.optInt("total")} of ${r.optInt("audience")} answered" + (if (r.optBoolean("anonymous")) "  ·  🔒 anonymous" else ""), 14f, "#4F46E5", true).apply { setPadding(0, dp(4), 0, 0) })
+            h.addView(label(r.optString("title"), 20f, "#3E1D16", true))
+            h.addView(label("${r.optInt("total")} of ${r.optInt("audience")} answered" + (if (r.optBoolean("anonymous")) "  ·  🔒 anonymous" else ""), 14f, "#6B352A", true).apply { setPadding(0, dp(4), 0, 0) })
             val names = r.optJSONArray("notAnsweredNames")
             if (!r.optBoolean("anonymous") && r.optInt("notAnswered") > 0 && names != null) {
                 h.addView(chipButton("⏳  ${r.optInt("notAnswered")} have not answered yet") {
@@ -459,28 +459,28 @@ class SurveyAdminActivity : AppCompatActivity() {
 
     private fun resultCard(i: Int, q: JSONObject): View {
         val c = column()
-        c.addView(label("${i + 1}. ${q.optString("q")}", 15f, "#111827", true))
-        c.addView(label("${q.optInt("n")} answered  ·  ${kindName(q.optString("t"))}", 11f, "#6C7293").apply { setPadding(0, dp(2), 0, dp(6)) })
+        c.addView(label("${i + 1}. ${q.optString("q")}", 15f, "#3E1D16", true))
+        c.addView(label("${q.optInt("n")} answered  ·  ${kindName(q.optString("t"))}", 11f, "#8A5F52").apply { setPadding(0, dp(2), 0, dp(6)) })
         if (q.has("avg")) {
             val t = q.optString("t")
-            c.addView(label(if (t == "rating") "Average ${trim(q.optDouble("avg"))}" else "Average ${trim(q.optDouble("avg"))}  ·  lowest ${trim(q.optDouble("min"))}  ·  highest ${trim(q.optDouble("max"))}", 14f, "#4F46E5", true))
+            c.addView(label(if (t == "rating") "Average ${trim(q.optDouble("avg"))}" else "Average ${trim(q.optDouble("avg"))}  ·  lowest ${trim(q.optDouble("min"))}  ·  highest ${trim(q.optDouble("max"))}", 14f, "#6B352A", true))
         }
         val opts = q.optJSONArray("options")
         if (opts != null) for (k in 0 until opts.length()) {
             val o = opts.getJSONObject(k)
             val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(4), 0, dp(2)) }
             val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            top.addView(label(o.optString("label"), 13f, "#111827").apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
-            top.addView(label("${o.optInt("count")}  ·  ${trim(o.optDouble("pct"))}%", 13f, "#6C7293", true))
+            top.addView(label(o.optString("label"), 13f, "#3E1D16").apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
+            top.addView(label("${o.optInt("count")}  ·  ${trim(o.optDouble("pct"))}%", 13f, "#8A5F52", true))
             row.addView(top)
             val frac = (o.optDouble("pct") / 100.0).coerceIn(0.0, 1.0).toFloat()
             val track = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
-                background = GradientDrawable().apply { cornerRadius = dp(5).toFloat(); setColor(Pal.c("#E6E9F7")) }
+                background = GradientDrawable().apply { cornerRadius = dp(5).toFloat(); setColor(Pal.c("#F0E3A6")) }
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(8)).apply { topMargin = dp(3) }
             }
             track.addView(View(this).apply {
-                background = GradientDrawable().apply { cornerRadius = dp(5).toFloat(); setColor(Color.parseColor("#4F46E5")) }
+                background = GradientDrawable().apply { cornerRadius = dp(5).toFloat(); setColor(Color.parseColor("#6B352A")) }
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, frac)
             })
             if (frac < 1f) track.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - frac) })
@@ -491,9 +491,9 @@ class SurveyAdminActivity : AppCompatActivity() {
         if (texts != null) for (k in 0 until texts.length()) {
             val t = texts.getJSONObject(k)
             val by = t.optString("by")
-            c.addView(label("“${t.optString("v")}”" + (if (by.isNotBlank()) "  — $by" else ""), 13f, "#111827").apply { setPadding(0, dp(4), 0, dp(2)) })
+            c.addView(label("“${t.optString("v")}”" + (if (by.isNotBlank()) "  — $by" else ""), 13f, "#3E1D16").apply { setPadding(0, dp(4), 0, dp(2)) })
         }
-        if (q.optInt("moreTexts") > 0) c.addView(label("…and ${q.optInt("moreTexts")} more (see the Excel file)", 12f, "#9AA0C0"))
+        if (q.optInt("moreTexts") > 0) c.addView(label("…and ${q.optInt("moreTexts")} more (see the Excel file)", 12f, "#A98578"))
         val photos = q.optJSONArray("photos")
         if (photos != null && photos.length() > 0) {
             var row: LinearLayout? = null
@@ -503,16 +503,16 @@ class SurveyAdminActivity : AppCompatActivity() {
                 val cell = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(4) } }
                 val img = ImageView(this).apply {
                     scaleType = ImageView.ScaleType.CENTER_CROP; clipToOutline = true
-                    background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(Pal.c("#E6E9F7")) }
+                    background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(Pal.c("#F0E3A6")) }
                     layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(100))
                     setOnClickListener { showPhotoDialog(session, p.optString("id")) }
                 }
                 PhotoLoader.load(this, session, p.optString("id"), img, 200)
                 cell.addView(img)
-                if (p.optString("by").isNotBlank()) cell.addView(label(p.optString("by"), 10f, "#6C7293").apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                if (p.optString("by").isNotBlank()) cell.addView(label(p.optString("by"), 10f, "#8A5F52").apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                 row?.addView(cell)
             }
-            if (q.optInt("morePhotos") > 0) c.addView(label("…and ${q.optInt("morePhotos")} more attachments (links in the Excel file)", 12f, "#9AA0C0"))
+            if (q.optInt("morePhotos") > 0) c.addView(label("…and ${q.optInt("morePhotos")} more attachments (links in the Excel file)", 12f, "#A98578"))
         }
         return cardOf(c)
     }

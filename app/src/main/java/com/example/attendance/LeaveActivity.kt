@@ -215,7 +215,7 @@ class LeaveActivity : AppCompatActivity() {
     private fun showPreviewDialog(bytes: ByteArray) {
         val img = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
-            setBackgroundColor(Color.parseColor("#111827"))
+            setBackgroundColor(Color.parseColor("#3E1D16"))
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.7).toInt())
             setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
         }
@@ -247,7 +247,7 @@ class LeaveActivity : AppCompatActivity() {
         list.removeAllViews()
         renderBalance(res)
         val arr = res.getJSONArray("leaves")
-        if (arr.length() == 0) list.addView(TextView(this).apply { text = "No leave requests yet."; setTextColor(Pal.c("#6B7280")) })
+        if (arr.length() == 0) list.addView(TextView(this).apply { text = "No leave requests yet."; setTextColor(Pal.c("#8A5F52")) })
         for (o in pendingFirst(arr)) list.addView(card(o))
     }
 
@@ -267,7 +267,7 @@ class LeaveActivity : AppCompatActivity() {
             // accent colour, soft tile colour, symbol
             val look = when (type) {
                 "Casual" -> Triple("#0D9488", "#E6F7F4", "🌴")
-                "Sick" -> Triple("#4F46E5", "#ECEEFF", "🤒")
+                "Sick" -> Triple("#6B352A", "#FFF6C4", "🤒")
                 "Earn" -> Triple("#D97706", "#FEF3D6", "💰")
                 else -> Triple("#0284C7", "#E3F3FC", "👶")
             }
@@ -293,7 +293,7 @@ class LeaveActivity : AppCompatActivity() {
             val big = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.BOTTOM }
             big.addView(TextView(this).apply { text = rem.toString(); textSize = 34f; setTypeface(null, Typeface.BOLD); setTextColor(accent) })
             big.addView(TextView(this).apply {
-                text = "  of $quota left"; textSize = 12f; setTextColor(Pal.c("#6B7280"))
+                text = "  of $quota left"; textSize = 12f; setTextColor(Pal.c("#8A5F52"))
                 setPadding(0, 0, 0, dp(7))
             })
             tile.addView(big)
@@ -312,7 +312,7 @@ class LeaveActivity : AppCompatActivity() {
             tile.addView(track)
             tile.addView(TextView(this).apply {
                 text = "Used $used" + if (pend > 0) "  ·  Pending $pend" else ""
-                textSize = 11f; setTextColor(Pal.c("#6B7280")); setPadding(0, dp(6), 0, 0)
+                textSize = 11f; setTextColor(Pal.c("#8A5F52")); setPadding(0, dp(6), 0, 0)
             })
             row?.addView(tile)
         }
@@ -329,10 +329,10 @@ class LeaveActivity : AppCompatActivity() {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
         col.addView(TextView(this).apply {
             text = "${o.optString("type")}  •  ${o.optString("days")} day(s)"
-            textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#111827"))
+            textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#3E1D16"))
         })
-        col.addView(TextView(this).apply { text = "${fmt(o.optString("from"))}  →  ${fmt(o.optString("to"))}"; setTextColor(Pal.c("#6B7280")) })
-        if (o.optString("reason").isNotEmpty()) col.addView(TextView(this).apply { text = o.optString("reason"); setTextColor(Pal.c("#6B7280")) })
+        col.addView(TextView(this).apply { text = "${fmt(o.optString("from"))}  →  ${fmt(o.optString("to"))}"; setTextColor(Pal.c("#8A5F52")) })
+        if (o.optString("reason").isNotEmpty()) col.addView(TextView(this).apply { text = o.optString("reason"); setTextColor(Pal.c("#8A5F52")) })
         if (o.optString("application").isNotEmpty()) col.addView(applicationLink(session, o.optString("application")))
         col.addView(TextView(this).apply {
             text = status; setTextColor(Pal.c(fg)); setTypeface(null, android.graphics.Typeface.BOLD)

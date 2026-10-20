@@ -67,7 +67,7 @@ class SeekField(ctx: Context, private val hintText: String, private val openOnSh
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply { topMargin = dp(10) }
         // the hint, shown at the start while the field is folded into its icon
         label.apply {
-            textSize = 14f; setTextColor(Pal.c("#6C7293")); maxLines = 1; ellipsize = TextUtils.TruncateAt.END; gravity = Gravity.CENTER_VERTICAL
+            textSize = 14f; setTextColor(Pal.c("#8A5F52")); maxLines = 1; ellipsize = TextUtils.TruncateAt.END; gravity = Gravity.CENTER_VERTICAL
         }
         label.text = hintText
         addView(label, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply { marginStart = dp(6); marginEnd = dp(56) })
@@ -77,7 +77,7 @@ class SeekField(ctx: Context, private val hintText: String, private val openOnSh
             background = pillBackground(false)
         }
         icon.apply {
-            setImageResource(R.drawable.ic_seek); setColorFilter(Pal.c("#6C7293")); scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setImageResource(R.drawable.ic_seek); setColorFilter(Pal.c("#8A5F52")); scaleType = ImageView.ScaleType.CENTER_INSIDE
             setPadding(dp(12), dp(12), dp(12), dp(12))
         }
         pill.addView(icon, LinearLayout.LayoutParams(dp(48), dp(48)))
@@ -85,7 +85,7 @@ class SeekField(ctx: Context, private val hintText: String, private val openOnSh
             background = null; hint = hintText; textSize = 15f; setSingleLine(true)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             imeOptions = EditorInfo.IME_ACTION_SEARCH
-            setTextColor(Pal.c("#1E2247")); setHintTextColor(Pal.c("#9AA0C0"))
+            setTextColor(Pal.c("#6B352A")); setHintTextColor(Pal.c("#A98578"))
             setPadding(0, 0, 0, 0); alpha = 0f
             isFocusable = false; isFocusableInTouchMode = false
             setOnFocusChangeListener { _, has ->
@@ -103,7 +103,7 @@ class SeekField(ctx: Context, private val hintText: String, private val openOnSh
         }
         pill.addView(edit, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
         clear.apply {
-            textSize = 15f; setTextColor(Pal.c("#6C7293")); gravity = Gravity.CENTER; visibility = GONE
+            textSize = 15f; setTextColor(Pal.c("#8A5F52")); gravity = Gravity.CENTER; visibility = GONE
             isClickable = true; isFocusable = false
             setOnClickListener { if (edit.text.isNullOrEmpty()) close() else edit.setText("") }
         }
@@ -125,8 +125,8 @@ class SeekField(ctx: Context, private val hintText: String, private val openOnSh
     }
 
     private fun pillBackground(focused: Boolean) = GradientDrawable().apply {
-        cornerRadius = dp(24).toFloat(); setColor(Pal.c("#F4F5FB"))
-        if (focused) setStroke(dp(2), Pal.c("#4F46E5")) else setStroke(dp(1), Pal.c("#E5E7EB"))
+        cornerRadius = dp(24).toFloat(); setColor(Pal.c("#FFFAE3"))
+        if (focused) setStroke(dp(2), Pal.c("#6B352A")) else setStroke(dp(1), Pal.c("#EBDDA0"))
     }
 
     private fun setWidth(w: Int) { pill.layoutParams = (pill.layoutParams as LayoutParams).also { it.width = w }; pill.requestLayout() }

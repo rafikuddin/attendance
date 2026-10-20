@@ -31,21 +31,22 @@ object Pal {
         AppCompatDelegate.setDefaultNightMode(if (on) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO)
     }
 
-    // The same hex strings the screens already use -> their night twin.
+    // The same hex strings the screens already use -> their night twin. Day palette: Clay Brown #6B352A (text, headers, buttons) on Soft Butter
+    // #FFF1A6 and cream; night palette: butter text on deep clay.
     private val NIGHT = mapOf(
         // text and lines
-        "#1E2247" to "#E8EAFF", "#1B1E3B" to "#E8EAFF", "#111827" to "#F3F4F6", "#374151" to "#D1D5DB", "#4B5563" to "#C4C9D4",
-        "#6C7293" to "#A9AFD3", "#6B7280" to "#A3A9BB", "#9AA0C0" to "#8087AC", "#9CA3AF" to "#8D95A8", "#3A3F73" to "#C9CDF7",
+        "#6B352A" to "#FFF1A6", "#3E1D16" to "#FBEBB0", "#4A241C" to "#F1DFA3", "#6F4A3F" to "#D9C592",
+        "#8A5F52" to "#CDB78A", "#A98578" to "#A68A6C", "#B39284" to "#A68A6C", "#8A4333" to "#FFE680",
         // strong colours (text, small badges)
         "#DC2626" to "#F87171", "#B91C1C" to "#FCA5A5", "#B71C1C" to "#FCA5A5", "#B45309" to "#FBBF24", "#D97706" to "#FBBF24",
-        "#15803D" to "#4ADE80", "#16A34A" to "#4ADE80", "#166534" to "#86EFAC", "#4F46E5" to "#8B93FF", "#4338CA" to "#A5B4FC",
-        "#3730A3" to "#A5B4FC", "#5B21B6" to "#C4B5FD", "#7C3AED" to "#A78BFA", "#8B5CF6" to "#A78BFA", "#2563EB" to "#60A5FA",
+        "#15803D" to "#4ADE80", "#16A34A" to "#4ADE80", "#166534" to "#86EFAC",
+        "#7C3AED" to "#A78BFA", "#8B5CF6" to "#A78BFA", "#2563EB" to "#60A5FA",
         "#0D47A1" to "#93C5FD", "#0284C7" to "#38BDF8", "#0D9488" to "#2DD4BF", "#EA580C" to "#FB923C", "#C2410C" to "#FDBA74",
         "#9A3412" to "#FDBA74", "#7C2D12" to "#FED7AA", "#78350F" to "#FCD34D", "#F59E0B" to "#FBBF24",
         // pale tiles and fills -> deep tiles
-        "#FEFEFE" to "#1D2142", "#F4F5FB" to "#232748", "#F3F4F6" to "#2A2D49", "#EEF0F5" to "#2A2D49", "#E5E7EB" to "#3A3E5C",
-        "#EEF1FF" to "#262B55", "#EEF2FF" to "#262B55", "#ECEEFF" to "#262B55", "#E8EAFF" to "#2A2F5C", "#E6E9F7" to "#2A2F5C",
-        "#ECEEF8" to "#353A63", "#EDE9FE" to "#2E2850", "#FEF3C7" to "#3A2F10", "#FEF3D6" to "#3A2F10", "#FDE68A" to "#4A3A10",
+        "#FFFDF3" to "#2E1813", "#FFFAE3" to "#38201A", "#F8EFC4" to "#3A2A1F", "#EBDDA0" to "#5A362B",
+        "#FFF6C4" to "#3A2A18", "#FFF1A6" to "#4A3A1A", "#F0E3A6" to "#4A2A22", "#F3E7B0" to "#5A362B", "#FBEBC8" to "#3A2A1F",
+        "#FEF3C7" to "#3A2F10", "#FEF3D6" to "#3A2F10", "#FDE68A" to "#4A3A10",
         "#FFEDD5" to "#3B2514", "#FFF4E5" to "#3B2A12", "#FEE2E2" to "#3D1B1E", "#FFEBEE" to "#3D1B1E", "#FDE8E8" to "#3D1B1E",
         "#DCFCE7" to "#12301F", "#E6F6EC" to "#12301F", "#E6F7F4" to "#12332F", "#E3F3FC" to "#12303F", "#E3F2FD" to "#12303F"
     )
@@ -58,8 +59,8 @@ object Pal {
         if (hex.length != 7) return v                                    // translucent colours are left alone
         val lum = (0.299 * Color.red(v) + 0.587 * Color.green(v) + 0.114 * Color.blue(v)) / 255.0
         return when {
-            lum > 0.85 -> mix(v, Color.parseColor("#1D2142"), 0.82)      // an unlisted pale tile
-            lum < 0.40 -> mix(v, Color.WHITE, 0.55)                      // an unlisted dark text colour
+            lum > 0.85 -> mix(v, Color.parseColor("#2E1813"), 0.82)      // an unlisted pale tile
+            lum < 0.40 -> mix(v, Color.parseColor("#FFF1A6"), 0.6)                      // an unlisted dark text colour
             else -> v
         }
     }
@@ -69,10 +70,10 @@ object Pal {
         return Color.rgb(m(Color.red(a), Color.red(b)), m(Color.green(a), Color.green(b)), m(Color.blue(a), Color.blue(b)))
     }
 
-    /** Card and panel surfaces (white by day, deep indigo by night). */
-    val card: Int get() = if (night) Color.parseColor("#1D2142") else Color.WHITE
-    /** The filled "selected" chip: dark ink by day, bright indigo by night (its text stays white). */
-    val chipOn: Int get() = if (night) Color.parseColor("#4F46E5") else Color.parseColor("#1E2247")
+    /** Card and panel surfaces (warm cream by day, deep clay by night). */
+    val card: Int get() = if (night) Color.parseColor("#2E1813") else Color.parseColor("#FFFDF2")
+    /** The filled "selected" chip: Clay Brown by day, a lighter clay by night (its text stays white). */
+    val chipOn: Int get() = if (night) Color.parseColor("#8A4333") else Color.parseColor("#6B352A")
 }
 
 /** Applies the saved Day / Night choice before any screen opens. */

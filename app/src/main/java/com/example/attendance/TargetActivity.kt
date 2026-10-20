@@ -56,7 +56,7 @@ class TargetActivity : AppCompatActivity() {
     private fun column() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(14)) }
 
     private fun pctColor(p: Double?): String = when {
-        p == null -> "#6C7293"
+        p == null -> "#8A5F52"
         p >= 100 -> "#15803D"
         p >= 70 -> "#B45309"
         else -> "#DC2626"
@@ -67,7 +67,7 @@ class TargetActivity : AppCompatActivity() {
         val frac = ((p ?: 0.0) / 100.0).coerceIn(0.0, 1.0).toFloat()
         val track = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = GradientDrawable().apply { cornerRadius = dp(6).toFloat(); setColor(Pal.c("#E6E9F7")) }
+            background = GradientDrawable().apply { cornerRadius = dp(6).toFloat(); setColor(Pal.c("#F0E3A6")) }
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(10)).apply { topMargin = dp(8); bottomMargin = dp(4) }
         }
         track.addView(View(this).apply {
@@ -81,16 +81,16 @@ class TargetActivity : AppCompatActivity() {
     private fun pctText(o: JSONObject): String = if (o.isNull("pct")) "no target" else "${trim(o.optDouble("pct"))}%"
     private fun trim(d: Double): String = if (d == Math.floor(d)) d.toLong().toString() else String.format(Locale.US, "%.1f", d)
 
-    private fun stat(title: String, value: String, color: String = "#111827") = LinearLayout(this).apply {
+    private fun stat(title: String, value: String, color: String = "#3E1D16") = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        addView(label(title, 11f, "#6C7293", true).apply { letterSpacing = 0.06f })
+        addView(label(title, 11f, "#8A5F52", true).apply { letterSpacing = 0.06f })
         addView(label(value, 15f, color, true))
     }
 
     private fun load() {
         content.removeAllViews()
-        content.addView(label("Loading…", 14f, "#6C7293", false).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
+        content.addView(label("Loading…", 14f, "#8A5F52", false).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
         api(JSONObject().put("action", "targetView")) { res, err ->
             content.removeAllViews()
             if (res == null) { content.addView(label(err ?: "Could not load.", 14f, "#DC2626", false).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) }); return@api }
@@ -106,8 +106,8 @@ class TargetActivity : AppCompatActivity() {
         val scope = res.optString("scope")
         if (!res.optBoolean("loaded")) {
             val c = column()
-            c.addView(label("🎯  Nothing to show yet", 16f, "#111827", true))
-            c.addView(label(if (scope == "all") "Upload the Target file and the Sale Collection file in Admin Panel → 🎯 Targets." else "Your admin has not uploaded the target and collection files yet.", 14f, "#6C7293", false).apply { setPadding(0, dp(6), 0, 0) })
+            c.addView(label("🎯  Nothing to show yet", 16f, "#3E1D16", true))
+            c.addView(label(if (scope == "all") "Upload the Target file and the Sale Collection file in Admin Panel → 🎯 Targets." else "Your admin has not uploaded the target and collection files yet.", 14f, "#8A5F52", false).apply { setPadding(0, dp(6), 0, 0) })
             content.addView(cardOf(c)); return
         }
         val days = res.optJSONObject("days")
@@ -115,14 +115,14 @@ class TargetActivity : AppCompatActivity() {
         daysLeft = days?.optInt("remaining") ?: 0
         if (days != null && per != null) {
             val w = column()
-            w.addView(label("WORKING DAYS  ·  ${niceDate(per.optString("from"))} – ${niceDate(per.optString("to"))}", 12f, "#1E2247", true).apply { letterSpacing = 0.06f })
+            w.addView(label("WORKING DAYS  ·  ${niceDate(per.optString("from"))} – ${niceDate(per.optString("to"))}", 12f, "#6B352A", true).apply { letterSpacing = 0.06f })
             val st = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(8), 0, 0) }
-            st.addView(bigStat("PASSED", days.optInt("passed").toString(), "#4F46E5"))
+            st.addView(bigStat("PASSED", days.optInt("passed").toString(), "#6B352A"))
             st.addView(bigStat("REMAINING", days.optInt("remaining").toString(), "#B45309"))
-            st.addView(bigStat("TOTAL", days.optInt("total").toString(), "#111827"))
+            st.addView(bigStat("TOTAL", days.optInt("total").toString(), "#3E1D16"))
             w.addView(st)
             val asOf = days.optString("asOf")
-            w.addView(label((if (asOf.isNotEmpty()) "Counted up to ${niceDate(asOf)}. " else "") + "Fridays and holidays are not working days.", 11f, "#9AA0C0", false).apply { setPadding(0, dp(6), 0, 0) })
+            w.addView(label((if (asOf.isNotEmpty()) "Counted up to ${niceDate(asOf)}. " else "") + "Fridays and holidays are not working days.", 11f, "#A98578", false).apply { setPadding(0, dp(6), 0, 0) })
             content.addView(cardOf(w))
         }
         val from = res.optString("from"); val to = res.optString("to")
@@ -131,7 +131,7 @@ class TargetActivity : AppCompatActivity() {
         if (from.isNotEmpty()) line.append("Collection ${niceDate(from)} – ${niceDate(to)}")
         val on = upd?.optString("collection").orEmpty()
         if (on.isNotEmpty()) line.append("  ·  updated ${on.take(10)}")
-        if (line.isNotEmpty()) content.addView(label(line.toString(), 12f, "#6C7293", false).apply { setPadding(dp(6), 0, dp(6), dp(8)) })
+        if (line.isNotEmpty()) content.addView(label(line.toString(), 12f, "#8A5F52", false).apply { setPadding(dp(6), 0, dp(6), dp(8)) })
 
         // ---- my numbers ----
         val me = res.optJSONObject("me")
@@ -142,8 +142,8 @@ class TargetActivity : AppCompatActivity() {
         if (scope != "me") {
             val t = res.getJSONObject("totals")
             val c = column()
-            c.addView(label(if (scope == "all") "EVERYONE" else "MY TEAM", 12f, "#1E2247", true).apply { letterSpacing = 0.08f })
-            c.addView(row(label(pctText(t), 26f, pctColor(if (t.isNull("pct")) null else t.optDouble("pct")), true), label("${t.optInt("people")} people", 13f, "#6C7293", false)))
+            c.addView(label(if (scope == "all") "EVERYONE" else "MY TEAM", 12f, "#6B352A", true).apply { letterSpacing = 0.08f })
+            c.addView(row(label(pctText(t), 26f, pctColor(if (t.isNull("pct")) null else t.optDouble("pct")), true), label("${t.optInt("people")} people", 13f, "#8A5F52", false)))
             c.addView(bar(if (t.isNull("pct")) null else t.optDouble("pct")))
             val stats = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(6), 0, 0) }
             stats.addView(stat("TARGET", taka(t.optDouble("target"))))
@@ -156,17 +156,17 @@ class TargetActivity : AppCompatActivity() {
                 val w = column()
                 if (res.optDouble("unassigned") != 0.0) {
                     w.addView(label("⚠️  ${taka(res.optDouble("unassigned"))} of the collection has no Username in the file, so it is not counted for anyone.", 12f, "#B45309", false))
-                    w.addView(label("Tap to see these by dealer", 11f, "#9AA0C0", false).apply { setPadding(0, dp(4), 0, 0) })
+                    w.addView(label("Tap to see these by dealer", 11f, "#A98578", false).apply { setPadding(0, dp(4), 0, 0) })
                 }
                 if (res.optDouble("unknownUser") != 0.0) w.addView(label("⚠️  ${taka(res.optDouble("unknownUser"))} belongs to a Username that is not an app user.", 12f, "#B45309", false).apply { setPadding(0, dp(4), 0, 0) })
                 content.addView(cardOf(w, if (res.optDouble("unassigned") != 0.0) ({ detail("", "No Username in the file", true) }) else null))
             }
-            content.addView(label("PEOPLE", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(10), dp(6), dp(6)) })
+            content.addView(label("PEOPLE", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(10), dp(6), dp(6)) })
             val rows = res.getJSONArray("rows")
-            if (rows.length() == 0) content.addView(label("No one has a target or a collection yet.", 14f, "#6C7293", false).apply { setPadding(dp(6), 0, dp(6), 0) })
+            if (rows.length() == 0) content.addView(label("No one has a target or a collection yet.", 14f, "#8A5F52", false).apply { setPadding(dp(6), 0, dp(6), 0) })
             for (i in 0 until rows.length()) content.addView(personCard(rows.getJSONObject(i), null, big = false))
         } else if (me == null || (!me.optBoolean("hasTarget") && me.optDouble("collected") == 0.0)) {
-            content.addView(cardOf(column().apply { addView(label("There is no target or collection for you in the uploaded files.", 14f, "#6C7293", false)) }))
+            content.addView(cardOf(column().apply { addView(label("There is no target or collection for you in the uploaded files.", 14f, "#8A5F52", false)) }))
         }
     }
 
@@ -174,26 +174,26 @@ class TargetActivity : AppCompatActivity() {
         orientation = LinearLayout.VERTICAL; gravity = android.view.Gravity.CENTER
         layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         addView(label(value, 28f, color, true))
-        addView(label(title, 11f, "#6C7293", true).apply { letterSpacing = 0.06f })
+        addView(label(title, 11f, "#8A5F52", true).apply { letterSpacing = 0.06f })
     }
 
     /** RR = the amount still to collect each remaining working day to reach the target. */
     private fun rrLine(rr: Double?, hasTarget: Boolean, show: Boolean): View {
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#EEF1FF")) }
+            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#FFF6C4")) }
             setPadding(dp(12), dp(8), dp(12), dp(8))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
             visibility = if (show) View.VISIBLE else View.GONE
         }
-        box.addView(label("RR  ·  REQUIRED RATE PER WORKING DAY", 11f, "#1E2247", true).apply { letterSpacing = 0.05f })
+        box.addView(label("RR  ·  REQUIRED RATE PER WORKING DAY", 11f, "#6B352A", true).apply { letterSpacing = 0.05f })
         when {
             !hasTarget -> {}
             rr == null -> box.addView(label("No working days left", 15f, "#DC2626", true))
             rr == 0.0 -> box.addView(label("✅  Target reached", 15f, "#15803D", true))
             else -> {
-                box.addView(label(taka(rr), 18f, "#4F46E5", true))
-                box.addView(label("every working day for the next $daysLeft working day${if (daysLeft == 1) "" else "s"}", 11f, "#6C7293", false))
+                box.addView(label(taka(rr), 18f, "#6B352A", true))
+                box.addView(label("every working day for the next $daysLeft working day${if (daysLeft == 1) "" else "s"}", 11f, "#8A5F52", false))
             }
         }
         return box
@@ -207,12 +207,12 @@ class TargetActivity : AppCompatActivity() {
     private fun personCard(o: JSONObject, title: String?, big: Boolean): View {
         val c = column()
         val p = if (o.isNull("pct")) null else o.optDouble("pct")
-        if (title != null) c.addView(label(title, 12f, "#1E2247", true).apply { letterSpacing = 0.08f })
+        if (title != null) c.addView(label(title, 12f, "#6B352A", true).apply { letterSpacing = 0.08f })
         val nm = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        nm.addView(label(o.optString("name"), if (big) 16f else 15f, "#111827", true))
-        if (!big) nm.addView(label("@" + o.optString("username"), 12f, "#6B7280", false))
+        nm.addView(label(o.optString("name"), if (big) 16f else 15f, "#3E1D16", true))
+        if (!big) nm.addView(label("@" + o.optString("username"), 12f, "#8A5F52", false))
         val base = listOf(o.optString("baseCode"), o.optString("baseName")).filter { it.isNotBlank() }.joinToString(" · ")
-        if (base.isNotEmpty()) nm.addView(label("Base: $base", 12f, "#6B7280", false))
+        if (base.isNotEmpty()) nm.addView(label("Base: $base", 12f, "#8A5F52", false))
         c.addView(row(nm, label(pctText(o), if (big) 26f else 18f, pctColor(p), true)))
         c.addView(bar(p))
         val stats = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(4), 0, 0) }
@@ -222,7 +222,7 @@ class TargetActivity : AppCompatActivity() {
         c.addView(stats)
         c.addView(rrLine(if (o.isNull("rr")) null else o.optDouble("rr"), o.optBoolean("hasTarget"), o.optBoolean("hasTarget")))
         if (!o.optBoolean("hasTarget")) c.addView(label("No target in the file for this person.", 12f, "#B45309", false).apply { setPadding(0, dp(4), 0, 0) })
-        c.addView(label("Tap for day by day", 11f, "#9AA0C0", false).apply { setPadding(0, dp(6), 0, 0) })
+        c.addView(label("Tap for day by day", 11f, "#A98578", false).apply { setPadding(0, dp(6), 0, 0) })
         return cardOf(c) { detail(o.optString("username"), o.optString("name")) }
     }
 
@@ -259,7 +259,7 @@ class TargetActivity : AppCompatActivity() {
                 }
             }
             AlertDialog.Builder(this).setTitle(name).setView(ScrollView(this).apply {
-                addView(TextView(this@TargetActivity).apply { text = sb.toString(); textSize = 14f; setTextColor(Pal.c("#1E2247")); setPadding(dp(22), dp(8), dp(22), dp(8)) })
+                addView(TextView(this@TargetActivity).apply { text = sb.toString(); textSize = 14f; setTextColor(Pal.c("#6B352A")); setPadding(dp(22), dp(8), dp(22), dp(8)) })
             }).setPositiveButton("Close", null).show()
         }
     }

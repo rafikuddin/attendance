@@ -23,7 +23,7 @@ object ForgotPasswordDialog {
 
         val info = TextView(activity).apply {
             text = "Enter your Employee ID. We will e-mail a 6-digit code to the e-mail address saved in your My Profile."
-            setTextColor(Pal.c("#6C7293"))
+            setTextColor(Pal.c("#8A5F52"))
         }
         val etUser = field("Employee ID", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS).apply { setText(presetUser) }
         val etCode = field("6-digit code from the e-mail", InputType.TYPE_CLASS_NUMBER).apply { visibility = View.GONE }
@@ -49,7 +49,7 @@ object ForgotPasswordDialog {
             val u = etUser.text.toString().trim()
             if (u.isEmpty()) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Enter your Employee ID"; return }
             btn.isEnabled = false
-            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Sending…"
+            msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Sending…"
             activity.api(JSONObject().put("action", "resetRequest").put("username", u)) { res, err ->
                 btn.isEnabled = true
                 if (res != null) {
@@ -81,7 +81,7 @@ object ForgotPasswordDialog {
                     p1 != p2 -> msg.text = "Passwords don't match"
                     else -> {
                         positive.isEnabled = false
-                        msg.setTextColor(Pal.c("#6C7293")); msg.text = "Checking the code…"
+                        msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Checking the code…"
                         val u = etUser.text.toString().trim()
                         activity.api(JSONObject().put("action", "resetConfirm").put("username", u).put("code", code).put("newPassword", p1)) { res, err ->
                             positive.isEnabled = true

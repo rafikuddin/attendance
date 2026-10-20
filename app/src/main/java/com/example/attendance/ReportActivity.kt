@@ -89,9 +89,9 @@ class ReportActivity : AppCompatActivity() {
     }
 
     private fun chipButton(text: String, onClick: () -> Unit) = TextView(this).apply {
-        this.text = text; textSize = 15f; setTextColor(Pal.c("#1E2247"))
+        this.text = text; textSize = 15f; setTextColor(Pal.c("#6B352A"))
         setPadding(dp(14), dp(12), dp(14), dp(12))
-        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#E6E9F7")) }
+        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F0E3A6")) }
         isClickable = true; isFocusable = true
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
         setOnClickListener { onClick() }
@@ -141,8 +141,8 @@ class ReportActivity : AppCompatActivity() {
     private fun paint(views: Map<String, TextView>, selected: String) {
         views.forEach { (k, v) ->
             val on = k == selected
-            v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#6C7293"))
-            v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#E6E9F7")) }
+            v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#8A5F52"))
+            v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#F0E3A6")) }
         }
     }
 
@@ -159,13 +159,13 @@ class ReportActivity : AppCompatActivity() {
 
         val result = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val msg = label("", 14f, "#DC2626", false).apply { setPadding(0, dp(8), 0, 0) }
-        val hint = label("", 13f, "#6C7293", false).apply { setPadding(0, dp(10), 0, 0) }
+        val hint = label("", 13f, "#8A5F52", false).apply { setPadding(0, dp(10), 0, 0) }
         val chipFrom = dateChip("From") { from = it }
         val chipTo = dateChip("To") { to = it }
-        val infoSummary = label("", 13f, "#6C7293", false)
-        val infoDetailTitle = label("", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) }
-        val infoDetail = label("", 13f, "#6C7293", false)
-        val whoHint = label("", 13f, "#6C7293", false).apply { setPadding(0, dp(8), 0, 0) }
+        val infoSummary = label("", 13f, "#8A5F52", false)
+        val infoDetailTitle = label("", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) }
+        val infoDetail = label("", 13f, "#8A5F52", false)
+        val whoHint = label("", 13f, "#8A5F52", false).apply { setPadding(0, dp(8), 0, 0) }
 
         val whoViews = HashMap<String, TextView>()
         val kindViews = HashMap<String, TextView>()
@@ -201,22 +201,22 @@ class ReportActivity : AppCompatActivity() {
         }
 
         val form = column()
-        form.addView(label("Download as Excel", 18f, "#111827", true))
-        form.addView(label(if (isManager) "Your report, or your whole team's." else "Your own attendance and night hold report.", 13f, "#6C7293", false))
+        form.addView(label("Download as Excel", 18f, "#3E1D16", true))
+        form.addView(label(if (isManager) "Your report, or your whole team's." else "Your own attendance and night hold report.", 13f, "#8A5F52", false))
 
         if (isManager) {
-            form.addView(label("WHOSE REPORT", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+            form.addView(label("WHOSE REPORT", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
             form.addView(chipRow(listOf("me" to "👤  Only me", "team" to "👥  My team"), 14f, { who = it; refreshWho() }, whoViews))
             form.addView(whoHint)
         }
-        form.addView(label("REPORT", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        form.addView(label("REPORT", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
         form.addView(chipRow(listOf("attendance" to "📍  Attendance", "night" to "🌙  Night hold"), 14f, { kind = it; refreshKind() }, kindViews))
-        form.addView(label("PERIOD", 12f, "#1E2247", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        form.addView(label("PERIOD", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
         form.addView(chipRow(listOf("current" to "This pay period", "previous" to "Last pay period", "custom" to "Choose dates"), 13f, { choice = it; refreshPeriod() }, periodViews))
         form.addView(hint); form.addView(chipFrom); form.addView(chipTo)
         form.addView(bigButton("📊  Prepare Excel file") {
             if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose the From and To dates"; return@bigButton }
-            msg.setTextColor(Pal.c("#6C7293")); msg.text = "Preparing the file… this can take a few seconds."
+            msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Preparing the file… this can take a few seconds."
             result.removeAllViews()
             val body = JSONObject().put("action", "myReport").put("period", choice).put("kind", kind).put("who", if (isManager) who else "me")
             if (choice == "custom") body.put("from", from).put("to", to)
@@ -240,8 +240,8 @@ class ReportActivity : AppCompatActivity() {
         content.addView(result)
 
         val info = column()
-        info.addView(label("What is in the file", 16f, "#111827", true))
-        info.addView(label("📋  Summary", 14f, "#1E2247", true).apply { setPadding(0, dp(10), 0, 0) })
+        info.addView(label("What is in the file", 16f, "#3E1D16", true))
+        info.addView(label("📋  Summary", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) })
         info.addView(infoSummary)
         info.addView(infoDetailTitle)
         info.addView(infoDetail)
@@ -253,9 +253,9 @@ class ReportActivity : AppCompatActivity() {
     private fun readyCard(f: File, users: Int, days: Int, from: String, to: String, records: Int): View {
         val col = column()
         col.addView(label("✅  Your Excel file is ready", 16f, "#166534", true))
-        col.addView(label(f.name, 13f, "#111827", false).apply { setPadding(0, dp(6), 0, 0) })
+        col.addView(label(f.name, 13f, "#3E1D16", false).apply { setPadding(0, dp(6), 0, 0) })
         col.addView(label("$users ${if (users == 1) "person" else "people"} · $days days ($from to $to)" +
-            (if (records >= 0) " · $records night hold${if (records == 1) "" else "s"}" else ""), 13f, "#6C7293", false))
+            (if (records >= 0) " · $records night hold${if (records == 1) "" else "s"}" else ""), 13f, "#8A5F52", false))
         val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(10), 0, 0) }
         buttons.addView(MaterialButton(this).apply {
             text = "💾  Save"
