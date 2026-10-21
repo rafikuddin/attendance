@@ -84,7 +84,7 @@ class AdminActivity : AppCompatActivity() {
         setupBottomNav(null)
         enforceAccess("admin")
         content = findViewById(R.id.adminContent)
-        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabTarget), findViewById(R.id.tabSms), findViewById(R.id.tabApp))
+        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabTarget), findViewById(R.id.tabSms), findViewById(R.id.tabLeave), findViewById(R.id.tabApp))
         tabs.forEachIndexed { i, t -> t.setOnClickListener { select(i) } }
         select(0)
     }
@@ -114,6 +114,7 @@ class AdminActivity : AppCompatActivity() {
             4 -> loadReport()
             5 -> loadTargets()
             6 -> loadSms()
+            7 -> loadLeaveQuota()
             else -> loadApp()
         }
     }
@@ -187,6 +188,68 @@ class AdminActivity : AppCompatActivity() {
     /** Home and Calendar keep a saved copy; after an admin change this phone's copies are out of date. */
     private fun dropSavedCopies() {
         ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username), ResponseCache.nightKey(session.username))
+    }
+
+    // ---------- LEAVE DAYS ----------
+
+    /** The yearly days for each kind of leave. Applies to everyone; people who already used more simply have 0 left. */
+    private fun loadLeaveQuota() {
+        val id = ++loadId
+        content.removeAllViews()
+        val status = note("Loading…")
+        content.addView(status)
+        api(JSONObject().put("action", "adminLeaveQuota")) { res, err ->
+            if (id != loadId) return@api
+            content.removeView(status)
+            if (res == null) { content.addView(note(err ?: "Could not load.")); return@api }
+            val types = ArrayList<String>()
+            res.optJSONArray("types")?.let { for (i in 0 until it.length()) types.add(it.getString(i)) }
+            val now = res.getJSONObject("quota")
+            val std = res.getJSONObject("standard")
+            val max = res.optInt("max", 365)
+
+            val head = column()
+            head.addView(label("🌴  Leave days a year", 16f, "#3E1D16", true))
+            head.addView(label("How many days each person can take of every kind of leave, each year. It applies to everyone, now and from next year on. Someone who already took more than the new number simply has 0 left; nothing already approved is changed.", 13f, "#8A5F52", false).apply { setPadding(0, dp(6), 0, 0) })
+            val boxes = LinkedHashMap<String, FloatField>()
+            for (t in types) {
+                val f = FloatField(this, "$t (days a year, 0 to $max)", InputType.TYPE_CLASS_NUMBER)
+                f.setText(now.optInt(t).toString())
+                boxes[t] = f
+                head.addView(f)
+            }
+            val msg = label("", 14f, "#DC2626", false).apply { setPadding(0, dp(8), 0, 0) }
+            head.addView(msg)
+            head.addView(bigButton("💾  Save leave days") {
+                val wanted = JSONObject()
+                val changes = ArrayList<String>()
+                for ((t, f) in boxes) {
+                    val raw = f.text.toString().trim()
+                    val n = raw.toIntOrNull()
+                    if (raw.isEmpty() || n == null || n < 0 || n > max) { msg.text = "$t: enter a whole number from 0 to $max."; return@bigButton }
+                    wanted.put(t, n)
+                    if (n != now.optInt(t)) changes.add("$t: ${now.optInt(t)} → $n days")
+                }
+                if (changes.isEmpty()) { msg.text = "Nothing changed."; return@bigButton }
+                msg.text = ""
+                AlertDialog.Builder(this).setTitle("Change the leave days?")
+                    .setMessage(changes.joinToString("\n") + "\n\nThis applies to everyone straight away.")
+                    .setPositiveButton("Save") { _, _ ->
+                        msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Saving…"
+                        api(JSONObject().put("action", "adminSetLeaveQuota").put("quota", wanted)) { r, e ->
+                            if (r != null) { dropSavedCopies(); toast("Leave days saved"); loadLeaveQuota() }
+                            else { msg.setTextColor(Pal.c("#DC2626")); msg.text = e ?: "Could not save." }
+                        }
+                    }
+                    .setNegativeButton("Cancel", null).show()
+            })
+            val stdText = types.joinToString(" · ") { "${it.removeSuffix(" Leave")} ${std.optInt(it)}" }
+            head.addView(chipButton("↺  Fill in the standard days ($stdText)") {
+                for ((t, f) in boxes) f.setText(std.optInt(t).toString())
+                msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Filled in. Press Save to apply."
+            })
+            content.addView(cardOf(head))
+        }
     }
 
     // ---------- USERS ----------

@@ -42,6 +42,11 @@
             android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        <TextView android:id="@+id/tabLeave" android:text="🌴 Leave" android:gravity="center"
+            android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabApp" android:text="📲 App" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
             android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
