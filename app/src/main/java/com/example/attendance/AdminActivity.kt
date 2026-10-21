@@ -44,9 +44,11 @@ import java.util.Locale
  * Only opened for people the server says are admins; the server checks every action again.
  */
 class AdminActivity : AppCompatActivity() {
+    companion object { const val EXTRA_TAB = "tab" }
     private lateinit var session: Session
     private lateinit var content: LinearLayout
     private lateinit var tabs: List<TextView>
+    private lateinit var tabKeys: List<String>       // the key of each tab, in the order the admin chose (Menu tab)
     private var current = 0
     private var loadId = 0                       // a late answer for a tab the admin already left is ignored
     private var users: List<JSONObject> = emptyList()
@@ -84,9 +86,18 @@ class AdminActivity : AppCompatActivity() {
         setupBottomNav(null)
         enforceAccess("admin")
         content = findViewById(R.id.adminContent)
-        tabs = listOf(findViewById(R.id.tabUsers), findViewById(R.id.tabNotices), findViewById(R.id.tabHolidays), findViewById(R.id.tabEntry), findViewById(R.id.tabReport), findViewById(R.id.tabTarget), findViewById(R.id.tabSms), findViewById(R.id.tabLeave), findViewById(R.id.tabApp))
+        arrangeTabs(intent.getStringExtra(EXTRA_TAB))
+    }
+
+    /** Puts the tab buttons in the order the admin chose and opens [startKey] (the first tab when empty or unknown). */
+    private fun arrangeTabs(startKey: String?) {
+        tabKeys = MenuLayout.order(this, "admin").filter { AdminTabs.find(it) != null }
+        tabs = tabKeys.map { findViewById<TextView>(AdminTabs.find(it)!!.viewId) }
+        val bar = tabs[0].parent as LinearLayout
+        bar.removeAllViews()
+        tabs.forEach { bar.addView(it) }
         tabs.forEachIndexed { i, t -> t.setOnClickListener { select(i) } }
-        select(0)
+        select(maxOf(0, tabKeys.indexOf(startKey)))
     }
 
     private fun select(i: Int) {
@@ -106,15 +117,16 @@ class AdminActivity : AppCompatActivity() {
     }
 
     private fun load() {
-        when (current) {
-            0 -> loadUsers()
-            1 -> loadNotices()
-            2 -> loadHolidays()
-            3 -> loadEntry()
-            4 -> loadReport()
-            5 -> loadTargets()
-            6 -> loadSms()
-            7 -> loadLeaveQuota()
+        when (tabKeys[current]) {
+            "users" -> loadUsers()
+            "notices" -> loadNotices()
+            "holiday" -> loadHolidays()
+            "entry" -> loadEntry()
+            "report" -> loadReport()
+            "targets" -> loadTargets()
+            "sms" -> loadSms()
+            "leave" -> loadLeaveQuota()
+            "menu" -> loadMenuLayout()
             else -> loadApp()
         }
     }
@@ -188,6 +200,102 @@ class AdminActivity : AppCompatActivity() {
     /** Home and Calendar keep a saved copy; after an admin change this phone's copies are out of date. */
     private fun dropSavedCopies() {
         ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username), ResponseCache.nightKey(session.username))
+    }
+
+    // ---------- MENU ORDER ----------
+
+    private val menuNames = mapOf(
+        "attendance" to "📸  Attendance", "leave" to "🌴  Leave", "night" to "🌙  Night Hold", "calendar" to "📅  Calendar", "team" to "👥  Team",
+        "members" to "🪪  Team members", "notices" to "🔔  Notices", "reports" to "📊  My Reports", "target" to "🎯  Target vs Collection", "survey" to "📋  Surveys",
+        "profile" to "👤  My Profile", "password" to "🔑  Change Password", "reminders" to "⏰  Attendance reminders", "manual" to "📝  Manual entry",
+        "update" to "⬆️  Update app", "admin" to "🛠  Admin Panel"
+    )
+
+    /** The order of the side menu, its Settings group and the Admin Panel tabs. Move with ▲ ▼, then Save: it applies to everyone. */
+    private fun loadMenuLayout() {
+        val id = ++loadId
+        content.removeAllViews()
+        val status = note("Loading…")
+        content.addView(status)
+        api(JSONObject().put("action", "adminMenuLayout")) { res, err ->
+            if (id != loadId) return@api
+            content.removeView(status)
+            if (res == null) { content.addView(note(err ?: "Could not load.")); return@api }
+            fun listOfKeys(o: JSONObject, g: String): MutableList<String> {
+                val a = o.optJSONArray(g); val out = ArrayList<String>()
+                if (a != null) for (i in 0 until a.length()) out.add(a.getString(i))
+                return out
+            }
+            val groups = listOf("menu" to "☰  Side menu: Menu", "settings" to "⚙️  Side menu: Settings", "admin" to "🛠  Admin Panel tabs")
+            val saved = HashMap<String, List<String>>()
+            val work = HashMap<String, MutableList<String>>()
+            for ((g, _) in groups) { saved[g] = listOfKeys(res.getJSONObject("layout"), g); work[g] = saved[g]!!.toMutableList() }
+            val std = res.getJSONObject("standard")
+            fun nameOf(g: String, k: String) = if (g == "admin") AdminTabs.find(k).let { "${it?.icon ?: ""}  ${it?.name ?: k}" } else (menuNames[k] ?: k)
+
+            val intro = column()
+            intro.addView(label("🧭  Order of the menus", 16f, "#3E1D16", true))
+            intro.addView(label("Move the entries up or down. The order applies to everyone: the side menu on Home (the Home entry always stays first), the Settings part below it, and the tabs of this Admin Panel, which are also shown under Admin Panel in the side menu. Entries a person may not use stay hidden or locked as before.", 13f, "#8A5F52", false).apply { setPadding(0, dp(6), 0, 0) })
+            content.addView(cardOf(intro))
+
+            val lists = LinkedHashMap<String, LinearLayout>()
+            lateinit var draw: () -> Unit
+            for ((g, title) in groups) {
+                val box = column()
+                box.addView(label(title, 15f, "#3E1D16", true))
+                val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                box.addView(rows)
+                lists[g] = rows
+                content.addView(cardOf(box))
+            }
+            draw = {
+                for ((g, _) in groups) {
+                    val rows = lists[g]!!; val order = work[g]!!
+                    rows.removeAllViews()
+                    order.forEachIndexed { i, k ->
+                        val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(2), 0, dp(2)) }
+                        line.addView(label("${i + 1}", 12f, "#A98578", true).apply { minWidth = dp(22) })
+                        line.addView(label(nameOf(g, k), 15f, "#6B352A", false), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                        fun arrow(t: String, enabled: Boolean, to: Int) = TextView(this).apply {
+                            text = t; textSize = 16f; gravity = Gravity.CENTER; setTextColor(Pal.c("#6B352A")); alpha = if (enabled) 1f else 0.25f
+                            background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(Pal.c("#F0E3A6")) }
+                            isClickable = enabled; isFocusable = enabled
+                            contentDescription = if (to < i) "Move up" else "Move down"
+                            if (enabled) setOnClickListener { val x = order.removeAt(i); order.add(to, x); draw() }
+                            layoutParams = LinearLayout.LayoutParams(dp(44), dp(38)).apply { marginStart = dp(6) }
+                        }
+                        line.addView(arrow("▲", i > 0, i - 1)); line.addView(arrow("▼", i < order.size - 1, i + 1))
+                        rows.addView(line)
+                    }
+                }
+            }
+            draw()
+
+            val msg = label("", 14f, "#DC2626", false).apply { setPadding(dp(4), 0, dp(4), dp(4)) }
+            content.addView(msg)
+            content.addView(bigButton("💾  Save the order") {
+                val changed = groups.filter { (g, _) -> work[g] != saved[g] }.map { it.second.substringAfter("  ") }
+                if (changed.isEmpty()) { msg.text = "Nothing changed."; return@bigButton }
+                msg.text = ""
+                AlertDialog.Builder(this).setTitle("Save the new order?")
+                    .setMessage("Changed: " + changed.joinToString(", ") + ".\n\nIt applies to everyone. Phones pick it up the next time the Home screen loads.")
+                    .setPositiveButton("Save") { _, _ ->
+                        msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Saving…"
+                        val layout = JSONObject(); for ((g, _) in groups) layout.put(g, org.json.JSONArray(work[g]!!))
+                        api(JSONObject().put("action", "adminSetMenuLayout").put("layout", layout)) { r, e ->
+                            if (r != null) {
+                                MenuLayout.save(this, r.optJSONObject("layout")); dropSavedCopies(); toast("Menu order saved")
+                                arrangeTabs("menu")
+                            } else { msg.setTextColor(Pal.c("#DC2626")); msg.text = e ?: "Could not save." }
+                        }
+                    }
+                    .setNegativeButton("Cancel", null).show()
+            })
+            content.addView(chipButton("↺  Standard order") {
+                for ((g, _) in groups) { work[g] = listOfKeys(std, g); }
+                draw(); msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Standard order filled in. Press Save to apply."
+            })
+        }
     }
 
     // ---------- LEAVE DAYS ----------

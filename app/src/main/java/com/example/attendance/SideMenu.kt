@@ -25,7 +25,12 @@ import androidx.appcompat.app.AppCompatActivity
 /** One row of the side menu. [section] is the small heading it sits under; [current] marks the screen you are on. */
 class SideItem(
     val icon: String, val label: String, val section: String, val badge: Int = 0, val locked: Boolean = false,
-    val current: Boolean = false, val tint: String? = null, val onClick: () -> Unit
+    val current: Boolean = false, val tint: String? = null,
+    /** Which entry this is (the same words the server and the Admin Panel > Menu tab use); empty for entries that cannot be moved. */
+    val key: String = "",
+    /** A sub-menu: shown under this row and folded or unfolded by tapping it. */
+    val children: List<SideItem> = emptyList(),
+    val onClick: () -> Unit
 )
 
 /**
@@ -80,10 +85,55 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
     lateinit var render: () -> Unit
     lateinit var list: LinearLayout
 
+    fun matches(it0: SideItem, q: String) = q.isEmpty() || it0.label.lowercase().contains(q)
+
+    /** One row. [child] rows belong to a sub-menu: slightly smaller and moved in. A row with a sub-menu folds / unfolds it (in the slim strip it just opens). */
+    fun addRow(it0: SideItem, child: Boolean) {
+        val tint = Pal.c(it0.tint ?: "#6B352A")
+        val hasSub = !child && it0.children.isNotEmpty() && !collapsed
+        val subOpen = prefs.getBoolean("side_sub_open", true)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = if (collapsed) Gravity.CENTER else Gravity.CENTER_VERTICAL
+            setPadding(dp(if (child) 4 else 8), dp(if (child) 6 else 9), dp(10), dp(if (child) 6 else 9))
+            background = if (it0.current) GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#FFF6C4")) } else null
+            if (!it0.current) setBackgroundResource(ripple.resourceId)
+            isClickable = true; isFocusable = true
+            alpha = if (it0.locked) 0.45f else 1f
+            if (hasSub) setOnClickListener { prefs.edit().putBoolean("side_sub_open", !subOpen).apply(); fillList() }
+            else setOnClickListener { close { it0.onClick() } }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(2); if (child) marginStart = dp(30)
+            }
+        }
+        val size = if (child) 28 else 34
+        val ic = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(dp(size), dp(size)) }
+        ic.addView(TextView(this).apply { text = it0.icon; textSize = if (child) 15f else 18f; gravity = Gravity.CENTER }, FrameLayout.LayoutParams(dp(size), dp(size)))
+        if (collapsed && it0.badge > 0) ic.addView(View(this).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#EF4444")) }
+        }, FrameLayout.LayoutParams(dp(9), dp(9)).apply { gravity = Gravity.TOP or Gravity.END })
+        row.addView(ic)
+        if (!collapsed) {
+            row.addView(txt((if (it0.locked) "🔒 " else "") + it0.label, if (child) 14f else 15f, if (it0.current) Pal.c("#6B352A") else tint, it0.current || it0.tint != null).apply {
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(if (child) 8 else 10) }
+            })
+            if (it0.badge > 0) row.addView(TextView(this).apply {
+                text = if (it0.badge > 99) "99+" else it0.badge.toString(); textSize = 11f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER; minWidth = dp(22)
+                setPadding(dp(6), dp(1), dp(6), dp(1))
+                background = GradientDrawable().apply { cornerRadius = dp(11).toFloat(); setColor(Color.parseColor("#EF4444")) }
+            })
+            if (hasSub) row.addView(txt(if (subOpen || query.isNotBlank()) "▾" else "▸", 16f, muted, true).apply {
+                contentDescription = if (subOpen) "Fold the sub-menu" else "Unfold the sub-menu"
+                setPadding(dp(8), 0, 0, 0)
+            })
+        }
+        list.addView(row)
+    }
+
     fun fillList() {
         list.removeAllViews()
         val q = query.trim().lowercase()
-        val shown = items.filter { q.isEmpty() || it.label.lowercase().contains(q) }
+        val shown = items.filter { matches(it, q) || it.children.any { c -> matches(c, q) } }
         if (shown.isEmpty()) { list.addView(txt("Nothing found", 13f, muted).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) }); return }
         var last = ""
         shown.forEach { it0 ->
@@ -95,35 +145,10 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
                 if (!collapsed) list.addView(txt(it0.section, 12f, muted, true).apply { setPadding(dp(8), dp(6), dp(8), dp(4)) })
                 last = it0.section
             }
-            val tint = Pal.c(it0.tint ?: "#6B352A")
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL; gravity = if (collapsed) Gravity.CENTER else Gravity.CENTER_VERTICAL
-                setPadding(dp(8), dp(9), dp(10), dp(9))
-                background = if (it0.current) GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#FFF6C4")) } else null
-                if (!it0.current) setBackgroundResource(ripple.resourceId)
-                isClickable = true; isFocusable = true
-                alpha = if (it0.locked) 0.45f else 1f
-                setOnClickListener { close { it0.onClick() } }
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(2) }
+            addRow(it0, false)
+            if (!collapsed && it0.children.isNotEmpty() && (q.isNotEmpty() || prefs.getBoolean("side_sub_open", true))) {
+                it0.children.filter { c -> q.isEmpty() || matches(it0, q) || matches(c, q) }.forEach { c -> addRow(c, true) }
             }
-            val ic = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)) }
-            ic.addView(TextView(this).apply { text = it0.icon; textSize = 18f; gravity = Gravity.CENTER }, FrameLayout.LayoutParams(dp(34), dp(34)))
-            if (collapsed && it0.badge > 0) ic.addView(View(this).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#EF4444")) }
-            }, FrameLayout.LayoutParams(dp(9), dp(9)).apply { gravity = Gravity.TOP or Gravity.END })
-            row.addView(ic)
-            if (!collapsed) {
-                row.addView(txt((if (it0.locked) "🔒 " else "") + it0.label, 15f, if (it0.current) Pal.c("#6B352A") else tint, it0.current || it0.tint != null).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(10) }
-                })
-                if (it0.badge > 0) row.addView(TextView(this).apply {
-                    text = if (it0.badge > 99) "99+" else it0.badge.toString(); textSize = 11f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD)
-                    gravity = Gravity.CENTER; minWidth = dp(22)
-                    setPadding(dp(6), dp(1), dp(6), dp(1))
-                    background = GradientDrawable().apply { cornerRadius = dp(11).toFloat(); setColor(Color.parseColor("#EF4444")) }
-                })
-            }
-            list.addView(row)
         }
     }
 

@@ -68,6 +68,12 @@ class MainActivity : AppCompatActivity() {
     private val versionName: String
         get() = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "" } catch (e: Exception) { "" }
 
+    private fun open(c: Class<*>, extras: (Intent) -> Unit) {
+        val key = Access.keyFor(c)
+        if (key != null && isLocked(key)) { toastLocked(key); return }
+        startActivity(Intent(this, c).also(extras))
+    }
+
     private fun open(c: Class<*>) {
         val key = Access.keyFor(c)
         if (key != null && isLocked(key)) { toastLocked(key); return }
@@ -89,29 +95,35 @@ class MainActivity : AppCompatActivity() {
         val bell = findViewById<TextView>(R.id.tvBellBadge)
         val unread = if (bell.visibility == android.view.View.VISIBLE) (bell.text.toString().toIntOrNull() ?: 0) else 0
         items.add(SideItem("🏠", "Home", "Menu", current = true) { })
-        items.add(SideItem("📸", "Attendance", "Menu", locked = isLocked("attendance")) { open(AttendanceActivity::class.java) })
-        items.add(SideItem("🌴", "Leave", "Menu", locked = isLocked("leave")) { open(LeaveActivity::class.java) })
-        items.add(SideItem("🌙", "Night Hold", "Menu", locked = isLocked("night")) { open(NightHoldActivity::class.java) })
-        items.add(SideItem("📅", "Calendar", "Menu", locked = isLocked("calendar")) { open(CalendarActivity::class.java) })
-        if (session.isManager) items.add(SideItem("👥", "Team", "Menu", locked = isLocked("team")) { open(TeamActivity::class.java) })
-        if (Access.canViewTeam(this)) items.add(SideItem("🪪", "Team members (profile & calendar)", "Menu") { open(TeamMembersActivity::class.java) })
-        items.add(SideItem("🔔", "Notices", "Menu", badge = unread, locked = isLocked("notices")) { open(NoticesActivity::class.java) })
-        items.add(SideItem("📊", "My Reports", "Menu", locked = isLocked("reports")) { open(ReportActivity::class.java) })
-        items.add(SideItem("🎯", "Target vs Collection", "Menu", locked = isLocked("target")) { open(TargetActivity::class.java) })
-        items.add(SideItem("📋", "Surveys", "Menu", badge = pendingSurveys, locked = isLocked("survey")) { open(SurveyActivity::class.java) })
+        items.add(SideItem("📸", "Attendance", "Menu", locked = isLocked("attendance"), key = "attendance") { open(AttendanceActivity::class.java) })
+        items.add(SideItem("🌴", "Leave", "Menu", locked = isLocked("leave"), key = "leave") { open(LeaveActivity::class.java) })
+        items.add(SideItem("🌙", "Night Hold", "Menu", locked = isLocked("night"), key = "night") { open(NightHoldActivity::class.java) })
+        items.add(SideItem("📅", "Calendar", "Menu", locked = isLocked("calendar"), key = "calendar") { open(CalendarActivity::class.java) })
+        if (session.isManager) items.add(SideItem("👥", "Team", "Menu", locked = isLocked("team"), key = "team") { open(TeamActivity::class.java) })
+        if (Access.canViewTeam(this)) items.add(SideItem("🪪", "Team members (profile & calendar)", "Menu", key = "members") { open(TeamMembersActivity::class.java) })
+        items.add(SideItem("🔔", "Notices", "Menu", badge = unread, locked = isLocked("notices"), key = "notices") { open(NoticesActivity::class.java) })
+        items.add(SideItem("📊", "My Reports", "Menu", locked = isLocked("reports"), key = "reports") { open(ReportActivity::class.java) })
+        items.add(SideItem("🎯", "Target vs Collection", "Menu", locked = isLocked("target"), key = "target") { open(TargetActivity::class.java) })
+        items.add(SideItem("📋", "Surveys", "Menu", badge = pendingSurveys, locked = isLocked("survey"), key = "survey") { open(SurveyActivity::class.java) })
 
-        items.add(SideItem("👤", "My Profile", "Settings", locked = isLocked("profile")) { open(ProfileActivity::class.java) })
-        items.add(SideItem("🔑", "Change Password", "Settings") { ChangePasswordDialog.show(this, session) })
-        items.add(SideItem("⏰", "Attendance reminders: ${if (Reminders.enabled(this)) "On" else "Off"}", "Settings") { toggleReminders() })
+        items.add(SideItem("👤", "My Profile", "Settings", locked = isLocked("profile"), key = "profile") { open(ProfileActivity::class.java) })
+        items.add(SideItem("🔑", "Change Password", "Settings", key = "password") { ChangePasswordDialog.show(this, session) })
+        items.add(SideItem("⏰", "Attendance reminders: ${if (Reminders.enabled(this)) "On" else "Off"}", "Settings", key = "reminders") { toggleReminders() })
         allowances?.takeIf { it.length() > 0 && !isLocked("manual") }?.let { a ->
-            items.add(SideItem("📝", "Manual entry (${a.length()})", "Settings", tint = "#7C3AED") { showManualEntries(a) })
+            items.add(SideItem("📝", "Manual entry (${a.length()})", "Settings", tint = "#7C3AED", key = "manual") { showManualEntries(a) })
         }
         pendingUpdate?.let { u ->
-            items.add(SideItem("⬆️", "Update app (v${u.optString("versionName")})", "Settings", tint = "#2563EB") { AppUpdate.offer(this, u) })
+            items.add(SideItem("⬆️", "Update app (v${u.optString("versionName")})", "Settings", tint = "#2563EB", key = "update") { AppUpdate.offer(this, u) })
         }
-        if (AdminFlag.get(this) && !isLocked("admin")) items.add(SideItem("🛠", "Admin Panel", "Settings") { open(AdminActivity::class.java) })
+        if (AdminFlag.get(this) && !isLocked("admin")) {
+            // the Admin Panel carries its tabs as a sub-menu, in the order the admin chose; each one opens that tab
+            val subs = MenuLayout.order(this, "admin").mapNotNull { AdminTabs.find(it) }.map { t ->
+                SideItem(t.icon, t.name, "Settings") { open(AdminActivity::class.java) { it.putExtra(AdminActivity.EXTRA_TAB, t.key) } }
+            }
+            items.add(SideItem("🛠", "Admin Panel", "Settings", key = "admin", children = subs) { open(AdminActivity::class.java) })
+        }
         val role = if (AdminFlag.get(this)) "Admin" else if (session.isManager) "Manager" else "Employee"
-        showSideMenu(items, session.name, "ID: ${session.username} · $role", "SAM BOND · App version $versionName") {
+        showSideMenu(MenuLayout.sort(this, items), session.name, "ID: ${session.username} · $role", "SAM BOND · App version $versionName") {
             androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Log out?").setMessage("You will have to sign in again.")
                 .setPositiveButton("Log out") { _, _ -> logout() }.setNegativeButton("Cancel", null).show()
         }
@@ -431,6 +443,7 @@ class MainActivity : AppCompatActivity() {
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
             session.isManager = res.optBoolean("isManager")
             AdminFlag.set(this, res.optBoolean("isAdmin"))
+            MenuLayout.save(this, res.optJSONObject("menuLayout"))
             allowances = res.optJSONArray("allowances")
             showAvatar(res.optString("myPhoto"))
             showNotices(res.optJSONArray("notices"))
