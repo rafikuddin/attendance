@@ -83,7 +83,7 @@ class MainActivity : AppCompatActivity() {
     /** Locked ways in look faded (the server refuses them anyway). */
     private fun showLocks() {
         mapOf(R.id.btnQuickAttendance to "attendance", R.id.btnQuickLeave to "leave", R.id.cardNight to "night", R.id.tileNight to "night",
-            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.tileTarget to "target", R.id.tileSurvey to "survey", R.id.btnBell to "notices", R.id.cardNotice to "notices").forEach { (id, key) ->
+            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.tileTarget to "target", R.id.tileSurvey to "survey", R.id.btnBell to "notices", R.id.bellIcon to "notices", R.id.cardNotice to "notices").forEach { (id, key) ->
             findViewById<android.view.View>(id)?.fadeIfLocked(this, key)
         }
         setupBottomNav(Tab.HOME)
@@ -301,13 +301,21 @@ class MainActivity : AppCompatActivity() {
     /** Bell badge: how many notices have not been opened yet. */
     private var lastUnread = -1          // -1 until the first count; a later, higher count means a new notice arrived
 
+    private var bellRung = false      // the bell rings once each time Home opens with unread notices, and again for every new one
+
     fun refreshBell(arr: org.json.JSONArray?) {
         val badge = findViewById<TextView>(R.id.tvBellBadge)
         val n = NoticeState.unread(this, arr)
-        if (lastUnread in 0 until n) Chime.play(this)          // a new notice arrived while the app was open: ding-ding
+        val isNew = lastUnread in 0 until n
+        if (isNew) Chime.play(this)          // a new notice arrived while the app was open: ding-ding
         lastUnread = n
-        if (n > 0) { badge.text = if (n > 9) "9+" else n.toString(); badge.visibility = android.view.View.VISIBLE }
-        else badge.visibility = android.view.View.GONE
+        if (n > 0) {
+            badge.text = if (n > 9) "9+" else n.toString(); badge.visibility = android.view.View.VISIBLE
+            if (isNew || !bellRung) {
+                bellRung = true
+                findViewById<android.view.View>(R.id.bellIcon)?.let { bell -> bell.post { BellAnim.ring(bell, badge) } }
+            }
+        } else badge.visibility = android.view.View.GONE
     }
 
     /** Once per sign-in / app start: fetch the current notices fresh and show them in a pop-up. */
