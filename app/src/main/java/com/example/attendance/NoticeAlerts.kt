@@ -103,6 +103,7 @@ object NoticePopup {
             })
         }
 
+        Chime.play(activity)          // a new-notice pop-up comes with the app's notification sound
         val dialog = AlertDialog.Builder(activity).setView(root).create()
         root.addView(MaterialButton(activity).apply {
             text = "Got it"

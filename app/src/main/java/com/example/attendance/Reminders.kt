@@ -33,7 +33,10 @@ import java.util.concurrent.TimeUnit
  */
 object Reminders {
     private const val WORK = "attendance-reminders"
-    private const val CHANNEL = "attendance_reminders"
+    // v2: a channel's sound can only be set when it is created, so the chime needed a new channel (the old silent/default one is removed).
+    private const val CHANNEL = "attendance_reminders_v2"
+    private const val OLD_CHANNEL = "attendance_reminders"
+    private val VIBRATION = longArrayOf(0, 250, 120, 250)
     const val ID_SELF = 4101
     const val ID_TEAM = 4102
     private const val PREFS = "reminders"          // only an on/off switch and "when did I last remind": nothing private
@@ -79,9 +82,14 @@ object Reminders {
         val app = ctx.applicationContext
         if (Build.VERSION.SDK_INT >= 26) {
             val nm = app.getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(OLD_CHANNEL) != null) nm.deleteNotificationChannel(OLD_CHANNEL)
             if (nm.getNotificationChannel(CHANNEL) == null) {
                 nm.createNotificationChannel(NotificationChannel(CHANNEL, "Attendance reminders", NotificationManager.IMPORTANCE_HIGH).apply {
                     description = "Reminds you to mark attendance, and tells managers who has not marked yet."
+                    setSound(Chime.uri(app), android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                    enableVibration(true); vibrationPattern = VIBRATION
                 })
             }
         }
@@ -95,6 +103,7 @@ object Reminders {
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open).setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSound(Chime.uri(app)).setVibrate(VIBRATION)          // Android 7 and older; on 8+ the channel decides
             .build()
         NotificationManagerCompat.from(app).notify(id, n)
     }

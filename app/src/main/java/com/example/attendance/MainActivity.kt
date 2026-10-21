@@ -287,9 +287,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Bell badge: how many notices have not been opened yet. */
+    private var lastUnread = -1          // -1 until the first count; a later, higher count means a new notice arrived
+
     fun refreshBell(arr: org.json.JSONArray?) {
         val badge = findViewById<TextView>(R.id.tvBellBadge)
         val n = NoticeState.unread(this, arr)
+        if (lastUnread in 0 until n) Chime.play(this)          // a new notice arrived while the app was open: ding-ding
+        lastUnread = n
         if (n > 0) { badge.text = if (n > 9) "9+" else n.toString(); badge.visibility = android.view.View.VISIBLE }
         else badge.visibility = android.view.View.GONE
     }
