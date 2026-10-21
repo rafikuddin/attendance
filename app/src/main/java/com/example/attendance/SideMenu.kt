@@ -85,6 +85,8 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
     lateinit var render: () -> Unit
     lateinit var list: LinearLayout
 
+    lateinit var refill: () -> Unit          // addRow and fillList call each other, and a local function can only call ones declared above it
+
     fun matches(it0: SideItem, q: String) = q.isEmpty() || it0.label.lowercase().contains(q)
 
     /** One row. [child] rows belong to a sub-menu: slightly smaller and moved in. A row with a sub-menu folds / unfolds it (in the slim strip it just opens). */
@@ -99,7 +101,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
             if (!it0.current) setBackgroundResource(ripple.resourceId)
             isClickable = true; isFocusable = true
             alpha = if (it0.locked) 0.45f else 1f
-            if (hasSub) setOnClickListener { prefs.edit().putBoolean("side_sub_open", !subOpen).apply(); fillList() }
+            if (hasSub) setOnClickListener { prefs.edit().putBoolean("side_sub_open", !subOpen).apply(); refill() }
             else setOnClickListener { close { it0.onClick() } }
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(2); if (child) marginStart = dp(30)
@@ -151,6 +153,8 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
             }
         }
     }
+
+    refill = { fillList() }
 
     render = {
         panel.removeAllViews()
