@@ -30,7 +30,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvAvatar).text = session.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
         findViewById<TextView>(R.id.tvDate).text =
             SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date())
-        findViewById<TextView>(R.id.btnRefresh).setOnClickListener { loadStatus() }
+        findViewById<TextView>(R.id.btnRefresh).visibility = android.view.View.GONE     // no refresh button: pull Home down instead
+        pullToRefresh(findViewById(R.id.btnRefresh)) { loadStatus() }
         findViewById<TextView>(R.id.btnMenu).setOnClickListener { showMenu(it) }
         if (Pal.reopenMenu) { Pal.reopenMenu = false; findViewById<TextView>(R.id.btnMenu).postDelayed({ if (!isFinishing) showMenu(null) }, 350) }   // the Light / Dark switch restarts the screen: bring the menu back
         findViewById<android.view.View>(R.id.cardAvatar).setOnClickListener { open(ProfileActivity::class.java) }

@@ -39,7 +39,7 @@
                     android:minWidth="18dp" android:layout_width="wrap_content" android:layout_height="18dp"
                     android:paddingStart="4dp" android:paddingEnd="4dp" />
             </FrameLayout>
-            <TextView android:id="@+id/btnRefresh" android:text="⟳" android:textSize="22sp"
+            <TextView android:id="@+id/btnRefresh" android:visibility="gone" android:text="⟳" android:textSize="22sp"
                 android:textColor="@color/on_dark" android:background="@drawable/bg_icon_btn"
                 android:gravity="center" android:clickable="true" android:focusable="true"
                 android:layout_width="42dp" android:layout_height="42dp" />
