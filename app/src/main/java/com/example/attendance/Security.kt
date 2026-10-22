@@ -52,8 +52,9 @@ object Wipe {
     fun cachedData(ctx: Context) {
         ResponseCache.clear(ctx)
         PhotoLoader.clearMemory()
-        ctx.cacheDir.listFiles()?.forEach { if (it.name.startsWith("selfie_")) it.delete() }
-        try { java.io.File(ctx.cacheDir, "reports").deleteRecursively() } catch (e: Exception) { /* an admin's downloaded report */ }
+        AdminElev.clear()
+        // Everything in the cache folder goes: selfies, profile pictures, an admin's downloaded reports, half-made uploads. Nothing here is needed after a sign-out.
+        try { ctx.cacheDir.listFiles()?.forEach { it.deleteRecursively() } } catch (e: Exception) { /* best effort */ }
     }
 
     fun signOutLocally(ctx: Context) {

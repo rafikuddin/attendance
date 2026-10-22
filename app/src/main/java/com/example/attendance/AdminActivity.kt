@@ -508,7 +508,7 @@ class AdminActivity : AppCompatActivity() {
                         .setTitle("Make ${o.optString("name")} active?")
                         .setMessage("They will be able to sign in again.")
                         .setPositiveButton("Make Active") { _, _ ->
-                            api(JSONObject().put("action", "adminSetActive").put("username", username).put("active", true)) { res, err ->
+                            adminApi(JSONObject().put("action", "adminSetActive").put("username", username).put("active", true)) { res, err ->
                                 if (res != null) { toast("Active again"); loadUsers() } else toast(err ?: "Could not save")
                             }
                         }
@@ -563,13 +563,13 @@ class AdminActivity : AppCompatActivity() {
                 val body = JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names))
                     .put("locks", JSONArray(boxes.filter { !it.value.isChecked }.keys.toList()))
                     .put("grants", JSONArray(listOfNotNull(if (cbSurvey.isChecked) "surveys" else null, if (cbTeam.isChecked) "teamview" else null)))
-                api(body) { res, err ->
+                adminApi(body) { res, err ->
                     if (res != null) { toast("Saved for ${res.optInt("updated")} ${if (res.optInt("updated") == 1) "person" else "people"}"); loadUsers() }
                     else toast(err ?: "Could not save")
                 }
             }
             .setNeutralButton("Unlock all") { _, _ -> boxes.values.forEach { it.isChecked = true }
-                api(JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names)).put("locks", JSONArray()).put("grants", JSONArray(listOfNotNull(if (cbSurvey.isChecked) "surveys" else null, if (cbTeam.isChecked) "teamview" else null)))) { res, err ->
+                adminApi(JSONObject().put("action", "adminSetAccess").put("usernames", JSONArray(names)).put("locks", JSONArray()).put("grants", JSONArray(listOfNotNull(if (cbSurvey.isChecked) "surveys" else null, if (cbTeam.isChecked) "teamview" else null)))) { res, err ->
                     if (res != null) { toast("Everything unlocked"); loadUsers() } else toast(err ?: "Could not save") }
             }
             .setNegativeButton("Cancel", null).show()
@@ -746,7 +746,8 @@ class AdminActivity : AppCompatActivity() {
                 if (remarks.length < 3) { error.setTextColor(Pal.c("#DC2626")); error.text = "Write a short remark"; return@setOnClickListener }
                 error.setTextColor(Pal.c("#8A5F52")); error.text = "Saving and sending e-mails…"
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                api(JSONObject().put("action", "adminSetActive").put("username", target).put("active", false).put("lastWorkingDay", picked).put("remarks", remarks)) { res, err ->
+                val resetButton = { dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true; error.setTextColor(Pal.c("#8A5F52")); error.text = "" }
+                adminApi(JSONObject().put("action", "adminSetActive").put("username", target).put("active", false).put("lastWorkingDay", picked).put("remarks", remarks), onCancel = resetButton) { res, err ->
                     if (res != null) {
                         dialog.dismiss()
                         val sent = res.optInt("emailed"); val none = res.optInt("noEmail"); val failed = res.optInt("mailFailed")
@@ -843,7 +844,7 @@ class AdminActivity : AppCompatActivity() {
             fun post(sms: Boolean) {
                 msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Posting…"
                 if (sms) body.put("sms", true)
-                api(body) { res, err ->
+                adminApi(body, onCancel = { msg.text = "" }) { res, err ->
                     if (res != null) {
                         val s = SmsUi.summary(res.optJSONObject("sms"))
                         toast("Notice posted. Everyone sees it on their Home screen." + (if (s.isNotEmpty()) "\n$s" else ""))
@@ -899,7 +900,7 @@ class AdminActivity : AppCompatActivity() {
                 AlertDialog.Builder(this@AdminActivity).setTitle("Remove this notice?")
                     .setMessage(o.optString("title"))
                     .setPositiveButton("Remove") { _, _ ->
-                        api(JSONObject().put("action", "adminDeleteNotice").put("id", o.optString("id"))) { res, err ->
+                        adminApi(JSONObject().put("action", "adminDeleteNotice").put("id", o.optString("id"))) { res, err ->
                             if (res != null) { dropSavedCopies(); loadNotices() } else toast(err ?: "Could not remove it")
                         }
                     }
@@ -1959,7 +1960,8 @@ class AdminActivity : AppCompatActivity() {
             }
             try {
                 val begin = send(JSONObject().put("action", "adminAppBegin").put("versionCode", code).put("versionName", name)
-                    .put("notes", notes).put("size", size).put("chunks", chunks).put("sha256", sha).put("adminPassword", adminPw).put("mandatory", mandatory))
+                    .put("notes", notes).put("size", size).put("chunks", chunks).put("sha256", sha).put("adminPassword", adminPw).put("mandatory", mandatory)
+                    .put("certSha256", AppUpdate.certSha256(app, AppUpdate.uploadFile(app))))
                 if (begin != null) {
                     val uploadId = begin.getString("uploadId")
                     FileInputStream(AppUpdate.uploadFile(app)).use { input ->

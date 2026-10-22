@@ -83,6 +83,16 @@ object AppUpdate {
 
     fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
 
+    /** SHA-256 of the certificate an APK file is signed with ("" when it cannot be read). The server compares it with the release key. */
+    @Suppress("DEPRECATION")
+    fun certSha256(ctx: Context, f: File): String = try {
+        val api28 = Build.VERSION.SDK_INT >= 28
+        val flags = if (api28) android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES else android.content.pm.PackageManager.GET_SIGNATURES
+        val pi = ctx.packageManager.getPackageArchiveInfo(f.absolutePath, flags)
+        val sig = if (api28) pi?.signingInfo?.apkContentsSigners?.firstOrNull() else pi?.signatures?.firstOrNull()
+        if (sig == null) "" else hex(MessageDigest.getInstance("SHA-256").digest(sig.toByteArray()))
+    } catch (e: Exception) { "" }
+
     private fun mayInstall(ctx: Context): Boolean = Build.VERSION.SDK_INT < 26 || ctx.packageManager.canRequestPackageInstalls()
 
     private fun toast(ctx: Context, m: String) = Toast.makeText(ctx, m, Toast.LENGTH_LONG).show()

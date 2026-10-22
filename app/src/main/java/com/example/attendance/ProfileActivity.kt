@@ -130,6 +130,11 @@ class ProfileActivity : AppCompatActivity() {
         return JSONObject().put("action", "admin" + action.replaceFirstChar { it.uppercaseChar() }).put("targetUsername", t)
     }
 
+    /** Own profile: a normal call. An admin saving someone else's profile or photo is asked for their own password first (see AdminElev.kt). */
+    private fun send(body: JSONObject, onCancel: () -> Unit, done: (JSONObject?, String?) -> Unit) {
+        if (target != null && !viewOnly) adminApi(body, onCancel, done) else api(body, done)
+    }
+
     private fun setRelationChoices() {
         ddRelation.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, relations + "Other"))
     }
@@ -219,7 +224,7 @@ class ProfileActivity : AppCompatActivity() {
             .put("baseCode", baseCode).put("tshirt", ddTshirt.text.toString().trim())
         btnSave.isEnabled = false
         msg("Saving...", true)
-        api(body) { res, err ->
+        send(body, { btnSave.isEnabled = true; msg("", true) }) { res, err ->
             btnSave.isEnabled = true
             if (res != null) msg("✅ Profile saved", true) else msg("❌ $err", false)
         }
@@ -277,7 +282,7 @@ class ProfileActivity : AppCompatActivity() {
                 } else {
                     photoMsg("Uploading...", true)
                     val body = request("saveProfilePhoto").put("photo", Base64.encodeToString(bytes, Base64.NO_WRAP))
-                    api(body) { res, err ->
+                    send(body, { setPhotoButtons(true); photoMsg("", true) }) { res, err ->
                         setPhotoButtons(true)
                         if (res != null) {
                             imgProfile.visibility = View.VISIBLE
