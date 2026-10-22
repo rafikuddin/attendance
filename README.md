@@ -6,6 +6,50 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 
 ---
 
+## 📸 Screenshots
+
+Real screens from the app (Dark theme; Light uses the same layout on butter and cream). Names in the team list are blurred.
+
+**Getting in**
+
+<table><tr>
+<td align="center"><img src="docs/screenshots/login.jpg" width="190" alt="Sign in"><br><sub>Sign in</sub></td>
+<td align="center"><img src="docs/screenshots/signup.jpg" width="190" alt="Create account"><br><sub>Create account</sub></td>
+<td align="center"><img src="docs/screenshots/resetcode.jpg" width="190" alt="Verification code"><br><sub>Verification code</sub></td>
+</tr></table>
+
+**Every day**
+
+<table><tr>
+<td align="center"><img src="docs/screenshots/home.jpg" width="190" alt="Home"><br><sub>Home</sub></td>
+<td align="center"><img src="docs/screenshots/attendance.jpg" width="190" alt="Attendance"><br><sub>Attendance</sub></td>
+<td align="center"><img src="docs/screenshots/calendar.jpg" width="190" alt="Calendar"><br><sub>Calendar</sub></td>
+<td align="center"><img src="docs/screenshots/leave.jpg" width="190" alt="Leave"><br><sub>Leave</sub></td>
+</tr></table>
+
+<table><tr>
+<td align="center"><img src="docs/screenshots/nighthold.jpg" width="190" alt="Night Hold"><br><sub>Night Hold</sub></td>
+<td align="center"><img src="docs/screenshots/menu.jpg" width="190" alt="Side menu"><br><sub>Side menu</sub></td>
+<td align="center"><img src="docs/screenshots/notices.jpg" width="190" alt="Notices"><br><sub>Notices</sub></td>
+</tr></table>
+
+**Managers and admins**
+
+<table><tr>
+<td align="center"><img src="docs/screenshots/team.jpg" width="190" alt="My Team"><br><sub>My Team</sub></td>
+<td align="center"><img src="docs/screenshots/admin-notices.jpg" width="190" alt="Admin: Notices"><br><sub>Admin: Notices</sub></td>
+<td align="center"><img src="docs/screenshots/admin-report.jpg" width="190" alt="Admin: Report"><br><sub>Admin: Report</sub></td>
+<td align="center"><img src="docs/screenshots/admin-targets.jpg" width="190" alt="Admin: Targets"><br><sub>Admin: Targets</sub></td>
+</tr></table>
+
+<table><tr>
+<td align="center"><img src="docs/screenshots/admin-holiday.jpg" width="190" alt="Admin: Holiday"><br><sub>Admin: Holiday</sub></td>
+<td align="center"><img src="docs/screenshots/admin-entry.jpg" width="190" alt="Admin: Entry"><br><sub>Admin: Entry</sub></td>
+<td align="center"><img src="docs/screenshots/admin-app.jpg" width="190" alt="Admin: App"><br><sub>Admin: App</sub></td>
+</tr></table>
+
+---
+
 ## ✨ Features
 
 ### For every employee
