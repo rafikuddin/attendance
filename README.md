@@ -8,7 +8,7 @@ An Android attendance app for **SAM BOND**: selfie + live GPS check-in, late-arr
 
 ## 📸 Screenshots
 
-Real screens from the app (Dark theme; Light uses the same layout on butter and cream). Names in the team list are blurred.
+Real screens from the app (Dark theme; Light uses the same layout on butter and cream). The brand name, logo and people's names are blurred.
 
 **Getting in**
 
