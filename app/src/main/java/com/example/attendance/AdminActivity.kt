@@ -211,7 +211,7 @@ class AdminActivity : AppCompatActivity() {
         "update" to "⬆️  Update app", "admin" to "🛠  Admin Panel"
     )
 
-    /** The order of the side menu, its Settings group and the Admin Panel tabs. Move with ▲ ▼, then Save: it applies to everyone. */
+    /** Menus and the Home screen: move, hide and add. Move with ▲ ▼, hide with 👁, add new menus; then Save: it applies to everyone. */
     private fun loadMenuLayout() {
         val id = ++loadId
         content.removeAllViews()
@@ -221,25 +221,34 @@ class AdminActivity : AppCompatActivity() {
             if (id != loadId) return@api
             content.removeView(status)
             if (res == null) { content.addView(note(err ?: "Could not load.")); return@api }
-            fun listOfKeys(o: JSONObject, g: String): MutableList<String> {
-                val a = o.optJSONArray(g); val out = ArrayList<String>()
-                if (a != null) for (i in 0 until a.length()) out.add(a.getString(i))
-                return out
-            }
-            val groups = listOf("menu" to "☰  Side menu: Menu", "settings" to "⚙️  Side menu: Settings", "admin" to "🛠  Admin Panel tabs")
-            val saved = HashMap<String, List<String>>()
+            fun strList(a: JSONArray?): MutableList<String> { val out = ArrayList<String>(); if (a != null) for (i in 0 until a.length()) out.add(a.getString(i)); return out }
+            val lay = res.getJSONObject("layout"); val std = res.getJSONObject("standard")
+            val notHideable = strList(res.optJSONArray("notHideable")).toSet()
+            val customMax = res.optInt("customMax", 12)
+            val groups = listOf("home" to "🏠  Home screen: sections", "menu" to "☰  Side menu: Menu", "settings" to "⚙️  Side menu: Settings", "admin" to "🛠  Admin Panel tabs")
+            val savedOrder = HashMap<String, List<String>>()
             val work = HashMap<String, MutableList<String>>()
-            for ((g, _) in groups) { saved[g] = listOfKeys(res.getJSONObject("layout"), g); work[g] = saved[g]!!.toMutableList() }
-            val std = res.getJSONObject("standard")
-            fun nameOf(g: String, k: String) = if (g == "admin") AdminTabs.find(k).let { "${it?.icon ?: ""}  ${it?.name ?: k}" } else (menuNames[k] ?: k)
+            for ((g, _) in groups) { savedOrder[g] = strList(lay.optJSONArray(g)); work[g] = savedOrder[g]!!.toMutableList() }
+            val savedHidden = strList(lay.optJSONArray("hidden")).toSet()
+            val hiddenNow = savedHidden.toMutableSet()
+            fun customsOf(a: JSONArray?): MutableList<CustomMenu> { val out = ArrayList<CustomMenu>(); if (a != null) for (i in 0 until a.length()) out.add(CustomMenu.from(a.getJSONObject(i))); return out }
+            val savedCustom = customsOf(lay.optJSONArray("custom")).map { it.toJson().toString() }
+            val customs = customsOf(lay.optJSONArray("custom"))
+
+            fun nameOf(g: String, k: String): String = when {
+                k.startsWith("c:") -> customs.firstOrNull { it.key == k }?.let { "${it.icon}  ${it.label}" } ?: k
+                g == "admin" -> AdminTabs.find(k).let { "${it?.icon ?: ""}  ${it?.name ?: k}" }
+                g == "home" -> HomeBlocks.names[k] ?: k
+                else -> menuNames[k] ?: k
+            }
 
             val intro = column()
-            intro.addView(label("🧭  Order of the menus", 16f, "#3E1D16", true))
-            intro.addView(label("Move the entries up or down. The order applies to everyone: the side menu on Home (the Home entry always stays first), the Settings part below it, and the tabs of this Admin Panel, which are also shown under Admin Panel in the side menu. Entries a person may not use stay hidden or locked as before.", 13f, "#8A5F52", false).apply { setPadding(0, dp(6), 0, 0) })
+            intro.addView(label("🧭  Menus and the Home screen", 16f, "#3E1D16", true))
+            intro.addView(label("▲ ▼ move an entry. 👁 shows it, 🚫 hides it (hiding only removes the shortcut; to stop someone using a feature, use Users › Access). " +
+                "You can also add your own menus below. Everything applies to everyone; phones pick it up the next time Home loads.", 13f, "#8A5F52", false).apply { setPadding(0, dp(4), 0, 0) })
             content.addView(cardOf(intro))
 
             val lists = LinkedHashMap<String, LinearLayout>()
-            lateinit var draw: () -> Unit
             for ((g, title) in groups) {
                 val box = column()
                 box.addView(label(title, 15f, "#3E1D16", true))
@@ -248,52 +257,143 @@ class AdminActivity : AppCompatActivity() {
                 lists[g] = rows
                 content.addView(cardOf(box))
             }
+            val customBox = column()
+            customBox.addView(label("⭐  Your own menus", 15f, "#3E1D16", true))
+            customBox.addView(label("A menu can open a web link (https) or show a short text, in the side menu, as a tile on Home, or both.", 13f, "#8A5F52", false).apply { setPadding(0, dp(2), 0, dp(4)) })
+            val customRows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            customBox.addView(customRows)
+            content.addView(cardOf(customBox))
+
+            lateinit var draw: () -> Unit
+
+            fun editCustom(existing: CustomMenu?) {
+                val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
+                val etIcon = field("Icon (one emoji, e.g. 📰)").apply { setText(existing?.icon ?: "⭐"); filters = arrayOf(android.text.InputFilter.LengthFilter(8)) }
+                val etName = field("Name (up to 30 letters)").apply { setText(existing?.label ?: ""); filters = arrayOf(android.text.InputFilter.LengthFilter(30)) }
+                val rbLink = RadioButton(this).apply { text = "Open a web link"; this.id = View.generateViewId() }
+                val rbText = RadioButton(this).apply { text = "Show a text"; this.id = View.generateViewId() }
+                val kindGroup = RadioGroup(this).apply { orientation = RadioGroup.VERTICAL; addView(rbLink); addView(rbText) }
+                (if (existing?.kind == "text") rbText else rbLink).isChecked = true
+                val etValue = field("Link (https://…) or the text", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE).apply {
+                    setText(existing?.value ?: ""); minLines = 2; maxLines = 6; filters = arrayOf(android.text.InputFilter.LengthFilter(1000))
+                }
+                val rbMenu = RadioButton(this).apply { text = "Side menu"; this.id = View.generateViewId() }
+                val rbHome = RadioButton(this).apply { text = "Home screen tile"; this.id = View.generateViewId() }
+                val rbBoth = RadioButton(this).apply { text = "Both"; this.id = View.generateViewId() }
+                val whereGroup = RadioGroup(this).apply { orientation = RadioGroup.VERTICAL; addView(rbMenu); addView(rbHome); addView(rbBoth) }
+                val whereNow = when (existing?.where) { "home" -> rbHome; "both" -> rbBoth; else -> rbMenu }
+                whereNow.isChecked = true
+                col.addView(etIcon); col.addView(etName)
+                col.addView(label("What it does", 13f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) }); col.addView(kindGroup); col.addView(etValue)
+                col.addView(label("Where it shows", 13f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) }); col.addView(whereGroup)
+                AlertDialog.Builder(this).setTitle(if (existing == null) "Add a new menu" else "Edit menu")
+                    .setView(ScrollView(this).apply { addView(col) })
+                    .setPositiveButton("OK") { _, _ ->
+                        val kind = if (rbText.isChecked) "text" else "link"
+                        val value = etValue.text.toString().trim(); val name = etName.text.toString().trim()
+                        val where = if (rbBoth.isChecked) "both" else if (rbHome.isChecked) "home" else "menu"
+                        when {
+                            name.isEmpty() -> { toast("Please type a name."); return@setPositiveButton }
+                            kind == "link" && !value.startsWith("https://") -> { toast("A link must start with https://"); return@setPositiveButton }
+                            kind == "text" && value.isEmpty() -> { toast("Please type the text."); return@setPositiveButton }
+                        }
+                        val cid = existing?.id ?: generateSequence(1) { it + 1 }.map { "c$it" }.first { c -> customs.none { it.id == c } }
+                        val made = CustomMenu(cid, etIcon.text.toString().trim().ifEmpty { "⭐" }, name, kind, value, where)
+                        val at = customs.indexOfFirst { it.id == cid }
+                        if (at >= 0) customs[at] = made else customs.add(made)
+                        val m = work["menu"]!!
+                        if (where == "home") m.remove(made.key) else if (made.key !in m) m.add(made.key)
+                        draw()
+                    }
+                    .setNegativeButton("Cancel", null).show()
+            }
+
             draw = {
                 for ((g, _) in groups) {
                     val rows = lists[g]!!; val order = work[g]!!
                     rows.removeAllViews()
                     order.forEachIndexed { i, k ->
+                        val off = "$g:$k" in hiddenNow
                         val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(2), 0, dp(2)) }
                         line.addView(label("${i + 1}", 12f, "#A98578", true).apply { minWidth = dp(22) })
-                        line.addView(label(nameOf(g, k), 15f, "#6B352A", false), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-                        fun arrow(t: String, enabled: Boolean, to: Int) = TextView(this).apply {
+                        line.addView(label(nameOf(g, k) + (if (off) "  (hidden)" else ""), 15f, "#6B352A", false).apply { alpha = if (off) 0.45f else 1f },
+                            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                        fun btn(t: String, enabled: Boolean, desc: String, click: () -> Unit) = TextView(this).apply {
                             text = t; textSize = 16f; gravity = Gravity.CENTER; setTextColor(Pal.c("#6B352A")); alpha = if (enabled) 1f else 0.25f
                             background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(Pal.c("#F0E3A6")) }
-                            isClickable = enabled; isFocusable = enabled
-                            contentDescription = if (to < i) "Move up" else "Move down"
-                            if (enabled) setOnClickListener { val x = order.removeAt(i); order.add(to, x); draw() }
+                            isClickable = enabled; isFocusable = enabled; contentDescription = desc
+                            if (enabled) setOnClickListener { click() }
                             layoutParams = LinearLayout.LayoutParams(dp(44), dp(38)).apply { marginStart = dp(6) }
                         }
-                        line.addView(arrow("▲", i > 0, i - 1)); line.addView(arrow("▼", i < order.size - 1, i + 1))
+                        if (g != "admin" && !k.startsWith("c:") && "$g:$k" !in notHideable)
+                            line.addView(btn(if (off) "🚫" else "👁", true, if (off) "Show" else "Hide") { if (off) hiddenNow.remove("$g:$k") else hiddenNow.add("$g:$k"); draw() })
+                        line.addView(btn("▲", i > 0, "Move up") { val x = order.removeAt(i); order.add(i - 1, x); draw() })
+                        line.addView(btn("▼", i < order.size - 1, "Move down") { val x = order.removeAt(i); order.add(i + 1, x); draw() })
                         rows.addView(line)
                     }
                 }
+                customRows.removeAllViews()
+                if (customs.isEmpty()) customRows.addView(note("No menus added yet."))
+                customs.forEach { c ->
+                    val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(3), 0, dp(3)) }
+                    val where = when (c.where) { "home" -> "Home screen"; "both" -> "Side menu + Home"; else -> "Side menu" }
+                    val txt = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                    txt.addView(label("${c.icon}  ${c.label}", 15f, "#6B352A", true))
+                    txt.addView(label((if (c.kind == "link") "🔗 link" else "📝 text") + " · " + where, 12f, "#8A5F52", false))
+                    line.addView(txt, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                    fun small(t: String, desc: String, click: () -> Unit) = TextView(this).apply {
+                        text = t; textSize = 16f; gravity = Gravity.CENTER; setTextColor(Pal.c("#6B352A")); contentDescription = desc
+                        background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(Pal.c("#F0E3A6")) }
+                        isClickable = true; isFocusable = true; setOnClickListener { click() }
+                        layoutParams = LinearLayout.LayoutParams(dp(44), dp(38)).apply { marginStart = dp(6) }
+                    }
+                    line.addView(small("✏️", "Edit") { editCustom(c) })
+                    line.addView(small("🗑", "Delete") {
+                        AlertDialog.Builder(this).setTitle("Delete “${c.label}”?").setMessage("It disappears for everyone after you press Save.")
+                            .setPositiveButton("Delete") { _, _ -> customs.remove(c); work["menu"]!!.remove(c.key); draw() }.setNegativeButton("Cancel", null).show()
+                    })
+                    customRows.addView(line)
+                }
             }
+            customBox.addView(chipButton("➕  Add a new menu") {
+                if (customs.size >= customMax) toast("You can add up to $customMax menus.") else editCustom(null)
+            })
             draw()
 
             val msg = label("", 14f, "#DC2626", false).apply { setPadding(dp(4), 0, dp(4), dp(4)) }
             content.addView(msg)
-            content.addView(bigButton("💾  Save the order") {
-                val changed = groups.filter { (g, _) -> work[g] != saved[g] }.map { it.second.substringAfter("  ") }
+            content.addView(bigButton("💾  Save") {
+                val changed = ArrayList<String>()
+                groups.forEach { (g, title) -> if (work[g] != savedOrder[g]) changed.add(title.substringAfter("  ")) }
+                if (hiddenNow != savedHidden) changed.add("hidden entries")
+                val customNow = customs.map { it.toJson().toString() }
+                val customChanged = customNow != savedCustom
+                if (customChanged) changed.add("your own menus")
                 if (changed.isEmpty()) { msg.text = "Nothing changed."; return@bigButton }
                 msg.text = ""
-                AlertDialog.Builder(this).setTitle("Save the new order?")
-                    .setMessage("Changed: " + changed.joinToString(", ") + ".\n\nIt applies to everyone. Phones pick it up the next time the Home screen loads.")
+                AlertDialog.Builder(this).setTitle("Save the changes?")
+                    .setMessage("Changed: " + changed.joinToString(", ") + ".\n\nIt applies to everyone. Phones pick it up the next time the Home screen loads." +
+                        if (customChanged) "\n\nAdded menus can open links for everyone, so you will be asked for your password." else "")
                     .setPositiveButton("Save") { _, _ ->
                         msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Saving…"
-                        val layout = JSONObject(); for ((g, _) in groups) layout.put(g, org.json.JSONArray(work[g]!!))
-                        api(JSONObject().put("action", "adminSetMenuLayout").put("layout", layout)) { r, e ->
+                        val layout = JSONObject(); for ((g, _) in groups) layout.put(g, JSONArray(work[g]!!))
+                        layout.put("hidden", JSONArray(hiddenNow.toList())); layout.put("custom", JSONArray(customs.map { it.toJson() }))
+                        val body = JSONObject().put("action", "adminSetMenuLayout").put("layout", layout)
+                        val done: (JSONObject?, String?) -> Unit = { r, e ->
                             if (r != null) {
-                                MenuLayout.save(this, r.optJSONObject("layout")); dropSavedCopies(); toast("Menu order saved")
+                                MenuLayout.save(this, r.optJSONObject("layout")); dropSavedCopies(); toast("Saved")
                                 arrangeTabs("menu")
                             } else { msg.setTextColor(Pal.c("#DC2626")); msg.text = e ?: "Could not save." }
                         }
+                        if (customChanged) adminApi(body, { msg.text = "" }, done) else api(body, done)
                     }
                     .setNegativeButton("Cancel", null).show()
             })
             content.addView(chipButton("↺  Standard order") {
-                for ((g, _) in groups) { work[g] = listOfKeys(std, g); }
-                draw(); msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Standard order filled in. Press Save to apply."
+                for ((g, _) in groups) { work[g] = strList(std.optJSONArray(g)) }
+                work["menu"]!!.addAll(customs.filter { it.where != "home" }.map { it.key })
+                hiddenNow.clear()
+                draw(); msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Standard order filled in (your own menus are kept). Press Save to apply."
             })
         }
     }
@@ -1242,8 +1342,8 @@ class AdminActivity : AppCompatActivity() {
             })
             p.addView(label("Passed days are counted up to", 13f, "#6B352A", true).apply { setPadding(0, dp(12), 0, 0) })
             val rg = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
-            val rbData = RadioButton(this).apply { text = "the last date in the Collection report"; id = View.generateViewId() }
-            val rbToday = RadioButton(this).apply { text = "today"; id = View.generateViewId() }
+            val rbData = RadioButton(this).apply { text = "the last date in the Collection report"; this.id = View.generateViewId() }
+            val rbToday = RadioButton(this).apply { text = "today"; this.id = View.generateViewId() }
             rg.addView(rbData); rg.addView(rbToday)
             if (per.optString("asOfSetting") == "today") rbToday.isChecked = true else rbData.isChecked = true
             rg.setOnCheckedChangeListener { _, checked ->
@@ -1347,9 +1447,9 @@ class AdminActivity : AppCompatActivity() {
         val cbAtt = CheckBox(this).apply { text = "📍  Attendance report"; isChecked = true; textSize = 14f }
         val cbNight = CheckBox(this).apply { text = "🌙  Night hold report"; isChecked = true; textSize = 14f }
         val rgScope = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
-        val rbAll = RadioButton(this).apply { text = "Everyone"; id = View.generateViewId() }
-        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; id = View.generateViewId() }
-        val rbUsers = RadioButton(this).apply { text = "Selected people"; id = View.generateViewId() }
+        val rbAll = RadioButton(this).apply { text = "Everyone"; this.id = View.generateViewId() }
+        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; this.id = View.generateViewId() }
+        val rbUsers = RadioButton(this).apply { text = "Selected people"; this.id = View.generateViewId() }
         rgScope.addView(rbAll); rgScope.addView(rbTeam); rgScope.addView(rbUsers); rbAll.isChecked = true
         val btnWho = chipButton("") {}
         btnWho.visibility = View.GONE
@@ -1517,9 +1617,9 @@ class AdminActivity : AppCompatActivity() {
         var teamManager = ""
         val pickedUsers = LinkedHashSet<String>()
         val rgScope = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
-        val rbAll = RadioButton(this).apply { text = "Everyone"; id = View.generateViewId() }
-        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; id = View.generateViewId() }
-        val rbUsers = RadioButton(this).apply { text = "Selected people"; id = View.generateViewId() }
+        val rbAll = RadioButton(this).apply { text = "Everyone"; this.id = View.generateViewId() }
+        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; this.id = View.generateViewId() }
+        val rbUsers = RadioButton(this).apply { text = "Selected people"; this.id = View.generateViewId() }
         rgScope.addView(rbAll); rgScope.addView(rbTeam); rgScope.addView(rbUsers); rbAll.isChecked = true
         val btnWho = chipButton("") {}
         btnWho.visibility = View.GONE
@@ -1640,8 +1740,8 @@ class AdminActivity : AppCompatActivity() {
         val pickedUsers = LinkedHashSet<String>()
 
         val rgKind = RadioGroup(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val rbAtt = RadioButton(this).apply { text = "Attendance"; id = View.generateViewId() }
-        val rbNight = RadioButton(this).apply { text = "Night hold"; id = View.generateViewId() }
+        val rbAtt = RadioButton(this).apply { text = "Attendance"; this.id = View.generateViewId() }
+        val rbNight = RadioButton(this).apply { text = "Night hold"; this.id = View.generateViewId() }
         rgKind.addView(rbAtt); rgKind.addView(rbNight); rbAtt.isChecked = true
         rgKind.setOnCheckedChangeListener { _, checked -> kind = if (checked == rbNight.id) "night" else "attendance" }
 
@@ -1657,9 +1757,9 @@ class AdminActivity : AppCompatActivity() {
         }
 
         val rgScope = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
-        val rbAll = RadioButton(this).apply { text = "Everyone"; id = View.generateViewId() }
-        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; id = View.generateViewId() }
-        val rbUsers = RadioButton(this).apply { text = "Selected people"; id = View.generateViewId() }
+        val rbAll = RadioButton(this).apply { text = "Everyone"; this.id = View.generateViewId() }
+        val rbTeam = RadioButton(this).apply { text = "A whole team (a manager and everyone below)"; this.id = View.generateViewId() }
+        val rbUsers = RadioButton(this).apply { text = "Selected people"; this.id = View.generateViewId() }
         rgScope.addView(rbAll); rgScope.addView(rbTeam); rgScope.addView(rbUsers); rbAll.isChecked = true
         val btnWho = chipButton("") {}
         btnWho.visibility = View.GONE

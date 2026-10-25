@@ -48,6 +48,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.cardNotice).setOnClickListener { open(NoticesActivity::class.java) }
         findViewById<android.view.View>(R.id.cardUpdate).setOnClickListener { pendingUpdate?.let { AppUpdate.offer(this, it) } }
         Thread { AppUpdate.cleanUp(applicationContext) }.start()     // a downloaded APK from an earlier update is no longer needed
+        wrapHomeBlocks()
+        applyHomeLayout()
         setupBottomNav(Tab.HOME)
         Reminders.schedule(this)            // attendance reminders in the notification bar (once; KEEP means no duplicates)
         askNotificationPermission()
@@ -62,6 +64,96 @@ class MainActivity : AppCompatActivity() {
             showLocks()
             loadStatus()
             loadSurveyCount()
+        }
+    }
+
+    // ---- Home sections: moved / hidden by an admin (Admin Panel > Menu) ----
+    // The sections of the Home page are wrapped once, each in its own box, so a section can be moved or hidden as one piece without
+    // touching the code that fills it (that code shows and hides the cards inside by itself).
+    private val homeBlocks = LinkedHashMap<String, android.widget.LinearLayout>()
+    private var updateBox: android.widget.LinearLayout? = null
+    private var homeSig = ""
+
+    private fun wrapHomeBlocks() {
+        val content = findViewById<android.widget.LinearLayout>(R.id.homeContent)
+        val kids = (0 until content.childCount).map { content.getChildAt(it) }
+        if (kids.size != 12) return                                  // the layout was changed: leave Home exactly as it is
+        fun box(vararg idx: Int): android.widget.LinearLayout {
+            val b = android.widget.LinearLayout(this).apply { orientation = android.widget.LinearLayout.VERTICAL }
+            idx.forEach { content.removeView(kids[it]); b.addView(kids[it]) }
+            return b
+        }
+        // children of the page: 0 today card, 1 buttons, 2 app update card, 3 notice card, 4-5 Quick Actions, 6 target, 7 survey, 8-9 leave balance, 10-11 night hold
+        val parts = linkedMapOf("status" to box(0), "shortcuts" to box(1), "notices" to box(3), "actions" to box(4, 5), "target" to box(6),
+            "survey" to box(7), "balance" to box(8, 9), "night" to box(10, 11))
+        updateBox = box(2)
+        homeBlocks.putAll(parts)
+        homeBlocks["custom"] = android.widget.LinearLayout(this).apply { orientation = android.widget.LinearLayout.VERTICAL }
+        content.removeAllViews()
+    }
+
+    /** Puts the sections in the order the admin chose, hides the ones switched off, and builds the admin's own tiles. */
+    private fun applyHomeLayout() {
+        val content = findViewById<android.widget.LinearLayout>(R.id.homeContent)
+        if (homeBlocks.isEmpty()) return
+        val sig = MenuLayout.order(this, "home").joinToString(",") + "|" + MenuLayout.order(this, "home").filter { MenuLayout.hidden(this, "home:$it") }.joinToString(",") +
+            "|" + MenuLayout.custom(this).filter { it.where != "menu" }.joinToString(";") { it.toJson().toString() }
+        if (sig == homeSig) return                                   // nothing changed since the last time: leave the page alone
+        homeSig = sig
+        buildCustomTiles()
+        content.removeAllViews()
+        updateBox?.let { content.addView(it) }                       // the "new app version" card always comes first and cannot be hidden
+        MenuLayout.order(this, "home").forEach { k ->
+            val b = homeBlocks[k] ?: return@forEach
+            (b.parent as? android.view.ViewGroup)?.removeView(b)
+            b.visibility = if (MenuLayout.hidden(this, "home:$k")) android.view.View.GONE else android.view.View.VISIBLE
+            content.addView(b)
+        }
+    }
+
+    /** The admin's own tiles for Home (menus added with "Home" or "Both"): two to a row, like the Quick Actions. */
+    private fun buildCustomTiles() {
+        val box = homeBlocks["custom"] ?: return
+        box.removeAllViews()
+        val list = MenuLayout.custom(this).filter { it.where != "menu" }
+        if (list.isEmpty()) { box.visibility = android.view.View.GONE; return }
+        val dp = resources.displayMetrics.density
+        fun px(v: Int) = (v * dp).toInt()
+        box.addView(TextView(this).apply {
+            text = "More"; textSize = 18f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#6B352A"))
+            layoutParams = android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(px(22), px(22), px(22), 0) }
+        })
+        list.chunked(2).forEach { pair ->
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(px(16), px(10), px(16), 0) }
+            }
+            pair.forEach { c ->
+                row.addView(android.widget.LinearLayout(this).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL; gravity = android.view.Gravity.CENTER
+                    setBackgroundResource(R.drawable.bg_tile_peach); isClickable = true; isFocusable = true
+                    setPadding(px(8), px(10), px(8), px(10))
+                    addView(TextView(this@MainActivity).apply { text = c.icon; textSize = 28f; gravity = android.view.Gravity.CENTER })
+                    addView(TextView(this@MainActivity).apply {
+                        text = c.label; textSize = 14f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Pal.c("#6B352A")); gravity = android.view.Gravity.CENTER
+                        maxLines = 2; layoutParams = android.widget.LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = px(4) }
+                    })
+                    setOnClickListener { openCustom(c) }
+                }, android.widget.LinearLayout.LayoutParams(0, px(96), 1f).apply { marginStart = px(if (pair.indexOf(c) == 0) 0 else 6); marginEnd = px(if (pair.indexOf(c) == 0 && pair.size > 1) 6 else 0) })
+            }
+            if (pair.size == 1) row.addView(android.view.View(this), android.widget.LinearLayout.LayoutParams(0, px(96), 1f).apply { marginStart = px(6) })
+            box.addView(row)
+        }
+    }
+
+    /** A menu the admin added: opens its web link (https only) or shows its text. */
+    private fun openCustom(c: CustomMenu) {
+        if (c.kind == "link") {
+            val uri = try { android.net.Uri.parse(c.value) } catch (e: Exception) { null }
+            if (uri == null || uri.scheme != "https") { android.widget.Toast.makeText(this, "This link cannot be opened.", android.widget.Toast.LENGTH_SHORT).show(); return }
+            try { startActivity(Intent(Intent.ACTION_VIEW, uri)) } catch (e: Exception) { android.widget.Toast.makeText(this, "No app can open this link.", android.widget.Toast.LENGTH_SHORT).show() }
+        } else {
+            androidx.appcompat.app.AlertDialog.Builder(this).setTitle("${c.icon}  ${c.label}").setMessage(c.value).setPositiveButton("OK", null).show()
         }
     }
 
@@ -105,6 +197,10 @@ class MainActivity : AppCompatActivity() {
         items.add(SideItem("📊", "My Reports", "Menu", locked = isLocked("reports"), key = "reports") { open(ReportActivity::class.java) })
         items.add(SideItem("🎯", "Target vs Collection", "Menu", locked = isLocked("target"), key = "target") { open(TargetActivity::class.java) })
         items.add(SideItem("📋", "Surveys", "Menu", badge = pendingSurveys, locked = isLocked("survey"), key = "survey") { open(SurveyActivity::class.java) })
+
+        MenuLayout.custom(this).filter { it.where != "home" }.forEach { c ->
+            items.add(SideItem(c.icon, c.label, "Menu", key = c.key) { openCustom(c) })
+        }
 
         items.add(SideItem("👤", "My Profile", "Settings", locked = isLocked("profile"), key = "profile") { open(ProfileActivity::class.java) })
         items.add(SideItem("🔑", "Change Password", "Settings", key = "password") { ChangePasswordDialog.show(this, session) })
@@ -452,6 +548,7 @@ class MainActivity : AppCompatActivity() {
             session.isManager = res.optBoolean("isManager")
             AdminFlag.set(this, res.optBoolean("isAdmin"))
             MenuLayout.save(this, res.optJSONObject("menuLayout"))
+            applyHomeLayout()
             allowances = res.optJSONArray("allowances")
             showAvatar(res.optString("myPhoto"))
             showNotices(res.optJSONArray("notices"))
