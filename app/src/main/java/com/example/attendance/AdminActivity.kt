@@ -1077,7 +1077,7 @@ class AdminActivity : AppCompatActivity() {
                 infoDetailTitle.text = "🌙  Night Holds"
                 infoDetail.text = "Every night hold: night date, time, district, thana, hotel, location, and whether it was a normal or manual entry."
             } else {
-                infoSummary.text = "One row per person: Present, Late, Leave, Absent, Day Off, Total Days."
+                infoSummary.text = "One row per person: Present, Late, Leave (and Casual, Sick, Earn, Paternity days), Absent, Day Off, Total Days."
                 infoDetailTitle.text = "🗓  Daily Details"
                 infoDetail.text = "Every person, every day: status (colour-coded), time, leave type, day-off reason and location."
             }
