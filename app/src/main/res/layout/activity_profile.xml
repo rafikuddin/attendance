@@ -161,6 +161,14 @@
                         android:inputType="none"
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:hint="Designation (set by admin)" android:layout_marginTop="12dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/ddDesig"
+                        android:inputType="none"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView android:text="VEHICLE &amp; EQUIPMENT" android:textSize="12sp" android:textStyle="bold"
                     android:textColor="@color/primary" android:letterSpacing="0.06" android:layout_marginTop="20dp"
