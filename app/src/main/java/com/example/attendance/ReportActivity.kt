@@ -152,7 +152,7 @@ class ReportActivity : AppCompatActivity() {
         content.removeAllViews()
         val isManager = session.isManager
         var choice = "current"
-        var kind = "attendance"
+        val kinds = linkedSetOf("attendance")      // one or both of "attendance" and "night"
         var who = "me"
         var from = ""
         var to = ""
@@ -162,9 +162,7 @@ class ReportActivity : AppCompatActivity() {
         val hint = label("", 13f, "#8A5F52", false).apply { setPadding(0, dp(10), 0, 0) }
         val chipFrom = dateChip("From") { from = it }
         val chipTo = dateChip("To") { to = it }
-        val infoSummary = label("", 13f, "#8A5F52", false)
-        val infoDetailTitle = label("", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) }
-        val infoDetail = label("", 13f, "#8A5F52", false)
+        val infoBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val whoHint = label("", 13f, "#8A5F52", false).apply { setPadding(0, dp(8), 0, 0) }
 
         val whoViews = HashMap<String, TextView>()
@@ -177,16 +175,24 @@ class ReportActivity : AppCompatActivity() {
             result.removeAllViews()
         }
         fun refreshKind() {
-            paint(kindViews, kind)
-            if (kind == "night") {
-                infoSummary.text = "One row per person: how many night holds, how many were manual entries, days in the period."
-                infoDetailTitle.text = "🌙  Night Holds"
-                infoDetail.text = "Every night hold: night date, time, district, thana, hotel, location, and whether it was a normal or manual entry."
-            } else {
-                infoSummary.text = "One row per person: Present, Late, Leave, Absent, Day Off, Total Days."
-                infoDetailTitle.text = "🗓  Daily Details"
-                infoDetail.text = "Every person, every day: status (colour-coded), time, leave type, day-off reason and location."
+            kindViews.forEach { (k, v) ->
+                val on = k in kinds
+                v.setTextColor(Pal.c(if (on) "#FFFFFF" else "#8A5F52"))
+                v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#F0E3A6")) }
+                v.text = (if (on) "✔  " else "") + (if (k == "night") "🌙  Night hold" else "📍  Attendance")
             }
+            infoBox.removeAllViews()
+            fun block(title: String, summary: String, detailTitle: String, detail: String) {
+                if (kinds.size > 1) infoBox.addView(label(title, 15f, "#3E1D16", true).apply { setPadding(0, dp(12), 0, 0) })
+                infoBox.addView(label("📋  Summary", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) })
+                infoBox.addView(label(summary, 13f, "#8A5F52", false))
+                infoBox.addView(label(detailTitle, 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) })
+                infoBox.addView(label(detail, 13f, "#8A5F52", false))
+            }
+            if ("attendance" in kinds) block("📍  Attendance file", "One row per person: Present, Late, Leave (and Casual, Sick, Earn, Paternity days), Absent, Day Off, Total Days.",
+                "🗓  Daily Details", "Every person, every day: status (colour-coded), time, leave type, day-off reason and location.")
+            if ("night" in kinds) block("🌙  Night hold file", "Night Hold Report: E ID, Name, Desig, then Date / Location / Qty for every night, Total and Deduction (750 a night).",
+                "🌙  Night Holds", "Every night hold: night date, time, district, thana, hotel, location, and whether it was a normal or manual entry (second sheet).")
             result.removeAllViews()
         }
         fun refreshPeriod() {
@@ -209,8 +215,10 @@ class ReportActivity : AppCompatActivity() {
             form.addView(chipRow(listOf("me" to "👤  Only me", "team" to "👥  My team"), 14f, { who = it; refreshWho() }, whoViews))
             form.addView(whoHint)
         }
-        form.addView(label("REPORT", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
-        form.addView(chipRow(listOf("attendance" to "📍  Attendance", "night" to "🌙  Night hold"), 14f, { kind = it; refreshKind() }, kindViews))
+        form.addView(label("REPORT  (tap to select one or both)", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
+        // tap to switch a report on or off; one must always stay on, so the only one left cannot be switched off
+        form.addView(chipRow(listOf("attendance" to "📍  Attendance", "night" to "🌙  Night hold"), 14f,
+            { k -> if (k in kinds) { if (kinds.size > 1) kinds.remove(k) } else kinds.add(k); refreshKind() }, kindViews))
         form.addView(label("PERIOD", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, 0) })
         form.addView(chipRow(listOf("current" to "This pay period", "previous" to "Last pay period", "custom" to "Choose dates"), 13f, { choice = it; refreshPeriod() }, periodViews))
         form.addView(hint); form.addView(chipFrom); form.addView(chipTo)
@@ -218,22 +226,28 @@ class ReportActivity : AppCompatActivity() {
             if (choice == "custom" && (from.isEmpty() || to.isEmpty())) { msg.setTextColor(Pal.c("#DC2626")); msg.text = "Choose the From and To dates"; return@bigButton }
             msg.setTextColor(Pal.c("#8A5F52")); msg.text = "Preparing the file… this can take a few seconds."
             result.removeAllViews()
-            val body = JSONObject().put("action", "myReport").put("period", choice).put("kind", kind).put("who", if (isManager) who else "me")
-            if (choice == "custom") body.put("from", from).put("to", to)
-            api(body) { res, err ->
-                if (res == null) { msg.setTextColor(Pal.c("#DC2626")); msg.text = err; return@api }
-                try {
-                    val dir = File(cacheDir, "reports").apply { mkdirs() }
-                    dir.listFiles()?.forEach { it.delete() }
-                    val f = File(dir, res.optString("name", "report.xlsx"))
-                    f.writeBytes(Base64.decode(res.getString("data"), Base64.DEFAULT))
-                    msg.text = ""
-                    result.removeAllViews()
-                    result.addView(readyCard(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to"), if (res.has("records")) res.optInt("records") else -1))
-                } catch (e: Exception) {
-                    msg.setTextColor(Pal.c("#DC2626")); msg.text = "Could not prepare the file."
+            val wanted = listOf("attendance", "night").filter { it in kinds }          // always in the same order
+            val dir = File(cacheDir, "reports").apply { mkdirs() }
+            dir.listFiles()?.forEach { it.delete() }
+            val cards = ArrayList<View>()
+            fun next(i: Int) {
+                if (i >= wanted.size) { msg.text = ""; result.removeAllViews(); cards.forEach { result.addView(it) }; return }
+                val body = JSONObject().put("action", "myReport").put("period", choice).put("kind", wanted[i]).put("who", if (isManager) who else "me")
+                if (choice == "custom") body.put("from", from).put("to", to)
+                if (wanted.size > 1) msg.text = "Preparing file ${i + 1} of ${wanted.size}… this can take a few seconds."
+                api(body) { res, err ->
+                    if (res == null) { msg.setTextColor(Pal.c("#DC2626")); msg.text = err; result.removeAllViews(); cards.forEach { result.addView(it) }; return@api }
+                    try {
+                        val f = File(dir, res.optString("name", "report.xlsx"))
+                        f.writeBytes(Base64.decode(res.getString("data"), Base64.DEFAULT))
+                        cards.add(readyCard(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to"), if (res.has("records")) res.optInt("records") else -1))
+                        next(i + 1)
+                    } catch (e: Exception) {
+                        msg.setTextColor(Pal.c("#DC2626")); msg.text = "Could not prepare the file."
+                    }
                 }
             }
+            next(0)
         })
         form.addView(msg)
         content.addView(cardOf(form))
@@ -241,10 +255,7 @@ class ReportActivity : AppCompatActivity() {
 
         val info = column()
         info.addView(label("What is in the file", 16f, "#3E1D16", true))
-        info.addView(label("📋  Summary", 14f, "#6B352A", true).apply { setPadding(0, dp(10), 0, 0) })
-        info.addView(infoSummary)
-        info.addView(infoDetailTitle)
-        info.addView(infoDetail)
+        info.addView(infoBox)
         content.addView(cardOf(info))
 
         refreshWho(); refreshKind(); refreshPeriod()
