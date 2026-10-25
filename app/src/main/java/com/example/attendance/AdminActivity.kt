@@ -1073,9 +1073,9 @@ class AdminActivity : AppCompatActivity() {
                 v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#F0E3A6")) }
             }
             if (kind == "night") {
-                infoSummary.text = "One row per person: how many night holds, how many were manual entries, days in the period."
+                infoSummary.text = "Night Hold Report: E ID, Name, Desig, then Date / Location / Qty for every night, Total and Deduction (750 a night)."
                 infoDetailTitle.text = "🌙  Night Holds"
-                infoDetail.text = "Every night hold: night date, time, district, thana, hotel, location, and whether it was a normal or manual entry."
+                infoDetail.text = "Every night hold: night date, time, district, thana, hotel, location, and whether it was a normal or manual entry (second sheet)."
             } else {
                 infoSummary.text = "One row per person: Present, Late, Leave (and Casual, Sick, Earn, Paternity days), Absent, Day Off, Total Days."
                 infoDetailTitle.text = "🗓  Daily Details"
