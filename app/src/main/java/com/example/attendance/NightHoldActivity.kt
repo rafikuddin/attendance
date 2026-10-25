@@ -398,9 +398,16 @@ class NightHoldActivity : AppCompatActivity() {
         return h.length >= 3 && h.any { it.isLetter() }
     }
 
+    private var hintShown = false
+
     private fun updateButton() {
         btnSubmit.isEnabled = !submittedToday && location != null && district != null && thana != null &&
             validHotel(etHotel.text.toString())
+        // Say WHY the button is grey, so it does not look broken (for example a hotel name of only 2 letters).
+        val typed = etHotel.text.toString().trim()
+        if (!submittedToday && typed.isNotEmpty() && !validHotel(typed)) {
+            msg("Hotel name needs at least 3 characters, with letters.", false); hintShown = true
+        } else if (hintShown) { tvMsg.text = ""; hintShown = false }
     }
 
     private fun msg(text: String, ok: Boolean) {
