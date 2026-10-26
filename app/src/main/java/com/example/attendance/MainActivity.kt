@@ -197,6 +197,7 @@ class MainActivity : AppCompatActivity() {
         items.add(SideItem("📊", "My Reports", "Menu", locked = isLocked("reports"), key = "reports") { open(ReportActivity::class.java) })
         items.add(SideItem("🎯", "Target vs Collection", "Menu", locked = isLocked("target"), key = "target") { open(TargetActivity::class.java) })
         items.add(SideItem("📋", "Surveys", "Menu", badge = pendingSurveys, locked = isLocked("survey"), key = "survey") { open(SurveyActivity::class.java) })
+        items.add(SideItem("🛒", "Orders", "Menu", locked = isLocked("orders"), key = "orders") { open(OrdersActivity::class.java) })
 
         MenuLayout.custom(this).filter { it.where != "home" }.forEach { c ->
             items.add(SideItem(c.icon, c.label, "Menu", key = c.key) { openCustom(c) })
