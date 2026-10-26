@@ -218,6 +218,13 @@ class TeamActivity : AppCompatActivity() {
                 maxLines = 2; setPadding(0, dp(2), 0, 0)
             })
         }
+        if (status == "Present" && late) {
+            val why = o.optString("lateReason")
+            nameCol.addView(TextView(this).apply {
+                text = if (why.isEmpty()) "📝 No late reason yet" else "📝 Late reason: $why"; textSize = 12f
+                setTextColor(Pal.c(if (why.isEmpty()) "#B45309" else "#6B352A")); setPadding(0, dp(2), 0, 0)
+            })
+        }
         top.addView(nameCol)
         top.addView(pill(if (status == "On Leave" && detail.isNotEmpty()) detail.substringBefore(" ") else pillLabel, fg, bg))
         col.addView(top)

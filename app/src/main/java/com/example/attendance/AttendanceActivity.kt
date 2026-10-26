@@ -350,6 +350,7 @@ class AttendanceActivity : AppCompatActivity() {
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             showTodayDetail(todayRecord)
+            LateReason.bind(this, findViewById(R.id.atLateReason), todayRecord)
             // Already submitted (Present / Late), or marked Absent: there is nothing left to capture or submit today.
             val absentToday = todayTime == null && leaveType == null && holidayToday == null && !isFridayToday && isAfterCutoff
             setEntryVisible(!(todayTime != null || absentToday))
