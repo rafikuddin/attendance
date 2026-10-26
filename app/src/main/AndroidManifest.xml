@@ -30,6 +30,7 @@
         <activity android:name=".TargetActivity" android:exported="false" />
         <activity android:name=".SurveyActivity" android:exported="false" />
         <activity android:name=".OrdersActivity" android:exported="false" />
+        <activity android:name=".DownloadsActivity" android:exported="false" />
         <activity android:name=".OrderNewActivity" android:exported="false" />
         <activity android:name=".OrderSetupActivity" android:exported="false" />
         <activity android:name=".TeamMembersActivity" android:exported="false" />

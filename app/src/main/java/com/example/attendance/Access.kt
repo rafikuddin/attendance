@@ -25,6 +25,7 @@ object Access {
         "target" to "🎯  Target vs Collection",
         "survey" to "📋  Surveys",
         "orders" to "🛒  Orders",
+        "downloads" to "⬇️  Downloads",
         "admin" to "🛠  Admin Panel (admins only)"
     )
 
@@ -62,6 +63,7 @@ object Access {
         TargetActivity::class.java -> "target"
         SurveyActivity::class.java -> "survey"
         OrdersActivity::class.java, OrderNewActivity::class.java, OrderSetupActivity::class.java -> "orders"
+        DownloadsActivity::class.java -> "downloads"
         ProfileActivity::class.java -> "profile"
         AdminActivity::class.java -> "admin"
         else -> null

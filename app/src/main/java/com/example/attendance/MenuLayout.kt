@@ -48,7 +48,7 @@ object HomeBlocks {
  */
 object MenuLayout {
     val standard: Map<String, List<String>> = mapOf(
-        "menu" to listOf("attendance", "leave", "night", "calendar", "team", "members", "notices", "reports", "target", "survey", "orders"),
+        "menu" to listOf("attendance", "leave", "night", "calendar", "team", "members", "notices", "reports", "target", "survey", "orders", "downloads"),
         "settings" to listOf("profile", "password", "reminders", "manual", "update", "admin"),
         "admin" to AdminTabs.all.map { it.key },
         "home" to HomeBlocks.names.keys.toList()

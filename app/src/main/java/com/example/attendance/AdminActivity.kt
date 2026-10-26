@@ -206,7 +206,7 @@ class AdminActivity : AppCompatActivity() {
 
     private val menuNames = mapOf(
         "attendance" to "📸  Attendance", "leave" to "🌴  Leave", "night" to "🌙  Night Hold", "calendar" to "📅  Calendar", "team" to "👥  Team",
-        "members" to "🪪  Team members", "notices" to "🔔  Notices", "reports" to "📊  My Reports", "target" to "🎯  Target vs Collection", "survey" to "📋  Surveys", "orders" to "🛒  Orders",
+        "members" to "🪪  Team members", "notices" to "🔔  Notices", "reports" to "📊  My Reports", "target" to "🎯  Target vs Collection", "survey" to "📋  Surveys", "orders" to "🛒  Orders", "downloads" to "⬇️  Downloads",
         "profile" to "👤  My Profile", "password" to "🔑  Change Password", "reminders" to "⏰  Attendance reminders", "manual" to "📝  Manual entry",
         "update" to "⬆️  Update app", "admin" to "🛠  Admin Panel"
     )
