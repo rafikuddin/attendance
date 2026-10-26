@@ -11,6 +11,8 @@
     <application android:name=".App" android:label="SAM BOND Attendance" android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/Theme.Attendance"
         android:allowBackup="false" android:usesCleartextTraffic="false">
+        <!-- Asks Google Play services to download the face and text models together with the app (they are not inside the APK) -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="face,ocr" />
         <activity android:name=".ForceUpdateActivity" android:exported="false" android:launchMode="singleTop" />
         <activity android:name=".SignupActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".LoginActivity" android:exported="true">

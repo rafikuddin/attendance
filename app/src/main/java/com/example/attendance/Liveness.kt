@@ -13,7 +13,7 @@ import com.google.mlkit.vision.face.FaceDetectorOptions
 /**
  * "Are you really there?" check that runs on the live camera picture BEFORE the Capture Selfie button appears.
  * One face must be in view and do two random things in a row (blink, turn the head to one side, smile). A photo or a still
- * picture cannot do that. It runs on the phone with ML Kit (no picture leaves the phone for it), and it keeps watching until
+ * picture cannot do that. It runs on the phone with ML Kit from Google Play services (the model is not inside the APK; no picture leaves the phone for it), and it keeps watching until
  * the selfie is taken: the Capture button only works while a face is still in view.
  *
  * It is a phone-side check: it stops casual cheating (holding up a photo), it is not proof against a modified app.

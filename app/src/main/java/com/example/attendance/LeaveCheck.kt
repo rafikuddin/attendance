@@ -7,7 +7,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.Locale
 
 /**
- * Reads the picture of a leave application on the phone (ML Kit text recognition, the model is inside the app) and decides whether it
+ * Reads the picture of a leave application on the phone (ML Kit text recognition from Google Play services; the model is not inside the APK) and decides whether it
  * LOOKS like a leave application: enough readable words, at least one of leave / application / apply / subject, and the usual
  * letter words (sir, madam, dear, respectfully, kindly, request, grant, sick, casual, signature …). A selfie, a screenshot, a receipt or a
  * picture of something else has none of this. Only English / Latin text is read: it is a check, not a proof, and the admin can switch it off
