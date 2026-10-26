@@ -66,7 +66,7 @@
                 <TextView android:text="LEAVE APPLICATION (PICTURE, REQUIRED)" android:textSize="12sp" android:textStyle="bold"
                     android:textColor="@color/primary" android:letterSpacing="0.06" android:layout_marginTop="16dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                <TextView android:text="Both are required: write the reason above and attach a picture of your signed leave application."
+                <TextView android:text="Both are required: write the reason above and attach a picture of your signed leave application. The app checks the picture: only a leave application is accepted, and the Apply for Leave button appears after it passes."
                     android:textSize="12sp" android:textColor="@color/muted" android:layout_marginTop="2dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"

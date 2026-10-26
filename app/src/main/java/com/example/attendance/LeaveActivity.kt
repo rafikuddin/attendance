@@ -50,6 +50,7 @@ class LeaveActivity : AppCompatActivity() {
 
     // The leave-application picture (already shrunk to a JPEG), if the person attached one.
     private var applicationJpeg: ByteArray? = null
+    private var leaveCheckOn = true            // the server can switch the picture check off (Script Property LEAVE_ATTACHMENT_CHECK = off)
     private var cameraFile: File? = null
     private lateinit var appPreviewBox: View
     private lateinit var imgApp: ImageView
@@ -89,6 +90,7 @@ class LeaveActivity : AppCompatActivity() {
             pick(to ?: from, from) { c -> to = c; refresh() }
         }
         btnApply.setOnClickListener { apply() }
+        btnApply.visibility = View.GONE            // appears once a leave application picture has been checked
         appPreviewBox = findViewById(R.id.appPreviewBox); imgApp = findViewById(R.id.imgApp); tvAppInfo = findViewById(R.id.tvAppInfo)
         findViewById<View>(R.id.btnPickApp).setOnClickListener { pickPicture.launch("image/*") }
         findViewById<View>(R.id.btnTakeApp).setOnClickListener {
@@ -195,9 +197,34 @@ class LeaveActivity : AppCompatActivity() {
             } catch (e: Exception) { null } catch (e: OutOfMemoryError) { null }
             runOnUiThread {
                 if (bytes == null) msg("❌ That picture could not be read. Please try another one.", false)
-                else { applicationJpeg = bytes; showPreview(bytes); msg("", true) }
+                else checkApplication(bytes)
             }
         }.start()
+    }
+
+    /** Reads the picture and only accepts a leave application; "Apply for Leave" appears after it passes. */
+    private fun checkApplication(bytes: ByteArray) {
+        if (!leaveCheckOn) { acceptApplication(bytes, ""); return }
+        msg("🔍 Checking that this is a leave application…", true)
+        val bmp = try { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) } catch (e: Exception) { null } catch (e: OutOfMemoryError) { null }
+        if (bmp == null) { msg("❌ That picture could not be read. Please try another one.", false); return }
+        LeaveCheck.check(bmp) { looks ->
+            when (looks) {
+                true -> acceptApplication(bytes, "✅ Leave application checked.")
+                null -> acceptApplication(bytes, "ℹ️ The picture check is not available on this phone, so the picture was accepted.")
+                false -> {
+                    clearPicture()
+                    msg("❌ This does not look like a leave application. Please attach a clear photo of your signed leave application (the whole page, in good light, with the text readable). Nothing else is accepted.", false)
+                }
+            }
+        }
+    }
+
+    private fun acceptApplication(bytes: ByteArray, note: String) {
+        applicationJpeg = bytes
+        showPreview(bytes)
+        btnApply.visibility = View.VISIBLE
+        msg(note, true)
     }
 
     private fun showPreview(bytes: ByteArray) {
@@ -208,6 +235,7 @@ class LeaveActivity : AppCompatActivity() {
 
     private fun clearPicture() {
         applicationJpeg = null
+        btnApply.visibility = View.GONE            // no checked leave application, no Apply button
         imgApp.setImageDrawable(null)
         appPreviewBox.visibility = View.GONE
     }
@@ -244,6 +272,7 @@ class LeaveActivity : AppCompatActivity() {
     }
 
     private fun showLeaves(res: JSONObject) {
+        leaveCheckOn = res.optBoolean("leaveCheck", true)
         list.removeAllViews()
         renderBalance(res)
         val arr = res.getJSONArray("leaves")

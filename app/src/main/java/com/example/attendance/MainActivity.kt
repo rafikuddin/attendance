@@ -558,6 +558,8 @@ class MainActivity : AppCompatActivity() {
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
             showTodayDetail(todayRecord)
             LateReason.bind(this, findViewById(R.id.tvLateReason), todayRecord)
+            if (todayLate && todayRecord?.optString("lateReason")?.isEmpty() == true)
+                LateReason.require(this) { loadStatus() }          // late today and no reason yet: compulsory
             res.optJSONArray("balance")?.let { showBalance(it) }
             // A night is named by the date its evening started, so between midnight and 6 AM "tonight" is still yesterday's date.
             // The server says which night it is (the night hold hours are set by an admin); the old 6 AM rule is only a fallback.

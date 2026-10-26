@@ -335,7 +335,9 @@ class AttendanceActivity : AppCompatActivity() {
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
                     "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
                 loadTodayStatus()      // the card on top now shows the new attendance
-                popup(if (late) "⏰ Late Present" else "✅ Attendance submitted",
+                if (late && forDate == null) {
+                    LateReason.require(this) { loadTodayStatus() }          // compulsory: the reason must be written before going on
+                } else popup(if (late) "⏰ Late Present" else "✅ Attendance submitted",
                     (if (late) "Your attendance was recorded as late.\n\n" else "Your attendance was submitted successfully.\n\n") +
                     "Date: ${res.optString("date")}\nTime: ${res.optString("time")}")
             } else {
@@ -414,6 +416,8 @@ class AttendanceActivity : AppCompatActivity() {
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             showTodayDetail(todayRecord)
             LateReason.bind(this, findViewById(R.id.atLateReason), todayRecord)
+            if (todayLate && todayRecord?.optString("lateReason")?.isEmpty() == true && forDate == null)
+                LateReason.require(this) { loadTodayStatus() }          // still no reason for today's late attendance
             // Already submitted (Present / Late), or marked Absent: there is nothing left to capture or submit today.
             val absentToday = todayTime == null && leaveType == null && holidayToday == null && !isFridayToday && isAfterCutoff
             setEntryVisible(!(todayTime != null || absentToday))
