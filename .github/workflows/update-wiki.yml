@@ -78,4 +78,13 @@ jobs:
           git config user.email "actions@github.com"
           git rm -q -f "${{ steps.find.outputs.zip }}"
           git commit -q -m "Wiki zip applied"
-          git push --quiet
+          # Another workflow (for example Update Wiki) may push to this branch at the same moment. If GitHub refuses the push,
+          # take that newer commit first (rebase) and push again, a few times, instead of failing.
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git pull --rebase --quiet origin "$GITHUB_REF_NAME" && git push --quiet origin "HEAD:$GITHUB_REF_NAME"; then ok=1; break; fi
+            echo "The push was refused (another workflow pushed at the same time). Trying again ($i of 5)..."
+            git rebase --abort 2>/dev/null || true
+            sleep $((i * 4))
+          done
+          if [ "$ok" != 1 ]; then echo "::error::Could not save the result after 5 tries. Run this workflow again (Actions > Run workflow)."; exit 1; fi
