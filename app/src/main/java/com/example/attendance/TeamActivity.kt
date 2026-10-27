@@ -225,6 +225,12 @@ class TeamActivity : AppCompatActivity() {
                 setTextColor(Pal.c(if (why.isEmpty()) "#B45309" else "#6B352A")); setPadding(0, dp(2), 0, 0)
             })
         }
+        if (status == "Present" && FaceId.isWarning(o.optString("face"))) {
+            nameCol.addView(TextView(this).apply {
+                text = FaceId.describe(o.optString("face")); textSize = 12f
+                setTextColor(Pal.c("#B45309")); setPadding(0, dp(2), 0, 0)
+            })
+        }
         top.addView(nameCol)
         top.addView(pill(if (status == "On Leave" && detail.isNotEmpty()) detail.substringBefore(" ") else pillLabel, fg, bg))
         col.addView(top)

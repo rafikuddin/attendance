@@ -52,6 +52,7 @@ dependencies {
     implementation 'com.google.android.gms:play-services-location:21.3.0'
     implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.1'   // reads the leave-application picture. NOT bundled: Google Play services holds the model, so the APK stays small
     implementation 'com.google.android.gms:play-services-mlkit-face-detection:17.1.0'     // live check before the selfie. NOT bundled (same reason); the model is fetched by Google Play services
+    implementation 'com.google.android.gms:play-services-tflite-java:16.1.0'              // runs the face-recognition model (app/src/main/assets/face_model.tflite). NOT bundled: the runtime lives in Google Play services
     implementation 'androidx.work:work-runtime:2.9.1'                    // the attendance reminders in the notification bar
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'   // encrypted storage for the sign-in token
 }

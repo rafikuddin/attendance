@@ -233,7 +233,7 @@ class CalendarActivity : AppCompatActivity() {
         val dayCal = Calendar.getInstance().apply { set(p[0], p[1] - 1, p[2]) }
         val isFriday = dayCal.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY
         val dayText = when {
-            r != null -> "${if (r.optBoolean("late")) "⏰ Late Present" else "✅ Present"} · $key\nTime: ${r.optString("time")}${if (r.optBoolean("late")) "\nLate reason: " + r.optString("lateReason").ifEmpty { "(none given)" } else ""}\nLocation: ${r.optString("lat")}, ${r.optString("lng")}\n${r.optString("address")}"
+            r != null -> "${if (r.optBoolean("late")) "⏰ Late Present" else "✅ Present"} · $key\nTime: ${r.optString("time")}${if (r.optBoolean("late")) "\nLate reason: " + r.optString("lateReason").ifEmpty { "(none given)" } else ""}\nLocation: ${r.optString("lat")}, ${r.optString("lng")}\n${r.optString("address")}${FaceId.describe(r.optString("face"))?.let { "\n$it" } ?: ""}"
             lv != null -> "🌴 ${lv.optString("type")} (${lv.optString("status")})\n${lv.optString("from")} → ${lv.optString("to")} · ${lv.optString("days")} day(s)\n${lv.optString("reason")}"
             holidays.containsKey(key) -> "🎉 Holiday · ${holidays[key]} · $key"
             isFriday -> "🗓️ Weekly Off (Friday) · $key"

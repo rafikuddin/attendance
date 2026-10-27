@@ -625,7 +625,30 @@ class AdminActivity : AppCompatActivity() {
                 setOnClickListener { resetDialog(o) }
             })
         }
+        val faceCount = o.optInt("face")
+        if (faceCount > 0) {
+            col.addView(label("🙂 Face reference saved ($faceCount of 3 selfies)", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
+            col.addView(MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                text = "🙂  Reset face"
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+                setOnClickListener { resetFaceDialog(o) }
+            })
+        }
         return cardOf(col)
+    }
+
+    /** Forgets the saved face of one person: their next selfies build a new reference (for a wrong first selfie, or a very different look). */
+    private fun resetFaceDialog(user: JSONObject) {
+        val username = user.optString("username")
+        AlertDialog.Builder(this)
+            .setTitle("Reset face of ${user.optString("name")}?")
+            .setMessage("The saved face reference is deleted. Their next selfies will make a new one, so make sure the next selfie is the real person. Old attendance is not changed.")
+            .setPositiveButton("Reset face") { _, _ ->
+                adminApi(JSONObject().put("action", "adminFaceReset").put("targetUsername", username)) { res, err ->
+                    if (res != null) { toast("Face reset"); loadUsers() } else toast(err ?: "Could not reset")
+                }
+            }
+            .setNegativeButton("Cancel", null).show()
     }
 
     /** Tick = the person MAY use it; untick = locked. [now] is the current locked list of one person (null when several are chosen). */

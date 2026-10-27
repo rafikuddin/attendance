@@ -14,7 +14,6 @@ import android.media.ExifInterface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Size
 import android.util.Base64
 import android.view.View
 import android.widget.*
@@ -30,8 +29,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class AttendanceActivity : AppCompatActivity() {
     private lateinit var session: Session
@@ -44,11 +41,6 @@ class AttendanceActivity : AppCompatActivity() {
     private lateinit var btnSubmit: Button
 
     private var imageCapture: ImageCapture? = null
-    // Live check: the Capture Selfie button only appears after a face in view has blinked / turned / smiled (see Liveness.kt)
-    private lateinit var tvLiveness: TextView
-    private var liveness: Liveness? = null
-    private var liveOk = false
-    private val analysisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val uiHandler = Handler(Looper.getMainLooper())
     private var photoFile: File? = null
     private var captureTime: Date? = null
@@ -71,19 +63,19 @@ class AttendanceActivity : AppCompatActivity() {
         if (!session.loggedIn) { goLogin(); return }
         setContentView(R.layout.activity_attendance)
         previewView = findViewById(R.id.previewView)
-        tvLiveness = findViewById(R.id.tvLiveness)
         imgSelfie = findViewById(R.id.imgSelfie)
         tvLive = findViewById(R.id.tvLive)
         tvSummary = findViewById(R.id.tvSummary)
         cardSummary = findViewById(R.id.cardSummary)
         forDate = intent.getStringExtra(EXTRA_FOR_DATE)?.takeIf { it.isNotBlank() }
         setupHeader(if (forDate != null) "Manual Attendance" else "Mark Attendance")
+        faceNotice()
         setupBottomNav(Tab.ATTENDANCE)
         enforceAccess("attendance")
         btnCapture = findViewById(R.id.btnCapture)
         btnSubmit = findViewById(R.id.btnSubmit)
 
-        applyCaptureVisibility()                      // hidden until the live check is passed
+        applyCaptureVisibility()
         btnCapture.setOnClickListener {
             if (photoFile != null) retake() else captureSelfie()
         }
@@ -121,57 +113,30 @@ class AttendanceActivity : AppCompatActivity() {
             val selector = if (provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA))
                 CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
             provider.unbindAll()
-            val check = liveness ?: Liveness(
-                onPrompt = { text -> tvLiveness.text = text },
-                onPassed = {
-                    liveOk = true
-                    tvLiveness.text = "✅ Live check passed.\nNow capture your selfie."
-                    applyCaptureVisibility()
-                    // the pass is good for 30 seconds: after that, if no selfie was taken, the check starts again
-                    uiHandler.postDelayed({ if (liveOk && photoFile == null && liveness?.unavailable != true) beginLiveness() }, 30000)
-                },
-                onUnavailable = {
-                    liveOk = true
-                    tvLiveness.text = "ℹ️ The live check is not available on this phone.\nYou can capture your selfie."
-                    applyCaptureVisibility()
-                }
-            ).also { liveness = it }
-            val analysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setTargetResolution(Size(480, 640))
-                .build().also { it.setAnalyzer(analysisExecutor, check) }
-            try {
-                provider.bindToLifecycle(this, selector, preview, imageCapture, analysis)
-                beginLiveness()
-            } catch (e: Exception) {
-                // this phone cannot run the picture check next to the photo: take the selfie without it, as before
-                provider.unbindAll()
-                provider.bindToLifecycle(this, selector, preview, imageCapture)
-                liveOk = true
-                tvLiveness.visibility = View.GONE
-                applyCaptureVisibility()
-            }
+            provider.bindToLifecycle(this, selector, preview, imageCapture)
         }, ContextCompat.getMainExecutor(this))
     }
 
-    /** (Re)starts the live check: the Capture button hides and the instructions show on the camera picture. */
-    private fun beginLiveness() {
-        uiHandler.removeCallbacksAndMessages(null)
-        liveOk = false
-        tvLiveness.visibility = View.VISIBLE
-        applyCaptureVisibility()
-        liveness?.restart()
+    /** The Capture / Retake button shows only while attendance can still be marked. */
+    private fun applyCaptureVisibility() {
+        btnCapture.visibility = if (!entryHidden) View.VISIBLE else View.GONE
     }
 
-    /** The Capture / Retake button shows only while attendance can be marked AND the live check is passed (or a photo is already taken). */
-    private fun applyCaptureVisibility() {
-        btnCapture.visibility = if (!entryHidden && (liveOk || photoFile != null)) View.VISIBLE else View.GONE
+    /** Said once, the first time the face check is in the app: what is compared, what leaves the phone, what happens on a difference. */
+    private fun faceNotice() {
+        if (!FaceId.available(this)) return
+        val prefs = getSharedPreferences("face", MODE_PRIVATE)
+        if (prefs.getBoolean("noticed", false)) return
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("🙂 Face check")
+            .setMessage("Your selfie is now checked against your own face.\n\nThe face is turned into a short code on this phone and only that code is sent with your attendance. If it does not look like you, your attendance is still saved, and your line manager and the admin can see a note.")
+            .setCancelable(false)
+            .setPositiveButton("OK") { _, _ -> prefs.edit().putBoolean("noticed", true).apply() }
+            .show()
     }
 
     private fun captureSelfie() {
         val capture = imageCapture ?: return
-        if (!liveOk) return
-        if (liveness?.faceRecent() == false) { toast("Look at the camera, then tap Capture again."); return }
         btnCapture.isEnabled = false
         captureTime = Date()
         val file = File(cacheDir, "selfie_${System.currentTimeMillis()}.jpg")
@@ -180,7 +145,6 @@ class AttendanceActivity : AppCompatActivity() {
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(r: ImageCapture.OutputFileResults) {
                     photoFile = file
-                    tvLiveness.visibility = View.GONE
                     btnCapture.text = "🔄  Retake"
                     btnCapture.isEnabled = true
                     fetchLocation()                       // starts right away, in parallel with the preview below
@@ -225,7 +189,6 @@ class AttendanceActivity : AppCompatActivity() {
         photoFile = null
         imgSelfie.visibility = View.GONE
         btnCapture.text = "📸  Capture Selfie"
-        beginLiveness()                              // a new selfie needs a new live check
         btnSubmit.isEnabled = false
         if (forDate == null) cardSummary.visibility = View.GONE
         tvLive.text = "Date: -\nTime: -\nLocation: -"
@@ -238,8 +201,6 @@ class AttendanceActivity : AppCompatActivity() {
     override fun onDestroy() {
         locHandle?.cancel()
         uiHandler.removeCallbacksAndMessages(null)
-        liveness?.close()
-        analysisExecutor.shutdown()
         super.onDestroy()
     }
 
@@ -299,6 +260,8 @@ class AttendanceActivity : AppCompatActivity() {
                 val out = ByteArrayOutputStream()
                 loadScaled(file.absolutePath, 640).compress(Bitmap.CompressFormat.JPEG, 65, out)
                 val photo = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+                // Face check (only when the face model is in the app): the face print is made here on the phone and only the numbers are sent.
+                val face = if (FaceId.available(this)) FaceId.embed(this, loadScaled(file.absolutePath, 1024)) else null
                 JSONObject()
                     .put("action", "submit")
                     .put("username", username)
@@ -307,6 +270,7 @@ class AttendanceActivity : AppCompatActivity() {
                     .put("address", addr)
                     .put("photo", photo)
                     .also { if (forDate != null) it.put("forDate", forDate) }
+                    .also { if (face?.print != null) it.put("face", face.print) else if (face?.noFace == true) it.put("faceState", "noface") }
             } catch (e: Exception) {
                 runOnUiThread {
                     btnSubmit.isEnabled = true; btnCapture.isEnabled = true
@@ -333,7 +297,8 @@ class AttendanceActivity : AppCompatActivity() {
                 tvSummary.setTextColor(Pal.c(if (late) "#9A3412" else "#166534"))
                 tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}${if (res.optBoolean("manual")) " (manual)" else ""}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
-                    "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
+                    "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"+
+                    (if (res.optBoolean("faceEnrolled")) "\n\n🙂 Your face was saved as your reference. Later selfies are compared with it." else "")
                 loadTodayStatus()      // the card on top now shows the new attendance
                 if (late && forDate == null) {
                     LateReason.require(this) { loadTodayStatus() }          // compulsory: the reason must be written before going on
