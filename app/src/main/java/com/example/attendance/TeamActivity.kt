@@ -79,7 +79,7 @@ class TeamActivity : AppCompatActivity() {
 
     private fun render(res: JSONObject) {
         listTeam.removeAllViews(); listLeaves.removeAllViews()
-        renderCounts(res.getJSONObject("counts"))
+        renderCounts(res.getJSONObject("counts"), res.optJSONArray("people"))
         val reports = res.getJSONArray("reports")
         if (reports.length() == 0) listTeam.addView(note("No one reports here yet."))
         else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
@@ -120,7 +120,7 @@ class TeamActivity : AppCompatActivity() {
     }
 
     /** A title line, then six equal coloured tiles in two rows of three. Nothing scrolls sideways, so no label is ever cut off. */
-    private fun renderCounts(c: JSONObject) {
+    private fun renderCounts(c: JSONObject, people: org.json.JSONArray?) {
         countsBox.removeAllViews()
         // label, number, text colour, tile colour, symbol
         val items = listOf(
@@ -161,10 +161,43 @@ class TeamActivity : AppCompatActivity() {
                     text = (item[4] as String) + " " + (item[0] as String); textSize = 12f; setTypeface(null, Typeface.BOLD)
                     setTextColor(Pal.c(item[2] as String)); maxLines = 1
                 })
+                tile.isClickable = true; tile.isFocusable = true
+                tile.setOnClickListener { showPeople(item[0] as String, item[4] as String, people) }       // tap a number: who is behind it
                 row.addView(tile)
             }
             countsBox.addView(row)
         }
+    }
+
+    /** The people behind one number (Present, Late, On Leave, Off, Absent or Pending): everybody below, line managers included. */
+    private fun showPeople(label: String, symbol: String, people: org.json.JSONArray?) {
+        if (people == null) { android.widget.Toast.makeText(this, "Pull down to refresh, then tap again.", android.widget.Toast.LENGTH_SHORT).show(); return }
+        val rows = ArrayList<JSONObject>()
+        for (i in 0 until people.length()) {
+            val p = people.getJSONObject(i)
+            val st = p.optString("status")
+            val hit = when (label) { "Late" -> st == "Present" && p.optBoolean("late"); else -> st == label }
+            if (hit) rows.add(p)
+        }
+        rows.sortBy { it.optString("name").lowercase() }
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), dp(8)) }
+        if (rows.isEmpty()) box.addView(note("Nobody is $label right now."))
+        rows.forEach { p ->
+            val detail = p.optString("detail")
+            val manager = p.optString("manager")
+            box.addView(TextView(this).apply {
+                text = p.optString("name"); textSize = 15f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")); setPadding(0, dp(10), 0, 0)
+            })
+            box.addView(TextView(this).apply {
+                text = "ID ${p.optString("username")}" + (if (manager.isNotEmpty()) " · Line manager: $manager" else "") + (if (detail.isNotEmpty()) " · $detail" else "")
+                textSize = 12f; setTextColor(Pal.c("#8A5F52"))
+            })
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("$symbol $label (${rows.size})")
+            .setView(android.widget.ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Close", null)
+            .show()
     }
 
     private fun note(text: String) = TextView(this).apply {

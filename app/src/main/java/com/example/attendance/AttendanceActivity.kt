@@ -81,7 +81,6 @@ class AttendanceActivity : AppCompatActivity() {
         cardSummary = findViewById(R.id.cardSummary)
         forDate = intent.getStringExtra(EXTRA_FOR_DATE)?.takeIf { it.isNotBlank() }
         setupHeader(if (forDate != null) "Manual Attendance" else "Mark Attendance")
-        faceNotice()
         setupBottomNav(Tab.ATTENDANCE)
         enforceAccess("attendance")
         btnCapture = findViewById(R.id.btnCapture)
@@ -191,19 +190,6 @@ class AttendanceActivity : AppCompatActivity() {
     /** The Capture / Retake button shows only while attendance can be marked AND the live check is passed (or switched off, or a photo is already taken). */
     private fun applyCaptureVisibility() {
         btnCapture.visibility = if (!entryHidden && (liveOk || photoFile != null)) View.VISIBLE else View.GONE
-    }
-
-    /** Said once, the first time the face check is in the app: what is compared, what leaves the phone, what happens on a difference. */
-    private fun faceNotice() {
-        if (!FaceId.available(this)) return
-        val prefs = getSharedPreferences("face", MODE_PRIVATE)
-        if (prefs.getBoolean("noticed", false)) return
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("🙂 Face check")
-            .setMessage("Your selfie is now checked against your own face.\n\nThe face is turned into a short code on this phone and only that code is sent with your attendance. If it does not look like you, your attendance is still saved, and your line manager and the admin can see a note.")
-            .setCancelable(false)
-            .setPositiveButton("OK") { _, _ -> prefs.edit().putBoolean("noticed", true).apply() }
-            .show()
     }
 
     private fun captureSelfie() {
@@ -374,8 +360,7 @@ class AttendanceActivity : AppCompatActivity() {
                 tvSummary.setTextColor(Pal.c(if (late) "#9A3412" else "#166534"))
                 tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}${if (res.optBoolean("manual")) " (manual)" else ""}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
-                    "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"+
-                    (if (res.optBoolean("faceEnrolled")) "\n\n🙂 Your face was saved as your reference. Later selfies are compared with it." else "")
+                    "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
                 loadTodayStatus()      // the card on top now shows the new attendance
                 if (late && forDate == null) {
                     LateReason.require(this) { loadTodayStatus() }          // compulsory: the reason must be written before going on
