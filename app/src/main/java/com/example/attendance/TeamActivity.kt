@@ -162,42 +162,137 @@ class TeamActivity : AppCompatActivity() {
                     setTextColor(Pal.c(item[2] as String)); maxLines = 1
                 })
                 tile.isClickable = true; tile.isFocusable = true
-                tile.setOnClickListener { showPeople(item[0] as String, item[4] as String, people) }       // tap a number: who is behind it
+                tile.setOnClickListener { showPeople(item[0] as String, item[4] as String, item[2] as String, item[3] as String, people) }       // tap a number: who is behind it
                 row.addView(tile)
             }
             countsBox.addView(row)
         }
     }
 
-    /** The people behind one number (Present, Late, On Leave, Off, Absent or Pending): everybody below, line managers included. */
-    private fun showPeople(label: String, symbol: String, people: org.json.JSONArray?) {
+    /**
+     * The people behind one number (Present, Late, On Leave, Off, Absent or Pending): everybody below, line managers included.
+     * A full-height sheet with a search box; each person is one row, and tapping a row opens that person's calendar.
+     */
+    private fun showPeople(label: String, symbol: String, fg: String, bg: String, people: org.json.JSONArray?) {
         if (people == null) { android.widget.Toast.makeText(this, "Pull down to refresh, then tap again.", android.widget.Toast.LENGTH_SHORT).show(); return }
-        val rows = ArrayList<JSONObject>()
+        val all = ArrayList<JSONObject>()
         for (i in 0 until people.length()) {
             val p = people.getJSONObject(i)
             val st = p.optString("status")
             val hit = when (label) { "Late" -> st == "Present" && p.optBoolean("late"); else -> st == label }
-            if (hit) rows.add(p)
+            if (hit) all.add(p)
         }
-        rows.sortBy { it.optString("name").lowercase() }
-        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), dp(8)) }
-        if (rows.isEmpty()) box.addView(note("Nobody is $label right now."))
-        rows.forEach { p ->
-            val detail = p.optString("detail")
-            val manager = p.optString("manager")
-            box.addView(TextView(this).apply {
-                text = p.optString("name"); textSize = 15f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")); setPadding(0, dp(10), 0, 0)
-            })
-            box.addView(TextView(this).apply {
-                text = "ID ${p.optString("username")}" + (if (manager.isNotEmpty()) " · Line manager: $manager" else "") + (if (detail.isNotEmpty()) " · $detail" else "")
-                textSize = 12f; setTextColor(Pal.c("#8A5F52"))
-            })
+        all.sortBy { it.optString("name").lowercase() }
+
+        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(Pal.card); cornerRadii = floatArrayOf(dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), 0f, 0f, 0f, 0f) }
+            setPadding(dp(16), dp(14), dp(16), dp(8))
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.88f).toInt())
         }
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("$symbol $label (${rows.size})")
-            .setView(android.widget.ScrollView(this).apply { addView(box) })
-            .setPositiveButton("Close", null)
-            .show()
+        // header: coloured symbol tile, the title with the count, and a close button
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        head.addView(TextView(this).apply {
+            text = symbol; textSize = 22f; gravity = Gravity.CENTER
+            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c(bg)) }
+            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(12) }
+        })
+        val titleCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        titleCol.addView(TextView(this).apply { text = label; textSize = 20f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(fg)) })
+        val count = TextView(this).apply { textSize = 13f; setTextColor(Pal.c("#8A5F52")) }
+        titleCol.addView(count)
+        head.addView(titleCol)
+        head.addView(TextView(this).apply {
+            text = "✕"; textSize = 18f; gravity = Gravity.CENTER; setTextColor(Pal.c("#6B352A"))
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Pal.c("#F0E3A6")) }
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
+            setOnClickListener { sheet.dismiss() }
+        })
+        root.addView(head)
+
+        // search
+        val search = android.widget.EditText(this).apply {
+            hint = "🔍  Search name or ID"; textSize = 15f; setSingleLine(true)
+            setTextColor(Pal.c("#3E1D16")); setHintTextColor(Pal.c("#A98578"))
+            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F8EFC4")) }
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12); bottomMargin = dp(6) }
+        }
+        if (all.size > 6) root.addView(search)
+
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val scroll = android.widget.ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+            addView(list)
+        }
+        root.addView(scroll)
+
+        fun nice(t: String): String = t.replace(Regex("(\\d+:\\d\\d):\\d\\d"), "$1")          // 8:53:49 AM -> 8:53 AM
+        fun initials(n: String): String = n.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2).joinToString("") { it.substring(0, 1).uppercase() }
+
+        fun fill(q: String) {
+            list.removeAllViews()
+            val key = q.trim().lowercase()
+            val rows = all.filter { key.isEmpty() || it.optString("name").lowercase().contains(key) || it.optString("username").lowercase().contains(key) }
+            count.text = if (key.isEmpty()) "${all.size} ${if (all.size == 1) "person" else "people"}" else "${rows.size} of ${all.size}"
+            if (rows.isEmpty()) list.addView(note(if (all.isEmpty()) "Nobody is $label right now." else "No match."))
+            rows.forEach { p ->
+                val name = p.optString("name"); val id = p.optString("username")
+                val manager = p.optString("manager"); val detail = p.optString("detail")
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                    background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c("#FFFAE3")) }
+                    setPadding(dp(12), dp(10), dp(12), dp(10))
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { openCalendar(id, name) }
+                }
+                row.addView(TextView(this).apply {            // avatar with the initials
+                    text = initials(name); textSize = 15f; setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER; setTextColor(Pal.c(fg))
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Pal.c(bg)) }
+                    layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(12) }
+                })
+                val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+                col.addView(TextView(this).apply { text = name; textSize = 15f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                col.addView(TextView(this).apply {
+                    text = "ID $id" + (if (manager.isNotEmpty()) "  ·  👤 $manager" else ""); textSize = 12f; setTextColor(Pal.c("#8A5F52"))
+                    maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+                row.addView(col)
+                if (detail.isNotEmpty()) row.addView(TextView(this).apply {                 // the time (or the leave type) as a small chip
+                    text = if (p.optString("status") == "Present") nice(detail) else detail
+                    textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(fg))
+                    background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(Pal.c(bg)) }
+                    setPadding(dp(10), dp(4), dp(10), dp(4))
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) }
+                })
+                row.addView(TextView(this).apply { text = "›"; textSize = 22f; setTextColor(Pal.c("#B39284")); setPadding(dp(8), 0, 0, 0) })
+                list.addView(row)
+            }
+        }
+        fill("")
+        search.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(e: android.text.Editable?) { fill(e?.toString() ?: "") }
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+        })
+        sheet.setContentView(root)
+        sheet.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+        sheet.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        sheet.show()
+    }
+
+    /** Opens one person's calendar: the admin's full view for an admin, the read-only team view for a line manager with the Team members right. */
+    private fun openCalendar(username: String, name: String) {
+        val admin = AdminFlag.get(this)
+        if (!admin && !Access.canViewTeam(this)) {
+            android.widget.Toast.makeText(this, "Opening a calendar needs the \"Team members\" right. Ask an admin to give it to you.", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        startActivity(Intent(this, CalendarActivity::class.java)
+            .putExtra(CalendarActivity.EXTRA_USER, username).putExtra(CalendarActivity.EXTRA_NAME, name).putExtra(CalendarActivity.EXTRA_VIEW_ONLY, !admin))
     }
 
     private fun note(text: String) = TextView(this).apply {
