@@ -239,7 +239,7 @@ class TeamActivity : AppCompatActivity() {
             if (rows.isEmpty()) list.addView(note(if (all.isEmpty()) "Nobody is $label right now." else "No match."))
             rows.forEach { p ->
                 val name = p.optString("name"); val id = p.optString("username")
-                val manager = p.optString("manager"); val detail = p.optString("detail")
+                val base = p.optString("base"); val detail = p.optString("detail")
                 val row = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
                     background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c("#FFFAE3")) }
@@ -256,7 +256,7 @@ class TeamActivity : AppCompatActivity() {
                 val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
                 col.addView(TextView(this).apply { text = name; textSize = 15f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
                 col.addView(TextView(this).apply {
-                    text = "ID $id" + (if (manager.isNotEmpty()) "  ·  👤 $manager" else ""); textSize = 12f; setTextColor(Pal.c("#8A5F52"))
+                    text = "ID $id" + (if (base.isNotEmpty()) "  ·  📍 $base" else ""); textSize = 12f; setTextColor(Pal.c("#8A5F52"))
                     maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
                 })
                 row.addView(col)
