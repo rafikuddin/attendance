@@ -19,6 +19,9 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 /**
  * Updating the app from inside the app.
@@ -171,13 +174,15 @@ object AppUpdate {
         throw IllegalStateException(last)
     }
 
+    private const val PARALLEL = 5          // pieces fetched at the same time
+
     private fun download(activity: AppCompatActivity, info: JSONObject) {
         val chunks = info.optInt("chunks")
         val code = info.optLong("versionCode")
         val size = info.optLong("size")
         val wantHash = info.optString("sha256").lowercase()
         var cancelled = false
-        val box = ProgressBox(activity, "Downloading update", chunks) { cancelled = true }
+        val box = ProgressBox(activity, "Downloading update", 100) { cancelled = true }       // a percent bar
         box.set(0, "Starting…")
         val app = activity.applicationContext
 
@@ -189,15 +194,29 @@ object AppUpdate {
                 val f = File(updatesDir(app), "update.apk")
                 file = f
                 val digest = MessageDigest.getInstance("SHA-256")
-                FileOutputStream(f).use { out ->
-                    for (i in 0 until chunks) {
-                        if (cancelled) { error = "cancelled"; break }
-                        val bytes = fetchPiece(app, i, code)
-                        out.write(bytes)
-                        digest.update(bytes)
-                        box.set(i + 1, "Downloading… ${i + 1} of $chunks")
+                // Several pieces are fetched at the same time (the wait for each answer is what makes a one-by-one download slow);
+                // they are still written to the file strictly in order.
+                val pool = Executors.newFixedThreadPool(PARALLEL)
+                try {
+                    val pending = arrayOfNulls<Future<ByteArray>>(chunks)
+                    var started = 0
+                    FileOutputStream(f).use { out ->
+                        for (i in 0 until chunks) {
+                            if (cancelled) { error = "cancelled"; break }
+                            while (started < chunks && started < i + PARALLEL + 1) {
+                                val n = started
+                                pending[n] = pool.submit<ByteArray> { fetchPiece(app, n, code) }
+                                started++
+                            }
+                            val bytes = try { pending[i]!!.get() } catch (e: ExecutionException) { throw (e.cause ?: e) }
+                            pending[i] = null
+                            out.write(bytes)
+                            digest.update(bytes)
+                            val pct = (i + 1) * 100 / chunks
+                            box.set(pct, "Downloading… $pct%")
+                        }
                     }
-                }
+                } finally { pool.shutdownNow() }
                 if (error == null && (f.length() != size || hex(digest.digest()) != wantHash))
                     error = "The downloaded file is damaged. Please try again."
             } catch (e: IllegalStateException) {
