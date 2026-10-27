@@ -320,13 +320,18 @@ class NightHoldActivity : AppCompatActivity() {
         cardClosed.visibility = View.GONE
         cardForm.visibility = View.VISIBLE
         updateButton()
-        if (!wasForm && location == null) startLocation()        // the window just opened (or the screen just appeared): get the GPS fix
+        // The form card is visible from the start (layout default), so "wasForm" alone missed the very first open: that left the layout's
+        // "Getting your location…" text on screen with no search running until a pull-to-refresh. locAttempted makes sure the first open starts it.
+        if (!locAttempted || (!wasForm && location == null)) startLocation()        // first open, or the window just opened: get the GPS fix
     }
 
     // ---- live location ----
 
+    private var locAttempted = false
+
     private fun startLocation() {
         if (submittedToday) return
+        locAttempted = true
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
             fetchLocation()
         else
