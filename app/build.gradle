@@ -32,6 +32,11 @@ android {
     buildTypes {
         release {
             debuggable false
+            // Shrinks the libraries' code and unused resources (the biggest saving: most of the APK was library code).
+            // Our own package is kept whole by proguard-rules.pro, so the app's behaviour does not change.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (System.getenv('KEYSTORE_FILE')) signingConfig signingConfigs.release
         }
     }

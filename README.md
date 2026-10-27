@@ -216,6 +216,8 @@ Releases are signed with a private key that is **never** stored in the repo.
 ## 📦 App size
 The APK is about **7 MB** without the face model (the `face_model.tflite` file adds about 5 MB). Two things keep it small: the ML Kit face and text models (live check, face check, leave-picture check) and the TensorFlow Lite runtime are **not bundled** — Google Play services holds them (`play-services-mlkit-*` and `play-services-tflite-java` in `app/build.gradle` plus the `com.google.mlkit.vision.DEPENDENCIES` entry in the manifest) — and the build keeps only English texts from the libraries (`resConfigs 'en'`). Do **not** switch to the `com.google.mlkit:face-detection` / `text-recognition` artifacts: they put the models inside the APK and add tens of MB.
 
+**R8 shrinking** is on for the release build (`minifyEnabled` + `shrinkResources` in `app/build.gradle`, rules in `app/proguard-rules.pro`). It removes the library code and resources the app never uses; the app's own package is kept whole by the rules, so behaviour does not change. If a build ever fails with a *Missing class …* message from R8, add `-dontwarn <that package>.**` to `proguard-rules.pro`. If a screen crashes only in the release APK, the cause is a library class that was removed: add `-keep class <that package>.** { *; }`. To switch shrinking off, set both flags to `false`.
+
 ## 🔢 Versions & updates
 
 - Every build is numbered **`1.0.<run number>`** (for example `1.0.56`). The APK is named `SAM-BOND-Attendance-v1.0.56.apk` and is also published on the **Releases** page.
