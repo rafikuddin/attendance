@@ -1777,6 +1777,22 @@ class AdminActivity : AppCompatActivity() {
         f1.addView(msgHours)
         content.addView(cardOf(f1))
 
+        // ---- 1b. live check before the selfie: on / off ----
+        val liveOn = res.optBoolean("liveCheck", true)
+        val fLive = column()
+        fLive.addView(label("👁 Live check before the selfie", 16f, "#3E1D16", true))
+        fLive.addView(label(
+            if (liveOn) "Now: ON. Before the Capture Selfie button shows, the camera asks for two quick moves (blink, turn the head, smile) to show a real face is in front of it."
+            else "Now: OFF. The Capture Selfie button shows as soon as the camera opens.", 13f, "#8A5F52", false))
+        fLive.addView(bigButton(if (liveOn) "⏸  Turn the live check OFF" else "▶️  Turn the live check ON") {
+            adminApi(JSONObject().put("action", "adminSetLiveCheck").put("on", !liveOn)) { r, err ->
+                if (r != null) { toast(if (!liveOn) "Live check is ON" else "Live check is OFF"); dropSavedCopies(); loadEntry() }
+                else toast(err ?: "Could not save")
+            }
+        })
+        fLive.addView(label("Phones pick the change up the next time they open Attendance. Asks for your own password.", 12f, "#8A5F52", false))
+        content.addView(cardOf(fLive))
+
         // ---- 2. open a date for manual attendance / night hold ----
         var kind = "attendance"
         var pickedDate = ""
