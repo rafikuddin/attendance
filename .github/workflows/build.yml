@@ -3,8 +3,14 @@ on:
   push:
     paths-ignore:
       - 'update*.zip'
+      - '*wiki*.zip'
       - '**.md'
   workflow_dispatch:
+
+# Only one build at a time: if a newer build is asked for while one is running, the older one is stopped.
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
 
 # Needed so the build can publish the APK on the repo's Releases page.
 permissions:
