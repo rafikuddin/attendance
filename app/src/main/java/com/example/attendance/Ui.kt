@@ -78,7 +78,7 @@ fun AppCompatActivity.setupBottomNav(active: Tab?) {
         val label = item.getChildAt(2) as TextView
         if (on) dot.setBackgroundResource(R.drawable.bg_dot) else dot.background = null
         icon.alpha = if (on) 1f else 0.6f
-        label.setTextColor(ContextCompat.getColor(this, if (on) R.color.primary else R.color.muted))
+        label.setTextColor(Pal.tintIfBrand(ContextCompat.getColor(this, if (on) R.color.primary else R.color.muted)))
         label.setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
         val key = when (tab) { Tab.ATTENDANCE -> "attendance"; Tab.LEAVE -> "leave"; Tab.TEAM -> "team"; Tab.CALENDAR -> "calendar"; Tab.NIGHT -> "night"; else -> null }
         label.text = label.text.toString().removePrefix("🔒 ")

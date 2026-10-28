@@ -18,8 +18,54 @@ object Pal {
     @JvmField var reopenMenu = false
     private const val FILE = "ui_theme"
 
+    // ---- Accent colour: the whole app can be re-tinted (🎨 in the side menu). "clay" is the original brown and butter. ----
+    class Accent(val key: String, val label: String, val hue: Float, val sat: Float) { val neutral: Boolean get() = key == "clay" }
+    val ACCENTS = listOf(
+        Accent("clay", "Clay", 0f, 1f), Accent("forest", "Forest", 150f, 0.85f), Accent("ocean", "Ocean", 208f, 0.95f),
+        Accent("violet", "Violet", 265f, 0.8f), Accent("rose", "Rose", 336f, 0.85f), Accent("slate", "Slate", 215f, 0.3f)
+    )
+    @Volatile @JvmField var accent: Accent = ACCENTS[0]
+    /** Goes up each time the accent changes: a screen that was built with an older number rebuilds itself when it comes back (see [App]). */
+    @Volatile @JvmField var rev = 0
+
+    fun setAccent(ctx: Context, key: String) {
+        val a = ACCENTS.firstOrNull { it.key == key } ?: return
+        if (a === accent) return
+        accent = a; rev++
+        ctx.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString("accent", key).apply()
+    }
+
+    /** The brand colours (clay browns and butter creams) that follow the accent. Status colours (red, green, amber) never change. */
+    private val BRAND_HEX = setOf(
+        "#6B352A", "#3E1D16", "#4A241C", "#6F4A3F", "#8A5F52", "#A98578", "#B39284", "#8A4333", "#CDB78A", "#FFFDF3", "#FFFAE3", "#F8EFC4",
+        "#EBDDA0", "#FFF6C4", "#FFF1A6", "#F0E3A6", "#F3E7B0", "#FBEBC8", "#FFFDF2", "#FBEBB0", "#F1DFA3", "#D9C592"
+    )
+    /** The same idea for colours that come from the XML files (day and night values of the brand colours there), as RRGGBB numbers. */
+    private val BRAND_RGB: Set<Int> = ("1A0C09 1F0F0C 2E1813 321B16 38201A 3A1D16 3A3A1A 3E1D16 44381A 4A241C 4A2A22 4A3220 4A332D 4A3A1A 5A362B 6A453A " +
+        "6B352A 8A4333 8A5F52 CDB78A CDB88A D6A06B D9C9A8 EAD98F EDF2B8 F0E3A6 FBE9A0 FFD9C4 FFE0B8 FFE680 FFEBD2 FFEFA0 FFF1A6 FFF7CF FFF8D2 FFFBE8 FFFDF0 FFFDF2")
+        .split(" ").map { it.toInt(16) }.toSet()
+
+    fun isBrand(color: Int): Boolean = BRAND_RGB.contains(color and 0xFFFFFF)
+
+    /** The accent version of a brand colour: its hue moves to the accent's hue, brightness stays, so dark stays dark and pale stays pale. */
+    fun tint(color: Int): Int = tintWith(accent, color)
+
+    fun tintWith(a: Accent, color: Int): Int {
+        if (a.neutral) return color
+        val hsv = FloatArray(3)
+        Color.colorToHSV(color, hsv)
+        if (hsv[1] < 0.02f) return color                                  // white / grey: nothing to tint
+        var h = hsv[0]; if (h > 180f) h -= 360f
+        hsv[0] = (a.hue + (h.coerceIn(0f, 70f) - 25f) * 0.25f + 360f) % 360f
+        hsv[1] = (hsv[1] * a.sat).coerceIn(0f, 1f)
+        return Color.HSVToColor(Color.alpha(color), hsv)
+    }
+    /** Tints a colour that comes from an XML file, only when it is one of the brand colours. */
+    fun tintIfBrand(color: Int): Int = if (!accent.neutral && isBrand(color)) tint(color) else color
+
     fun init(ctx: Context) {
         night = ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean("night", false)
+        accent = ACCENTS.firstOrNull { it.key == ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString("accent", "clay") } ?: ACCENTS[0]
         AppCompatDelegate.setDefaultNightMode(if (night) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO)
     }
 
@@ -53,6 +99,11 @@ object Pal {
 
     /** A colour written as "#RRGGBB". Day mode: exactly as written. Night mode: its night twin. */
     fun c(hex: String): Int {
+        val v = cBase(hex)
+        return if (accent.neutral || !BRAND_HEX.contains(hex.uppercase())) v else tint(v)
+    }
+
+    private fun cBase(hex: String): Int {
         if (!night || hex.equals("#FFFFFF", true)) return Color.parseColor(hex)    // white text stays white
         NIGHT[hex.uppercase()]?.let { return Color.parseColor(it) }
         val v = Color.parseColor(hex)
@@ -71,9 +122,9 @@ object Pal {
     }
 
     /** Card and panel surfaces (warm cream by day, deep clay by night). */
-    val card: Int get() = if (night) Color.parseColor("#2E1813") else Color.parseColor("#FFFDF2")
+    val card: Int get() = tintIfBrand(if (night) Color.parseColor("#2E1813") else Color.parseColor("#FFFDF2"))
     /** The filled "selected" chip: Clay Brown by day, a lighter clay by night (its text stays white). */
-    val chipOn: Int get() = if (night) Color.parseColor("#8A4333") else Color.parseColor("#6B352A")
+    val chipOn: Int get() = tintIfBrand(if (night) Color.parseColor("#8A4333") else Color.parseColor("#6B352A"))
 }
 
 /** Applies the saved Day / Night choice before any screen opens. */
@@ -81,6 +132,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Pal.init(this)
+        Fx.register(this)
         // A compulsory update stops every screen (except sign-in) until it is installed.
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: android.app.Activity) { AppUpdate.enforce(activity) }

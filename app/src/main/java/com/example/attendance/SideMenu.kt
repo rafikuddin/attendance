@@ -238,6 +238,34 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
             panel.addView(seg, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
         }
 
+        // Accent colour: tap a colour and the whole app follows (kept on this phone)
+        val clay = Color.parseColor("#6B352A")
+        fun chooseAccent(key: String) = close { Pal.reopenMenu = true; Pal.setAccent(this@showSideMenu, key); this@showSideMenu.recreate() }
+        if (collapsed) {
+            panel.addView(TextView(this).apply {
+                text = "🎨"; textSize = 17f; gravity = Gravity.CENTER
+                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F8EFC4")) }
+                setOnClickListener { val i = Pal.ACCENTS.indexOf(Pal.accent); chooseAccent(Pal.ACCENTS[(i + 1) % Pal.ACCENTS.size].key) }       // one tap = the next colour
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(42)).apply { topMargin = dp(6) })
+        } else {
+            panel.addView(txt("🎨  Accent colour", 11f, muted, true), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
+            val dots = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            for (a in Pal.ACCENTS) {
+                val on = a === Pal.accent
+                dots.addView(TextView(this).apply {
+                    text = if (on) "✓" else ""; textSize = 15f; gravity = Gravity.CENTER; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD)
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL; setColor(Pal.tintWith(a, clay))
+                        if (on) setStroke(dp(3), Pal.c("#F3E7B0"))
+                    }
+                    contentDescription = a.label
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { if (!on) chooseAccent(a.key) }
+                }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) })
+            }
+            panel.addView(dots, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+        }
+
         // who is signed in + logout
         panel.addView(View(this).apply { setBackgroundColor(Pal.c("#F3E7B0")) },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { topMargin = dp(12); bottomMargin = dp(10) })

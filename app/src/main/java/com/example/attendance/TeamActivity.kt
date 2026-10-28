@@ -143,6 +143,28 @@ class TeamActivity : AppCompatActivity() {
         })
         head.addView(pill("$total member" + (if (total == 1) "" else "s"), "#6B352A", "#F0E3A6"))
         countsBox.addView(head)
+
+        // the hero card: everybody below you, big, in the accent colour (tap = the whole list)
+        val here = c.optInt("present") + c.optInt("late")
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(Pal.chipOn) }
+            setPadding(dp(18), dp(14), dp(16), dp(14)); elevation = dp(4).toFloat()
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+            isClickable = true; isFocusable = true
+            setOnClickListener { showPeople("All members", "👥", "#6B352A", "#F0E3A6", people) }
+        }
+        val hcol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        hcol.addView(TextView(this).apply { text = "Team members"; textSize = 13f; setTextColor(Color.parseColor("#E6FFFFFF")) })
+        hcol.addView(TextView(this).apply { text = total.toString(); textSize = 38f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE) })
+        hcol.addView(TextView(this).apply { text = "$here here today  ·  tap to see everyone"; textSize = 12f; setTextColor(Color.parseColor("#CCFFFFFF")) })
+        hero.addView(hcol)
+        hero.addView(TextView(this).apply {
+            text = "↗"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD)
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#33FFFFFF")) }
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
+        })
+        countsBox.addView(hero)
         for (rowStart in listOf(0, 3)) {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -379,6 +401,7 @@ class TeamActivity : AppCompatActivity() {
         sheet.behavior.skipCollapsed = true
         sheet.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         sheet.show()
+        Fx.polish(root)
     }
 
     private fun openMap(lat: String, lng: String, label: String) {
@@ -400,7 +423,7 @@ class TeamActivity : AppCompatActivity() {
         for (i in 0 until people.length()) {
             val p = people.getJSONObject(i)
             val st = p.optString("status")
-            val hit = when (label) { "Late" -> st == "Present" && p.optBoolean("late"); else -> st == label }
+            val hit = when (label) { "All members" -> true; "Late" -> st == "Present" && p.optBoolean("late"); else -> st == label }
             if (hit) all.add(p)
         }
         all.sortBy { it.optString("name").lowercase() }
@@ -503,6 +526,7 @@ class TeamActivity : AppCompatActivity() {
         sheet.behavior.skipCollapsed = true
         sheet.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         sheet.show()
+        Fx.polish(root)
     }
 
     /** Opens one person's calendar: the admin's full view for an admin, the read-only team view for a line manager with the Team members right. */

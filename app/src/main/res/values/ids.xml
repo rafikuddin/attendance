@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Marks used by Fx.kt (the screen effects): which views were already looked at -->
+    <item name="fx_attached" type="id" />
+    <item name="fx_seen" type="id" />
+    <item name="fx_laid" type="id" />
+    <item name="fx_card" type="id" />
+    <item name="fx_count" type="id" />
+</resources>
