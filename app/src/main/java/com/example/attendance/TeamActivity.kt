@@ -27,6 +27,8 @@ class TeamActivity : AppCompatActivity() {
     private lateinit var listTeam: LinearLayout
     private lateinit var listLeaves: LinearLayout
     private var of: String? = null          // null = viewing my own team
+    private var nightHost: LinearLayout? = null      // the Night hold summary inside the top card
+    private var nightDate: String? = null            // a date picked by the manager; null = the latest night
     private var canDecide = false           // true for anyone below you, at any depth (server re-checks every decision)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,6 +82,7 @@ class TeamActivity : AppCompatActivity() {
     private fun render(res: JSONObject) {
         listTeam.removeAllViews(); listLeaves.removeAllViews()
         renderCounts(res.getJSONObject("counts"), res.optJSONArray("people"))
+        if (res.getJSONArray("reports").length() > 0) loadNight()
         val reports = res.getJSONArray("reports")
         if (reports.length() == 0) listTeam.addView(note("No one reports here yet."))
         else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
@@ -166,6 +169,194 @@ class TeamActivity : AppCompatActivity() {
                 row.addView(tile)
             }
             countsBox.addView(row)
+        }
+        nightHost = LinearLayout(this).apply {                          // the Night hold summary is filled in by loadNight()
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(16) }
+        }
+        countsBox.addView(nightHost)
+    }
+
+    // ------------------------------------------------------------------ Night hold summary (total, team by team, who / where / when)
+    private fun loadNight() {
+        val host = nightHost ?: return
+        host.removeAllViews()
+        host.addView(note("🌙 Night hold: loading…"))
+        val b = body().put("action", "teamNight")
+        nightDate?.let { b.put("nightDate", it) }
+        api(b) { res, err ->
+            if (nightHost !== host) return@api                          // the screen was redrawn meanwhile
+            host.removeAllViews()
+            if (res == null) { host.addView(note("🌙 Night hold: ${err ?: "could not load"}")); return@api }
+            renderNight(host, res)
+        }
+    }
+
+    private fun niceDay(iso: String): String = try {
+        java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.US).format(java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(iso)!!)
+    } catch (e: Exception) { iso }
+
+    private fun renderNight(host: LinearLayout, res: JSONObject) {
+        val date = res.optString("nightDate")
+        val records = res.optJSONArray("records") ?: org.json.JSONArray()
+        val groups = res.optJSONArray("groups") ?: org.json.JSONArray()
+        val total = res.optInt("total")
+        val divider = View(this).apply {
+            setBackgroundColor(Pal.c("#EBDDA0")); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { bottomMargin = dp(12) }
+        }
+        host.addView(divider)
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        head.addView(TextView(this).apply {
+            text = "🌙 NIGHT HOLD"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")); letterSpacing = 0.06f
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        head.addView(pill("📅 ${niceDay(date)} ▾", "#6B352A", "#F0E3A6").apply { setOnClickListener { pickNightDate(date) } })
+        host.addView(head)
+
+        // the total
+        val totalRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c("#FFF1A6")) }
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+            isClickable = true; isFocusable = true
+            setOnClickListener { showNightList("Night hold · ${niceDay(date)}", records, null) }
+        }
+        totalRow.addView(TextView(this).apply { text = "${res.optInt("submitted")}"; textSize = 30f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
+        val tcol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0); layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        tcol.addView(TextView(this).apply { text = "Total night holds · of $total"; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
+        tcol.addView(TextView(this).apply { text = "Tap to see names, places and dates"; textSize = 12f; setTextColor(Pal.c("#8A5F52")) })
+        totalRow.addView(tcol)
+        totalRow.addView(TextView(this).apply { text = "›"; textSize = 24f; setTextColor(Pal.c("#6B352A")) })
+        host.addView(totalRow)
+
+        // team by team
+        for (i in 0 until groups.length()) {
+            val g = groups.getJSONObject(i)
+            val key = g.optString("key"); val name = g.optString("name")
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#FFFAE3")) }
+                setPadding(dp(14), dp(10), dp(14), dp(10))
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+                isClickable = true; isFocusable = true
+                setOnClickListener { showNightList("$name · ${niceDay(date)}", records, key) }
+            }
+            row.addView(TextView(this).apply {
+                text = name; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")); maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            row.addView(pill("${g.optInt("submitted")} of ${g.optInt("total")}", "#6B352A", "#F0E3A6"))
+            row.addView(TextView(this).apply { text = "›"; textSize = 20f; setTextColor(Pal.c("#B39284")); setPadding(dp(8), 0, 0, 0) })
+            host.addView(row)
+        }
+    }
+
+    private fun pickNightDate(current: String) {
+        val c = java.util.Calendar.getInstance()
+        try { c.time = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(current)!! } catch (e: Exception) { }
+        val dlg = android.app.DatePickerDialog(this, { _, y, m, d ->
+            nightDate = String.format(java.util.Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+            loadNight()
+        }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+        dlg.datePicker.maxDate = System.currentTimeMillis()               // up to today
+        dlg.show()
+    }
+
+    /** Who submitted a night hold, with the place and the date (all of them, or one team's: [group]). Tap a row to see the spot on the map. */
+    private fun showNightList(title: String, records: org.json.JSONArray, group: String?) {
+        val all = ArrayList<JSONObject>()
+        for (i in 0 until records.length()) { val r = records.getJSONObject(i); if (group == null || r.optString("group") == group) all.add(r) }
+        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(Pal.card); cornerRadii = floatArrayOf(dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), 0f, 0f, 0f, 0f) }
+            setPadding(dp(16), dp(14), dp(16), dp(8))
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.88f).toInt())
+        }
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        head.addView(TextView(this).apply {
+            text = "🌙"; textSize = 22f; gravity = Gravity.CENTER
+            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c("#F0E3A6")) }
+            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(12) }
+        })
+        val titleCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        titleCol.addView(TextView(this).apply { text = title; textSize = 17f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
+        val count = TextView(this).apply { textSize = 13f; setTextColor(Pal.c("#8A5F52")) }
+        titleCol.addView(count); head.addView(titleCol)
+        head.addView(TextView(this).apply {
+            text = "✕"; textSize = 18f; gravity = Gravity.CENTER; setTextColor(Pal.c("#6B352A"))
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Pal.c("#F0E3A6")) }
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)); setOnClickListener { sheet.dismiss() }
+        })
+        root.addView(head)
+        val search = android.widget.EditText(this).apply {
+            hint = "🔍  Search name, ID or place"; textSize = 15f; setSingleLine(true)
+            setTextColor(Pal.c("#3E1D16")); setHintTextColor(Pal.c("#A98578"))
+            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F8EFC4")) }
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12); bottomMargin = dp(6) }
+        }
+        if (all.size > 6) root.addView(search)
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(android.widget.ScrollView(this).apply { layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f); addView(list) })
+
+        fun initials(n: String): String = n.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2).joinToString("") { it.substring(0, 1).uppercase() }
+        fun nice(t: String): String = t.replace(Regex("(\\d+:\\d\\d):\\d\\d"), "$1")
+        fun fill(q: String) {
+            list.removeAllViews()
+            val key = q.trim().lowercase()
+            val rows = all.filter { key.isEmpty() || (it.optString("name") + " " + it.optString("username") + " " + it.optString("hotel") + " " + it.optString("thana") + " " + it.optString("district")).lowercase().contains(key) }
+            count.text = if (key.isEmpty()) "${all.size} ${if (all.size == 1) "night hold" else "night holds"}" else "${rows.size} of ${all.size}"
+            if (rows.isEmpty()) list.addView(note(if (all.isEmpty()) "No night holds." else "No match."))
+            rows.forEach { r ->
+                val name = r.optString("name")
+                val place = listOf(r.optString("thana"), r.optString("district")).filter { it.isNotEmpty() }.joinToString(", ")
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                    background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c("#FFFAE3")) }
+                    setPadding(dp(12), dp(10), dp(12), dp(10))
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { openMap(r.optString("lat"), r.optString("lng"), name) }
+                }
+                row.addView(TextView(this).apply {
+                    text = initials(name); textSize = 15f; setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER; setTextColor(Pal.c("#6B352A"))
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Pal.c("#F0E3A6")) }
+                    layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(12) }
+                })
+                val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+                col.addView(TextView(this).apply { text = name; textSize = 15f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")) })
+                col.addView(TextView(this).apply { text = "🏨 ${r.optString("hotel")}"; textSize = 13f; setTextColor(Pal.c("#6B352A")) })
+                col.addView(TextView(this).apply { text = "📍 $place"; textSize = 12f; setTextColor(Pal.c("#8A5F52")) })
+                col.addView(TextView(this).apply {
+                    text = "🗓 ${niceDay(r.optString("date"))} · ${nice(r.optString("time"))}" + (if (r.optBoolean("manual")) " · manual entry" else "") + "  ·  ID ${r.optString("username")}"
+                    textSize = 12f; setTextColor(Pal.c("#8A5F52"))
+                })
+                row.addView(col)
+                row.addView(TextView(this).apply { text = "🗺"; textSize = 20f; setPadding(dp(8), 0, 0, 0) })
+                list.addView(row)
+            }
+        }
+        fill("")
+        search.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(e: android.text.Editable?) { fill(e?.toString() ?: "") }
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+        })
+        sheet.setContentView(root)
+        sheet.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+        sheet.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        sheet.show()
+    }
+
+    private fun openMap(lat: String, lng: String, label: String) {
+        if (lat.isBlank() || lng.isBlank()) return
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:$lat,$lng?q=$lat,$lng(${android.net.Uri.encode(label)})")))
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "No maps app found.", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
