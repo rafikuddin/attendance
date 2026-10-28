@@ -29,6 +29,7 @@ class TeamActivity : AppCompatActivity() {
     private var of: String? = null          // null = viewing my own team
     private var nightHost: LinearLayout? = null      // the Night hold summary inside the top card
     private var nightDate: String? = null            // a date picked by the manager; null = the latest night
+    private var nightCycle: String? = null           // "prev" | "current" | "next" = a whole pay cycle (26th to 25th); null = one night
     private var canDecide = false           // true for anyone below you, at any depth (server re-checks every decision)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -183,7 +184,8 @@ class TeamActivity : AppCompatActivity() {
         host.removeAllViews()
         host.addView(note("🌙 Night hold: loading…"))
         val b = body().put("action", "teamNight")
-        nightDate?.let { b.put("nightDate", it) }
+        val cyc = nightCycle
+        if (cyc != null) b.put("cycle", cyc) else nightDate?.let { b.put("nightDate", it) }
         api(b) { res, err ->
             if (nightHost !== host) return@api                          // the screen was redrawn meanwhile
             host.removeAllViews()
@@ -196,8 +198,14 @@ class TeamActivity : AppCompatActivity() {
         java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.US).format(java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(iso)!!)
     } catch (e: Exception) { iso }
 
+    private fun niceShort(iso: String): String = try {
+        java.text.SimpleDateFormat("d MMM", java.util.Locale.US).format(java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(iso)!!)
+    } catch (e: Exception) { iso }
+
     private fun renderNight(host: LinearLayout, res: JSONObject) {
         val date = res.optString("nightDate")
+        val cycleMode = res.optString("mode") == "cycle"
+        val span = if (cycleMode) "${niceShort(res.optString("from"))} – ${niceShort(res.optString("to"))}" else niceDay(date)
         val records = res.optJSONArray("records") ?: org.json.JSONArray()
         val groups = res.optJSONArray("groups") ?: org.json.JSONArray()
         val total = res.optInt("total")
@@ -210,8 +218,28 @@ class TeamActivity : AppCompatActivity() {
             text = "🌙 NIGHT HOLD"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")); letterSpacing = 0.06f
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
-        head.addView(pill("📅 ${niceDay(date)} ▾", "#6B352A", "#F0E3A6").apply { setOnClickListener { pickNightDate(date) } })
+        if (cycleMode) head.addView(pill("🗓 $span", "#6B352A", "#F0E3A6"))
+        else head.addView(pill("📅 $span ▾", "#6B352A", "#F0E3A6").apply { setOnClickListener { pickNightDate(date) } })
         host.addView(head)
+
+        // one night  |  previous / current / next pay cycle
+        val modes = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+        }
+        listOf(Pair(null, "Night"), Pair("prev", "Previous"), Pair("current", "Current"), Pair("next", "Next")).forEach { (key, label) ->
+            val on = (nightCycle == key)
+            modes.addView(TextView(this).apply {
+                text = label; textSize = 13f; gravity = Gravity.CENTER; setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
+                setTextColor(Pal.c(if (on) "#FFFFFF" else "#6B352A"))
+                background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Pal.c(if (on) "#6B352A" else "#F8EFC4")) }
+                setPadding(dp(4), dp(8), dp(4), dp(8))
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(6) }
+                isClickable = true; isFocusable = true
+                setOnClickListener { if (nightCycle != key) { nightCycle = key; loadNight() } }
+            })
+        }
+        host.addView(modes)
 
         // the total
         val totalRow = LinearLayout(this).apply {
@@ -220,11 +248,12 @@ class TeamActivity : AppCompatActivity() {
             setPadding(dp(16), dp(12), dp(16), dp(12))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
             isClickable = true; isFocusable = true
-            setOnClickListener { showNightList("Night hold · ${niceDay(date)}", records, null) }
+            setOnClickListener { showNightList("Night hold · $span", records, null) }
         }
+        val people = res.optInt("people")
         totalRow.addView(TextView(this).apply { text = "${res.optInt("submitted")}"; textSize = 30f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
         val tcol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0); layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
-        tcol.addView(TextView(this).apply { text = "Total night holds · of $total"; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
+        tcol.addView(TextView(this).apply { text = if (cycleMode) "Night holds · by $people ${if (people == 1) "person" else "people"}" else "Total night holds · of $total"; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
         tcol.addView(TextView(this).apply { text = "Tap to see names, places and dates"; textSize = 12f; setTextColor(Pal.c("#8A5F52")) })
         totalRow.addView(tcol)
         totalRow.addView(TextView(this).apply { text = "›"; textSize = 24f; setTextColor(Pal.c("#6B352A")) })
@@ -240,13 +269,13 @@ class TeamActivity : AppCompatActivity() {
                 setPadding(dp(14), dp(10), dp(14), dp(10))
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
                 isClickable = true; isFocusable = true
-                setOnClickListener { showNightList("$name · ${niceDay(date)}", records, key) }
+                setOnClickListener { showNightList("$name · $span", records, key) }
             }
             row.addView(TextView(this).apply {
                 text = name; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")); maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             })
-            row.addView(pill("${g.optInt("submitted")} of ${g.optInt("total")}", "#6B352A", "#F0E3A6"))
+            row.addView(pill(if (cycleMode) "${g.optInt("submitted")} by ${g.optInt("people")} of ${g.optInt("total")}" else "${g.optInt("submitted")} of ${g.optInt("total")}", "#6B352A", "#F0E3A6"))
             row.addView(TextView(this).apply { text = "›"; textSize = 20f; setTextColor(Pal.c("#B39284")); setPadding(dp(8), 0, 0, 0) })
             host.addView(row)
         }
@@ -257,6 +286,7 @@ class TeamActivity : AppCompatActivity() {
         try { c.time = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(current)!! } catch (e: Exception) { }
         val dlg = android.app.DatePickerDialog(this, { _, y, m, d ->
             nightDate = String.format(java.util.Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+            nightCycle = null
             loadNight()
         }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
         dlg.datePicker.maxDate = System.currentTimeMillis()               // up to today
