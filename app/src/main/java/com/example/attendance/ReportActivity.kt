@@ -191,7 +191,7 @@ class ReportActivity : AppCompatActivity() {
             }
             if ("attendance" in kinds) block("📍  Attendance file", "One row per person: Present, Late, Leave (and Casual, Sick, Earn, Paternity days), Absent, Day Off, Total Days.",
                 "🗓  Daily Details", "Every person, every day: status (colour-coded), time, leave type, day-off reason and location.")
-            if ("night" in kinds) block("🌙  Night hold file", "Night Hold Report: E ID, Name, Desig, then Date / Location / Qty for every night, Total and Deduction (750 a night).",
+            if ("night" in kinds) block("🌙  Night hold file", "Night Hold Report: E ID, Name, Desig, then Date / Location / Qty for every night, and Total.",
                 "🌙  Night Holds", "Every night hold: night date, time, district, thana, hotel, location, and whether it was a normal or manual entry (second sheet).")
             result.removeAllViews()
         }
