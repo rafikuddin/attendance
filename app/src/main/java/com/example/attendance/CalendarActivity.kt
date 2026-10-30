@@ -57,6 +57,7 @@ class CalendarActivity : AppCompatActivity() {
         tvMonth = findViewById(R.id.tvMonth)
         tvCount = findViewById(R.id.tvCount)
         tvDetail = findViewById(R.id.tvDetail)
+        buildLegend()
         if (target != null) tvDetail.text = "Viewing $shownName (@$target). Tap any date to see the time and location."
         findViewById<TextView>(R.id.btnPrev).setOnClickListener { cal.add(Calendar.MONTH, -1); render() }
         findViewById<TextView>(R.id.btnNext).setOnClickListener { cal.add(Calendar.MONTH, 1); render() }
@@ -113,6 +114,35 @@ class CalendarActivity : AppCompatActivity() {
         }
     }
 
+    // The colours of the date circles. White numbers sit on the strong ones, so each is dark enough to read (contrast 5:1 or better).
+    private val C_PRESENT = "#15803D"; private val C_LATE = "#C2410C"; private val C_LEAVE = "#B45309"
+    private val C_HOLIDAY = "#7C3AED"; private val C_OFF = "#EBDDA0"; private val C_ABSENT = "#DC2626"; private val C_LEAVE_WAIT = "#FDE68A"
+
+    /** The key under the calendar: a coloured dot for every kind of date (drawn, so it matches the circles and shows on every phone). */
+    private fun buildLegend() {
+        val box = findViewById<LinearLayout>(R.id.legend)
+        box.removeAllViews()
+        val items = listOf("Present" to C_PRESENT, "Late" to C_LATE, "Leave" to C_LEAVE, "Holiday" to C_HOLIDAY,
+            "Friday off" to C_OFF, "Absent" to C_ABSENT, "Night hold" to "")
+        val legend = GridLayout(this).apply { columnCount = 4 }
+        for ((label, hex) in items) {
+            val one = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                layoutParams = GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f)).apply {
+                    width = 0; setMargins(0, dp(4), dp(4), dp(4))
+                }
+            }
+            if (hex.isEmpty()) one.addView(TextView(this).apply { text = "🌙"; textSize = 11f })
+            else one.addView(View(this).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(hex)) }
+                layoutParams = LinearLayout.LayoutParams(dp(11), dp(11))
+            })
+            one.addView(TextView(this).apply { text = label; textSize = 11f; setTextColor(Pal.c("#8A5F52")); setPadding(dp(5), 0, 0, 0) })
+            legend.addView(one)
+        }
+        box.addView(legend)
+    }
+
     private fun cell(text: String) = TextView(this).apply {
         this.text = text
         gravity = Gravity.CENTER
@@ -161,29 +191,29 @@ class CalendarActivity : AppCompatActivity() {
                     present++
                     val isLate = records[key]?.optBoolean("late") == true
                     if (isLate) late++
-                    c.setTextColor(Color.WHITE); c.background = circle(if (isLate) "#EA580C" else "#16A34A", isToday)
+                    c.setTextColor(Color.WHITE); c.background = circle(if (isLate) C_LATE else C_PRESENT, isToday)
                     c.setOnClickListener { show(key) }
                 }
                 lv != null -> {
                     val approved = lv.optString("status") == "Approved"
                     if (approved) leave++
                     c.setTextColor(if (approved) Color.WHITE else Pal.c("#78350F"))
-                    c.background = circle(if (approved) "#F59E0B" else "#FDE68A", isToday)
+                    c.background = circle(if (approved) C_LEAVE else C_LEAVE_WAIT, isToday)
                     c.setOnClickListener { show(key) }
                 }
                 holidays.containsKey(key) -> {
                     holidayCount++
-                    c.setTextColor(Color.WHITE); c.background = circle("#8B5CF6", isToday)
+                    c.setTextColor(Color.WHITE); c.background = circle(C_HOLIDAY, isToday)
                     c.setOnClickListener { show(key) }
                 }
                 isFriday -> {
                     off++
-                    c.setTextColor(Pal.c("#4A241C")); c.background = circle("#EBDDA0", isToday)
+                    c.setTextColor(Pal.c("#4A241C")); c.background = circle(C_OFF, isToday)
                     c.setOnClickListener { show(key) }
                 }
                 key < todayKey || (isToday && isAfterCutoff) -> {
                     absent++
-                    c.setTextColor(Color.WHITE); c.background = circle("#DC2626", isToday)
+                    c.setTextColor(Color.WHITE); c.background = circle(C_ABSENT, isToday)
                     c.setOnClickListener { show(key) }
                 }
                 isToday -> c.background = circle(null, true)

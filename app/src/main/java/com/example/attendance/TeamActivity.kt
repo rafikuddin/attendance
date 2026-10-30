@@ -240,8 +240,12 @@ class TeamActivity : AppCompatActivity() {
             text = "🌙 NIGHT HOLD"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")); letterSpacing = 0.06f
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
-        if (cycleMode) head.addView(pill("🗓 $span", "#6B352A", "#F0E3A6"))
-        else head.addView(pill("📅 $span ▾", "#6B352A", "#F0E3A6").apply { setOnClickListener { pickNightDate(date) } })
+        // the date pill opens the date picker, so it is a proper tap target (40dp tall); the cycle pill is the same size so the row does not jump
+        val datePill = pill(if (cycleMode) "🗓 $span" else "📅 $span ▾", "#6B352A", "#F0E3A6").apply {
+            minHeight = dp(40); gravity = Gravity.CENTER; setPadding(dp(14), dp(4), dp(14), dp(4))
+        }
+        if (!cycleMode) datePill.setOnClickListener { pickNightDate(date) }
+        head.addView(datePill)
         host.addView(head)
 
         // one night  |  previous / current / next pay cycle

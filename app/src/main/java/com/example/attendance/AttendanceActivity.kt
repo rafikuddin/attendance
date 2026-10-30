@@ -503,7 +503,7 @@ class AttendanceActivity : AppCompatActivity() {
                     layoutParams = android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, (320 * resources.displayMetrics.density).toInt())
                 }
                 PhotoLoader.load(this, session, selfie, big, 640)
-                androidx.appcompat.app.AlertDialog.Builder(this).setView(big).setPositiveButton("Close", null).show()
+                androidx.appcompat.app.AlertDialog.Builder(this).setView(pictureFrame(big, (320 * resources.displayMetrics.density).toInt())).setPositiveButton("Close", null).show()
             }
         } else { mini.visibility = View.GONE; pin.visibility = View.VISIBLE }
         val addr = rec.optString("address")

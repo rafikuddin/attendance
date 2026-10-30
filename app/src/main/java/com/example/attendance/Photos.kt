@@ -74,7 +74,19 @@ fun AppCompatActivity.showPhotoDialog(session: Session, fileId: String) {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, h)
     }
     PhotoLoader.load(this, session, fileId, img, 1000)
-    androidx.appcompat.app.AlertDialog.Builder(this).setView(img).setPositiveButton("Close", null).show()
+    androidx.appcompat.app.AlertDialog.Builder(this).setView(pictureFrame(img, h)).setPositiveButton("Close", null).show()
+}
+
+/** A picture for a pop-up: a margin around it and rounded corners, so it sits inside the rounded dialog card instead of poking out of its corners. */
+fun AppCompatActivity.pictureFrame(img: ImageView, heightPx: Int): android.widget.FrameLayout {
+    val d = resources.displayMetrics.density
+    img.layoutParams = android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, heightPx)
+    img.clipToOutline = true
+    img.outlineProvider = object : android.view.ViewOutlineProvider() {
+        override fun getOutline(view: android.view.View, outline: android.graphics.Outline) { outline.setRoundRect(0, 0, view.width, view.height, 14 * d) }
+    }
+    val pad = (14 * d).toInt()
+    return android.widget.FrameLayout(this).apply { setPadding(pad, pad, pad, 0); addView(img) }
 }
 
 /** A tappable "📎 View leave application" line, added under a leave request that has a picture. */

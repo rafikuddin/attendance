@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="horizontal" android:background="@drawable/bg_nav" android:elevation="14dp"
         android:layout_marginStart="14dp" android:layout_marginEnd="14dp" android:layout_marginBottom="12dp" android:layout_marginTop="4dp"
@@ -11,7 +12,9 @@
         <TextView android:text="🏠" android:textSize="22sp" android:alpha="0.6"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:text="Home" android:textSize="10sp" android:textStyle="normal" android:textColor="@color/muted"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            android:gravity="center" android:maxLines="1" android:ellipsize="end"
+            app:autoSizeTextType="uniform" app:autoSizeMinTextSize="8sp" app:autoSizeMaxTextSize="10sp" app:autoSizeStepGranularity="0.5sp"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
     </LinearLayout>
     <LinearLayout android:id="@+id/navAttendance" android:orientation="vertical" android:gravity="center_horizontal"
         android:clickable="true" android:focusable="true"
@@ -20,7 +23,9 @@
         <TextView android:text="📸" android:textSize="22sp" android:alpha="0.6"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:text="Attendance" android:textSize="10sp" android:textStyle="normal" android:textColor="@color/muted"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            android:gravity="center" android:maxLines="1" android:ellipsize="end"
+            app:autoSizeTextType="uniform" app:autoSizeMinTextSize="8sp" app:autoSizeMaxTextSize="10sp" app:autoSizeStepGranularity="0.5sp"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
     </LinearLayout>
     <LinearLayout android:id="@+id/navLeave" android:orientation="vertical" android:gravity="center_horizontal"
         android:clickable="true" android:focusable="true"
@@ -29,7 +34,9 @@
         <TextView android:text="🌴" android:textSize="22sp" android:alpha="0.6"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:text="Leave" android:textSize="10sp" android:textStyle="normal" android:textColor="@color/muted"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            android:gravity="center" android:maxLines="1" android:ellipsize="end"
+            app:autoSizeTextType="uniform" app:autoSizeMinTextSize="8sp" app:autoSizeMaxTextSize="10sp" app:autoSizeStepGranularity="0.5sp"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
     </LinearLayout>
     <LinearLayout android:id="@+id/navTeam" android:orientation="vertical" android:gravity="center_horizontal"
         android:clickable="true" android:focusable="true" android:visibility="gone"
@@ -38,7 +45,9 @@
         <TextView android:text="👥" android:textSize="22sp" android:alpha="0.6"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:text="Team" android:textSize="10sp" android:textStyle="normal" android:textColor="@color/muted"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            android:gravity="center" android:maxLines="1" android:ellipsize="end"
+            app:autoSizeTextType="uniform" app:autoSizeMinTextSize="8sp" app:autoSizeMaxTextSize="10sp" app:autoSizeStepGranularity="0.5sp"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
     </LinearLayout>
     <LinearLayout android:id="@+id/navCalendar" android:orientation="vertical" android:gravity="center_horizontal"
         android:clickable="true" android:focusable="true"
@@ -47,7 +56,9 @@
         <TextView android:text="📅" android:textSize="22sp" android:alpha="0.6"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:text="Calendar" android:textSize="10sp" android:textStyle="normal" android:textColor="@color/muted"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            android:gravity="center" android:maxLines="1" android:ellipsize="end"
+            app:autoSizeTextType="uniform" app:autoSizeMinTextSize="8sp" app:autoSizeMaxTextSize="10sp" app:autoSizeStepGranularity="0.5sp"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
     </LinearLayout>
     <LinearLayout android:id="@+id/navNight" android:orientation="vertical" android:gravity="center_horizontal"
         android:clickable="true" android:focusable="true"
@@ -56,6 +67,8 @@
         <TextView android:text="🌙" android:textSize="22sp" android:alpha="0.6"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:text="Night Hold" android:textSize="10sp" android:textStyle="normal" android:textColor="@color/muted"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            android:gravity="center" android:maxLines="1" android:ellipsize="end"
+            app:autoSizeTextType="uniform" app:autoSizeMinTextSize="8sp" app:autoSizeMaxTextSize="10sp" app:autoSizeStepGranularity="0.5sp"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
     </LinearLayout>
     </LinearLayout>

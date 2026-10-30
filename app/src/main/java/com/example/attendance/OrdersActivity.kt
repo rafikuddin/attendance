@@ -254,7 +254,7 @@ class OrdersActivity : AppCompatActivity() {
             val d = oColumn()
             d.addView(oLabel("DOCUMENTS", 12f, "#6B352A", true).apply { letterSpacing = 0.08f })
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(6), 0, 0) }
-            listOf("invoice" to "🧾  Invoice", "challan" to "🚚  Challan").forEachIndexed { i, (kind, text) ->
+            listOf("invoice" to "📄  Invoice", "challan" to "🚚  Challan").forEachIndexed { i, (kind, text) ->
                 row.addView(MaterialButton(this).apply {
                     this.text = text
                     layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { if (i == 0) marginEnd = dp(6) else marginStart = dp(6) }

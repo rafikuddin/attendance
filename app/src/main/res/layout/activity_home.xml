@@ -7,7 +7,7 @@
     <!-- Fixed top: stays in place while the page below scrolls -->
     <!-- Header -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:background="@drawable/bg_header" android:orientation="vertical"
+        android:background="@drawable/bg_header_home" android:orientation="vertical"
         android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="10dp" android:paddingBottom="34dp">
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -26,12 +26,12 @@
             <TextView android:text="SAM BOND" android:textColor="@color/on_dark" android:textStyle="bold" android:textSize="26sp"
                 android:letterSpacing="0.03" android:layout_marginStart="12dp"
                 android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" />
-            <FrameLayout android:layout_width="42dp" android:layout_height="42dp" android:layout_marginEnd="8dp">
+            <FrameLayout android:layout_width="44dp" android:layout_height="44dp" android:layout_marginEnd="8dp">
                 <TextView android:id="@+id/btnBell" android:text="" android:textSize="18sp"
                     android:textColor="@color/on_dark" android:background="@drawable/bg_icon_btn"
                     android:gravity="center" android:clickable="true" android:focusable="true"
                     android:contentDescription="Notifications"
-                    android:layout_width="42dp" android:layout_height="42dp" />
+                    android:layout_width="44dp" android:layout_height="44dp" />
                 <ImageView android:id="@+id/bellIcon" android:src="@drawable/ic_bell"
                     android:importantForAccessibility="no" android:clickable="false" android:focusable="false"
                     android:layout_gravity="center" android:layout_width="22dp" android:layout_height="22dp" />
@@ -45,12 +45,12 @@
             <TextView android:id="@+id/btnRefresh" android:visibility="gone" android:text="⟳" android:textSize="22sp"
                 android:textColor="@color/on_dark" android:background="@drawable/bg_icon_btn"
                 android:gravity="center" android:clickable="true" android:focusable="true"
-                android:layout_width="42dp" android:layout_height="42dp" />
+                android:layout_width="44dp" android:layout_height="44dp" />
             <TextView android:id="@+id/btnMenu" android:text="👤" android:textSize="18sp"
                 android:textColor="@color/on_dark" android:background="@drawable/bg_icon_btn"
                 android:gravity="center" android:layout_marginStart="8dp"
                 android:clickable="true" android:focusable="true"
-                android:layout_width="42dp" android:layout_height="42dp" />
+                android:layout_width="44dp" android:layout_height="44dp" />
         </LinearLayout>
 
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -302,10 +302,10 @@
                         android:indeterminate="false" android:max="100" android:progress="0"
                         android:progressDrawable="@drawable/bar_sick"
                         android:layout_width="match_parent" android:layout_height="40dp" />
-                    <TextView android:id="@+id/tvSick" android:text="Sick" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/ink"
+                    <TextView android:id="@+id/tvSick" android:text="Sick" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/on_surface"
                         android:layout_gravity="center_vertical|start" android:layout_marginStart="16dp"
                         android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    <TextView android:id="@+id/tvSickVal" android:text="-" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/ink"
+                    <TextView android:id="@+id/tvSickVal" android:text="-" android:textSize="14sp" android:textStyle="bold" android:textColor="@color/on_surface"
                         android:layout_gravity="center_vertical|end" android:layout_marginEnd="16dp"
                         android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 </FrameLayout>

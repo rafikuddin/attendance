@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Night twin of Theme.Sam.Dialog (the system dialog needs a dark base in the dark colours) -->
+    <style name="Theme.Sam.Dialog" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:colorBackgroundFloating">?attr/samSurface</item>
+        <item name="android:textColorPrimary">?attr/samOnSurface</item>
+        <item name="android:textColorSecondary">?attr/samMuted</item>
+        <item name="android:textColorHint">?attr/samMuted</item>
+        <item name="android:colorAccent">?attr/samAccent</item>
+        <item name="android:colorControlActivated">?attr/samAccent</item>
+    </style>
+</resources>

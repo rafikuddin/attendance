@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand colours that follow the accent picked in the side menu. Their normal values are set in Theme.Attendance (they follow Day / Night through the
+         colour files); the accent overlays (overlays.xml, applied by Fx.kt) replace them. Pop-up dialogs read them. -->
+    <attr name="samInk" format="color" />
+    <attr name="samOnSurface" format="color" />
+    <attr name="samMuted" format="color" />
+    <attr name="samSurface" format="color" />
+    <attr name="samAccent" format="color" />
+</resources>

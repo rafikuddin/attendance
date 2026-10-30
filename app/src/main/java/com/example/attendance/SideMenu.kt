@@ -179,10 +179,10 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
         if (collapsed) {
             head.gravity = Gravity.CENTER
             panel.addView(head, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            panel.addView(fold, LinearLayout.LayoutParams(dp(28), dp(28)).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = dp(8) })
+            panel.addView(fold, LinearLayout.LayoutParams(dp(36), dp(36)).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = dp(8) })
         } else {
             head.addView(txt("SAM BOND", 20f, ink, true).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(10) } })
-            head.addView(fold, LinearLayout.LayoutParams(dp(28), dp(28)))
+            head.addView(fold, LinearLayout.LayoutParams(dp(36), dp(36)))
             panel.addView(head, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
 

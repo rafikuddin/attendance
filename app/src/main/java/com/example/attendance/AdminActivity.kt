@@ -206,7 +206,7 @@ class AdminActivity : AppCompatActivity() {
 
     private val menuNames = mapOf(
         "attendance" to "📸  Attendance", "leave" to "🌴  Leave", "night" to "🌙  Night Hold", "calendar" to "📅  Calendar", "team" to "👥  Team",
-        "members" to "🪪  Team members", "notices" to "🔔  Notices", "reports" to "📊  My Reports", "target" to "🎯  Target vs Collection", "survey" to "📋  Surveys", "orders" to "🛒  Orders", "downloads" to "⬇️  Downloads",
+        "members" to "📇  Team members", "notices" to "🔔  Notices", "reports" to "📊  My Reports", "target" to "🎯  Target vs Collection", "survey" to "📋  Surveys", "orders" to "🛒  Orders", "downloads" to "⬇️  Downloads",
         "profile" to "👤  My Profile", "password" to "🔑  Change Password", "reminders" to "⏰  Attendance reminders", "manual" to "📝  Manual entry",
         "update" to "⬆️  Update app", "admin" to "🛠  Admin Panel"
     )
@@ -243,7 +243,7 @@ class AdminActivity : AppCompatActivity() {
             }
 
             val intro = column()
-            intro.addView(label("🧭  Menus and the Home screen", 16f, "#3E1D16", true))
+            intro.addView(label("🗂  Menus and the Home screen", 16f, "#3E1D16", true))
             intro.addView(label("▲ ▼ move an entry. 👁 shows it, 🚫 hides it (hiding only removes the shortcut; to stop someone using a feature, use Users › Access). " +
                 "You can also add your own menus below. Everything applies to everyone; phones pick it up the next time Home loads.", 13f, "#8A5F52", false).apply { setPadding(0, dp(4), 0, 0) })
             content.addView(cardOf(intro))
@@ -588,7 +588,7 @@ class AdminActivity : AppCompatActivity() {
         if (!o.optBoolean("isAdmin") && grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "surveys" })
             col.addView(label("📋 Can create & manage surveys", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
         if (grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "teamview" })
-            col.addView(label("🪪 Can see Profile & Calendar of own team", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
+            col.addView(label("📇 Can see Profile & Calendar of own team", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
         if (grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "accounts" })
             col.addView(label("💰 Orders: Accounts", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
         if (grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "delivery" })
@@ -676,7 +676,7 @@ class AdminActivity : AppCompatActivity() {
         }
         form.addView(cbSurvey)
         val cbTeam = CheckBox(this).apply {
-            text = "🪪  Can see Profile & Calendar of own team (line manager)"; textSize = 15f
+            text = "📇  Can see Profile & Calendar of own team (line manager)"; textSize = 15f
             isChecked = grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "teamview" }
         }
         form.addView(cbTeam)
@@ -692,7 +692,7 @@ class AdminActivity : AppCompatActivity() {
         form.addView(cbDelivery)
         fun grantList() = JSONArray(listOfNotNull(if (cbSurvey.isChecked) "surveys" else null, if (cbTeam.isChecked) "teamview" else null,
             if (cbAccounts.isChecked) "accounts" else null, if (cbDelivery.isChecked) "delivery" else null))
-        form.addView(label("A line manager with this tick gets 🪪 Team members in the menu: only the people below them, read only.", 12f, "#A98578", false))
+        form.addView(label("A line manager with this tick gets 📇 Team members in the menu: only the people below them, read only.", 12f, "#A98578", false))
         form.addView(label(if (names.size == 1) "Admins can always do this. Everybody else only with this tick; they then see ⚙️ Manage surveys inside Surveys."
             else "Applies to all ${names.size} chosen people (admins can always do this).", 12f, "#A98578", false))
         val title = if (names.size == 1) "Menu access: " + (users.firstOrNull { it.optString("username").equals(names[0], true) }?.optString("name") ?: names[0])

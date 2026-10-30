@@ -47,7 +47,8 @@ object Fx {
 
     fun register(app: Application) {
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityCreated(a: Activity, b: Bundle?) { stamp[a] = Pal.rev }
+            override fun onActivityPreCreated(a: Activity, b: Bundle?) { overlay(a) }      // Android 10 and newer: before the screen's onCreate
+            override fun onActivityCreated(a: Activity, b: Bundle?) { overlay(a); stamp[a] = Pal.rev }   // older phones: still before the layout is made
             override fun onActivityStarted(a: Activity) { try { attach(a) } catch (e: Exception) { } }
             override fun onActivityResumed(a: Activity) {
                 // the accent was changed on another screen while this one waited: rebuild it in the new colours
@@ -58,6 +59,12 @@ object Fx {
             override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
             override fun onActivityDestroyed(a: Activity) {}
         })
+    }
+
+    /** Puts the accent's colours into the screen's theme before any view is made, so pop-up dialogs, switches and text buttons follow the accent too. */
+    private fun overlay(a: Activity) {
+        val res = Pal.overlayRes()
+        if (res != 0) try { a.theme.applyStyle(res, true) } catch (e: Exception) { }
     }
 
     private fun attach(a: Activity) {

@@ -1,16 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Attendance" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
+        <!-- colorPrimary / colorSecondary read the accent-aware colours below (same values as before for the original Clay accent) -->
+        <item name="colorPrimary">?attr/samInk</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>
         <item name="colorOnPrimary">@color/on_accent</item>
-        <item name="colorSecondary">@color/accent</item>
+        <item name="colorSecondary">?attr/samAccent</item>
         <item name="colorSurface">@color/surface</item>
         <item name="colorOnSurface">@color/on_surface</item>
         <item name="android:windowBackground">@drawable/bg_app</item>
         <item name="android:statusBarColor">@color/sky_top</item>
         <item name="materialButtonStyle">@style/Btn</item>
         <item name="materialCardViewStyle">@style/GlassCard</item>
+        <!-- accent-aware brand colours (see attrs.xml) and the pop-up dialog looks -->
+        <item name="samInk">@color/ink</item>
+        <item name="samOnSurface">@color/on_surface</item>
+        <item name="samMuted">@color/muted</item>
+        <item name="samSurface">@color/surface</item>
+        <item name="samAccent">@color/accent</item>
+        <item name="android:alertDialogTheme">@style/Theme.Sam.Dialog</item>
+        <item name="alertDialogTheme">@style/Theme.Sam.AppDialog</item>
+    </style>
+    <!-- Pop-up dialogs. The app uses two kinds (the system one and the AppCompat one); both get the same soft card, brown text and accent buttons.
+         The system one needs a light and a dark base, so Theme.Sam.Dialog is repeated in values-night. -->
+    <style name="Theme.Sam.Dialog" parent="@android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:colorBackgroundFloating">?attr/samSurface</item>
+        <item name="android:textColorPrimary">?attr/samOnSurface</item>
+        <item name="android:textColorSecondary">?attr/samMuted</item>
+        <item name="android:textColorHint">?attr/samMuted</item>
+        <item name="android:colorAccent">?attr/samAccent</item>
+        <item name="android:colorControlActivated">?attr/samAccent</item>
+    </style>
+    <style name="Theme.Sam.AppDialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <item name="colorPrimary">?attr/samAccent</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/on_accent</item>
+        <item name="colorSecondary">?attr/samAccent</item>
+        <item name="colorSurface">?attr/samSurface</item>
+        <item name="colorOnSurface">?attr/samOnSurface</item>
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:textColorPrimary">?attr/samOnSurface</item>
+        <item name="android:textColorSecondary">?attr/samMuted</item>
     </style>
     <!-- Frosted white card: big soft corners, a light edge, gentle shadow -->
     <style name="GlassCard" parent="Widget.MaterialComponents.CardView">

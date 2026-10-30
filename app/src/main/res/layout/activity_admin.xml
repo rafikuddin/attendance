@@ -9,52 +9,52 @@
     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
         <TextView android:id="@+id/tabUsers" android:text="👥 Users" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabNotices" android:text="📢 Notices" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabHolidays" android:text="🎉 Holiday" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabEntry" android:text="📝 Entry" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabReport" android:text="📊 Report" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabTarget" android:text="🎯 Targets" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabSms" android:text="📱 SMS" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabLeave" android:text="🌴 Leave" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-        <TextView android:id="@+id/tabMenu" android:text="🧭 Menu" android:gravity="center"
+        <TextView android:id="@+id/tabMenu" android:text="🗂 Menu" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <TextView android:id="@+id/tabApp" android:text="📲 App" android:gravity="center"
             android:textSize="12sp" android:textStyle="bold" android:paddingTop="9dp" android:paddingBottom="9dp"
-            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:minWidth="84dp" android:minHeight="40dp"
             android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
     </LinearLayout>

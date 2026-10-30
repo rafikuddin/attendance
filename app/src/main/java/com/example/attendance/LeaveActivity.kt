@@ -247,7 +247,7 @@ class LeaveActivity : AppCompatActivity() {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.7).toInt())
             setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
         }
-        androidx.appcompat.app.AlertDialog.Builder(this).setView(img).setPositiveButton("Close", null).show()
+        androidx.appcompat.app.AlertDialog.Builder(this).setView(pictureFrame(img, (resources.displayMetrics.heightPixels * 0.7).toInt())).setPositiveButton("Close", null).show()
     }
 
     private fun msg(m: String, ok: Boolean) {

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Day colours of the accent overlays. GENERATED with the same maths as Pal.tint (hue moves, lightness stays). Clay is the original: it needs none. -->
+    <style name="ThemeOverlay.Sam.Forest" parent="">
+        <item name="samInk">#254D36</item>
+        <item name="samOnSurface">#142B1E</item>
+        <item name="samMuted">#4A725C</item>
+        <item name="samSurface">#F6FFFB</item>
+        <item name="samAccent">#254D36</item>
+    </style>
+    <style name="ThemeOverlay.Sam.Ocean" parent="">
+        <item name="samInk">#27485D</item>
+        <item name="samOnSurface">#152936</item>
+        <item name="samMuted">#506D82</item>
+        <item name="samSurface">#FBFDFF</item>
+        <item name="samAccent">#27485D</item>
+    </style>
+    <style name="ThemeOverlay.Sam.Violet" parent="">
+        <item name="samInk">#4E3A72</item>
+        <item name="samOnSurface">#2C2042</item>
+        <item name="samMuted">#736190</item>
+        <item name="samSurface">#FDFDFD</item>
+        <item name="samAccent">#4E3A72</item>
+    </style>
+    <style name="ThemeOverlay.Sam.Rose" parent="">
+        <item name="samInk">#69334B</item>
+        <item name="samOnSurface">#3D1C2B</item>
+        <item name="samMuted">#8C5B71</item>
+        <item name="samSurface">#FFFCFD</item>
+        <item name="samAccent">#69334B</item>
+    </style>
+    <style name="ThemeOverlay.Sam.Slate" parent="">
+        <item name="samInk">#3F454D</item>
+        <item name="samOnSurface">#23272B</item>
+        <item name="samMuted">#646A71</item>
+        <item name="samSurface">#FBFDFF</item>
+        <item name="samAccent">#3F454D</item>
+    </style>
+</resources>

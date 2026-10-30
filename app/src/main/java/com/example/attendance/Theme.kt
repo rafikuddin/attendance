@@ -35,6 +35,16 @@ object Pal {
         ctx.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString("accent", key).apply()
     }
 
+    /** The theme overlay that carries the accent's colours for pop-up dialogs, switches and text buttons (res/values/overlays.xml); 0 for the original clay. */
+    fun overlayRes(): Int = when (accent.key) {
+        "forest" -> R.style.ThemeOverlay_Sam_Forest
+        "ocean" -> R.style.ThemeOverlay_Sam_Ocean
+        "violet" -> R.style.ThemeOverlay_Sam_Violet
+        "rose" -> R.style.ThemeOverlay_Sam_Rose
+        "slate" -> R.style.ThemeOverlay_Sam_Slate
+        else -> 0
+    }
+
     /** The brand colours (clay browns and butter creams) that follow the accent. Status colours (red, green, amber) never change. */
     private val BRAND_HEX = setOf(
         "#6B352A", "#3E1D16", "#4A241C", "#6F4A3F", "#8A5F52", "#A98578", "#B39284", "#8A4333", "#CDB78A", "#FFFDF3", "#FFFAE3", "#F8EFC4",
@@ -47,18 +57,49 @@ object Pal {
 
     fun isBrand(color: Int): Boolean = BRAND_RGB.contains(color and 0xFFFFFF)
 
-    /** The accent version of a brand colour: its hue moves to the accent's hue, brightness stays, so dark stays dark and pale stays pale. */
+    /**
+     * The accent version of a brand colour: its hue moves to the accent's hue and its LIGHTNESS (relative luminance) stays exactly the same, so every
+     * text / background pair keeps the contrast it has in the original clay palette (a green and a brown of the same HSV brightness are not equally
+     * light, which is why the brightness is matched by luminance, not by the HSV value).
+     */
     fun tint(color: Int): Int = tintWith(accent, color)
+
+    private val tintCache = java.util.concurrent.ConcurrentHashMap<Long, Int>()
 
     fun tintWith(a: Accent, color: Int): Int {
         if (a.neutral) return color
+        val key = (ACCENTS.indexOf(a).toLong() shl 32) or (color.toLong() and 0xFFFFFFFFL)
+        tintCache[key]?.let { return it }
+        val out = tintCompute(a, color)
+        tintCache[key] = out
+        return out
+    }
+
+    private fun luminance(c: Int): Double {
+        fun f(x: Int): Double { val v = x / 255.0; return if (v <= 0.03928) v / 12.92 else Math.pow((v + 0.055) / 1.055, 2.4) }
+        return 0.2126 * f(Color.red(c)) + 0.7152 * f(Color.green(c)) + 0.0722 * f(Color.blue(c))
+    }
+
+    private fun tintCompute(a: Accent, color: Int): Int {
         val hsv = FloatArray(3)
         Color.colorToHSV(color, hsv)
         if (hsv[1] < 0.02f) return color                                  // white / grey: nothing to tint
         var h = hsv[0]; if (h > 180f) h -= 360f
-        hsv[0] = (a.hue + (h.coerceIn(0f, 70f) - 25f) * 0.25f + 360f) % 360f
-        hsv[1] = (hsv[1] * a.sat).coerceIn(0f, 1f)
-        return Color.HSVToColor(Color.alpha(color), hsv)
+        val hue = (a.hue + (h.coerceIn(0f, 70f) - 25f) * 0.25f + 360f) % 360f
+        val sat0 = (hsv[1] * a.sat).coerceIn(0f, 1f)
+        val target = luminance(color)
+        for (k in floatArrayOf(1f, 0.85f, 0.7f, 0.55f, 0.4f, 0.25f, 0f)) {   // a very pale colour cannot hold full saturation: ease it off
+            val sat = sat0 * k
+            if (luminance(Color.HSVToColor(floatArrayOf(hue, sat, 1f))) >= target) {
+                var lo = 0f; var hi = 1f
+                repeat(14) {
+                    val mid = (lo + hi) / 2f
+                    if (luminance(Color.HSVToColor(floatArrayOf(hue, sat, mid))) < target) lo = mid else hi = mid
+                }
+                return Color.HSVToColor(Color.alpha(color), floatArrayOf(hue, sat, hi))
+            }
+        }
+        return Color.HSVToColor(Color.alpha(color), floatArrayOf(hue, 0f, 1f))
     }
     /** Tints a colour that comes from an XML file, only when it is one of the brand colours. */
     fun tintIfBrand(color: Int): Int = if (!accent.neutral && isBrand(color)) tint(color) else color
@@ -104,6 +145,10 @@ object Pal {
     }
 
     private fun cBase(hex: String): Int {
+        if (!night) when (hex.uppercase()) {                             // the two palest text browns were too faint to read (3.3:1 and 2.8:1): now 4.9:1 and 3.3:1
+            "#A98578" -> return Color.parseColor("#8F6556")
+            "#B39284" -> return Color.parseColor("#A98578")
+        }
         if (!night || hex.equals("#FFFFFF", true)) return Color.parseColor(hex)    // white text stays white
         NIGHT[hex.uppercase()]?.let { return Color.parseColor(it) }
         val v = Color.parseColor(hex)

@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         items.add(SideItem("🌙", "Night Hold", "Menu", locked = isLocked("night"), key = "night") { open(NightHoldActivity::class.java) })
         items.add(SideItem("📅", "Calendar", "Menu", locked = isLocked("calendar"), key = "calendar") { open(CalendarActivity::class.java) })
         if (session.isManager) items.add(SideItem("👥", "Team", "Menu", locked = isLocked("team"), key = "team") { open(TeamActivity::class.java) })
-        if (Access.canViewTeam(this)) items.add(SideItem("🪪", "Team members (profile & calendar)", "Menu", key = "members") { open(TeamMembersActivity::class.java) })
+        if (Access.canViewTeam(this)) items.add(SideItem("📇", "Team members (profile & calendar)", "Menu", key = "members") { open(TeamMembersActivity::class.java) })
         items.add(SideItem("🔔", "Notices", "Menu", badge = unread, locked = isLocked("notices"), key = "notices") { open(NoticesActivity::class.java) })
         items.add(SideItem("📊", "My Reports", "Menu", locked = isLocked("reports"), key = "reports") { open(ReportActivity::class.java) })
         items.add(SideItem("🎯", "Target vs Collection", "Menu", locked = isLocked("target"), key = "target") { open(TargetActivity::class.java) })
@@ -370,7 +370,7 @@ class MainActivity : AppCompatActivity() {
             layoutParams = android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, (320 * resources.displayMetrics.density).toInt())
         }
         PhotoLoader.load(this, session, fileId, img, 640)
-        androidx.appcompat.app.AlertDialog.Builder(this).setView(img).setPositiveButton("Close", null).show()
+        androidx.appcompat.app.AlertDialog.Builder(this).setView(pictureFrame(img, (320 * resources.displayMetrics.density).toInt())).setPositiveButton("Close", null).show()
     }
 
     /** A banner when the server offers a newer app version than the one installed. Hidden when this phone is up to date. */

@@ -17,7 +17,7 @@ object AdminTabs {
         AdminTab("targets", "🎯", "Targets", R.id.tabTarget),
         AdminTab("sms", "📱", "SMS", R.id.tabSms),
         AdminTab("leave", "🌴", "Leave", R.id.tabLeave),
-        AdminTab("menu", "🧭", "Menu", R.id.tabMenu),
+        AdminTab("menu", "🗂", "Menu", R.id.tabMenu),
         AdminTab("app", "📲", "App", R.id.tabApp)
     )
     fun find(key: String) = all.firstOrNull { it.key == key }
