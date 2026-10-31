@@ -619,6 +619,22 @@ class TeamActivity : AppCompatActivity() {
                 setOnClickListener { showPhotoDialog(session, meterId) }
             })
         }
+        // The day end of a driver (a second car meter picture at the end of the work day): the time, the km and the km driven since the morning picture.
+        // A driver who has marked attendance with a meter picture but has not sent the day end yet shows "not yet".
+        val endTime = o.optString("dayEnd")
+        if (status == "Present" && (endTime.isNotEmpty() || meterId.isNotEmpty())) {
+            val endId = o.optString("dayEndMeter")
+            val endKm = o.optString("dayEndKm")
+            val driven = o.optInt("driven", -1)
+            nameCol.addView(TextView(this).apply {
+                text = if (endTime.isEmpty()) "🏁 Day end · not yet"
+                    else "🏁 Day end · $endTime" + (if (endKm.isNotEmpty()) " · $endKm km" else "") + (if (driven >= 0) " · $driven km driven" else "") +
+                        (if (endId.isNotEmpty()) " · tap to see the picture" else "")
+                textSize = 12f; setTypeface(null, Typeface.BOLD)
+                setTextColor(Pal.c(if (endTime.isEmpty()) "#A98578" else "#6B352A")); setPadding(0, dp(2), 0, dp(2))
+                if (endId.isNotEmpty()) setOnClickListener { showPhotoDialog(session, endId) }
+            })
+        }
         top.addView(nameCol)
         top.addView(pill(if (status == "On Leave" && detail.isNotEmpty()) detail.substringBefore(" ") else pillLabel, fg, bg))
         col.addView(top)

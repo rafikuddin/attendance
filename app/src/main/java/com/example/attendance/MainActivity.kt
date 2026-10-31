@@ -336,7 +336,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Today's selfie as a small round picture in the status circle, and where it was taken. Back to the pin until attendance is marked. */
-    private fun showTodayDetail(rec: JSONObject?) {
+    private fun showTodayDetail(rec: JSONObject?, driver: Boolean = false) {
         val box = findViewById<android.view.View>(R.id.todayDetail)
         val mini = findViewById<android.widget.ImageView>(R.id.imgTodayMini)
         val pin = findViewById<android.view.View>(R.id.tvTodayPin)
@@ -360,7 +360,16 @@ class MainActivity : AppCompatActivity() {
         }
         val address = rec.optString("address")
         val coords = "${rec.optString("lat")}, ${rec.optString("lng")}"
-        findViewById<TextView>(R.id.tvTodayLoc).text = "📍 " + (if (address.isNotEmpty() && address != "Address unavailable") "$address\n$coords" else coords)
+        // A driver also sends the day end (a car meter picture at the end of the work day): when it was done, or a reminder that it is still to do.
+        val endTime = rec.optString("dayEnd")
+        val endKm = rec.optString("dayEndKm")
+        val driven = rec.optInt("driven", -1)
+        val endLine = when {
+            endTime.isNotEmpty() -> "\n🏁 Day end · $endTime" + (if (endKm.isNotEmpty()) " · $endKm km" else "") + (if (driven >= 0) " · $driven km driven" else "")
+            driver -> "\n🏁 Day end not sent yet: Mark Attendance > Start Day End"
+            else -> ""
+        }
+        findViewById<TextView>(R.id.tvTodayLoc).text = "📍 " + (if (address.isNotEmpty() && address != "Address unavailable") "$address\n$coords" else coords) + endLine
     }
 
     private fun showBigSelfie(fileId: String) {
@@ -556,7 +565,7 @@ class MainActivity : AppCompatActivity() {
             showNotices(res.optJSONArray("notices"))
             showUpdate(res.optJSONObject("appUpdate"))
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
-            showTodayDetail(todayRecord)
+            showTodayDetail(todayRecord, res.optBoolean("driver"))
             LateReason.bind(this, findViewById(R.id.tvLateReason), todayRecord)
             if (todayLate && todayRecord?.optString("lateReason")?.isEmpty() == true)
                 LateReason.require(this) { loadStatus() }          // late today and no reason yet: compulsory

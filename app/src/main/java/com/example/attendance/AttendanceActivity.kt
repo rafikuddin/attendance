@@ -84,6 +84,16 @@ class AttendanceActivity : AppCompatActivity() {
     private val watchHandler = Handler(Looper.getMainLooper())
     private val meterIdleDefault = "🚗  Next: a picture of the car meter\n\nIt opens as soon as your selfie is taken."
     private var meterNote: String? = null        // what the meter card says while it has no live picture ("opening ...", or why the camera could not start)
+    private var meterStarting = false            // the back camera is being switched on right now
+
+    // Driver, DAY END: once today's attendance is marked, the same meter card works as the Day End card. The driver opens the back camera, takes a new picture of
+    // the car meter, the phone reads the km number from it (same check as in the morning), and only then the Submit Day End button shows. Once a day.
+    private lateinit var btnDayEnd: Button
+    private var attendedToday = false            // today's attendance is marked (from the server's answer)
+    private var dayEndDone = false               // today's day end is submitted already
+    private var dayEndSending = false            // the day end is being sent right now
+    private var morningKm = ""                   // the km number of this morning's car meter picture ("" when none was read)
+    private val meterEndIdle = "🏁  Day end\n\nWhen your work day is over, tap Start Day End and take a picture of the car meter."
 
     private val dateFmt = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     private val timeFmt = SimpleDateFormat("hh:mm:ss a", Locale.getDefault())
@@ -92,6 +102,11 @@ class AttendanceActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { if (it.values.all { granted -> granted }) startCamera()
         else toast("Camera & location permissions are required") }
+
+    // The day end only needs the camera (no location): its own permission question, which opens the back camera for the car meter.
+    private val endPermLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) startMeterCamera() else toast("The camera permission is required for the day end") }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,6 +133,7 @@ class AttendanceActivity : AppCompatActivity() {
         tvMeterHint = findViewById(R.id.tvMeterHint)
         btnTorch = findViewById(R.id.btnTorch)
         btnMeter = findViewById(R.id.btnMeter)
+        btnDayEnd = findViewById(R.id.btnDayEnd)
         // the last answer of the server about the Driver right: the screen starts the right way, the fresh answer corrects it a moment later
         val livePrefs = getSharedPreferences("live", MODE_PRIVATE)
         isDriver = livePrefs.getBoolean("driver_${session.username}", false)
@@ -128,7 +144,15 @@ class AttendanceActivity : AppCompatActivity() {
             if (photoFile != null) retake() else captureSelfie()
         }
         btnSubmit.setOnClickListener { submit() }
-        btnMeter.setOnClickListener { if (meterFile != null) retakeMeter() else captureMeter() }
+        btnMeter.setOnClickListener {
+            when {
+                meterFile != null -> retakeMeter()
+                meterLive -> captureMeter()
+                isEndMode() -> openEndCamera()                // the day end: the camera opens when the driver asks for it
+                else -> captureMeter()
+            }
+        }
+        btnDayEnd.setOnClickListener { submitDayEnd() }
         btnTorch.setOnClickListener { toggleTorch() }
         setupMeterFocus()
         applyMeterUi()
@@ -160,7 +184,7 @@ class AttendanceActivity : AppCompatActivity() {
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
             val provider = future.get()
-            if (entryHidden) { provider.unbindAll(); frontOn = false; return@addListener }      // nothing to capture today
+            if (entryHidden) { if (!meterLive) { provider.unbindAll(); frontOn = false }; return@addListener }      // nothing to capture today (a driver's day end camera stays on)
             val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
             imageCapture = ImageCapture.Builder().build()
             val selector = if (provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA))
@@ -522,6 +546,10 @@ class AttendanceActivity : AppCompatActivity() {
             LateReason.bind(this, findViewById(R.id.atLateReason), todayRecord)
             if (todayLate && todayRecord?.optString("lateReason")?.isEmpty() == true && forDate == null)
                 LateReason.require(this) { loadTodayStatus() }          // still no reason for today's late attendance
+            // A driver who has marked attendance and has not sent the day end yet gets the Day End step (see isEndMode()).
+            attendedToday = todayTime != null
+            dayEndDone = todayRecord?.optString("dayEnd")?.isNotEmpty() == true
+            morningKm = todayRecord?.optString("meterKm") ?: ""
             // Already submitted (Present / Late), or marked Absent: there is nothing left to capture or submit today.
             val absentToday = todayTime == null && leaveType == null && holidayToday == null && !isFridayToday && isAfterCutoff
             setEntryVisible(!(todayTime != null || absentToday))
@@ -544,13 +572,14 @@ class AttendanceActivity : AppCompatActivity() {
         val wasHidden = entryHidden
         entryHidden = !show
         if (show && wasHidden) ensureCamera()              // a saved copy said "done", the fresh answer says it is not
+        if (!show && !wasHidden) discardWork()             // the attendance is done (just submitted, or marked elsewhere): the selfie and the morning meter picture are no longer needed
         val v = if (show) View.VISIBLE else View.GONE
         findViewById<View>(R.id.cardCamera).visibility = v
         findViewById<View>(R.id.cardLive).visibility = v
         applyCaptureVisibility()
         applySubmitVisibility()                            // a driver's Submit button also waits for the verified car meter picture
         applyMeterUi()
-        if (!show) {
+        if (!show && !meterLive) {                         // (a live back camera of the day end stays on)
             try { ProcessCameraProvider.getInstance(this).get().unbindAll() } catch (e: Exception) { }
             frontOn = false
         }
@@ -599,6 +628,21 @@ class AttendanceActivity : AppCompatActivity() {
             tvMeter.visibility = View.GONE
             tvMeter.setOnClickListener(null)
         }
+        // A driver's day end: the time, the km on the second picture and the km driven since the morning picture. Tap the line to see the picture.
+        val tvEnd = findViewById<TextView>(R.id.atDayEnd)
+        val endTime = rec.optString("dayEnd")
+        if (endTime.isNotEmpty()) {
+            val endKm = rec.optString("dayEndKm")
+            val driven = rec.optInt("driven", -1)
+            val endId = rec.optString("dayEndMeter")
+            tvEnd.text = "🏁 Day end · $endTime" + (if (endKm.isNotEmpty()) " · $endKm km" else "") +
+                (if (driven >= 0) " · $driven km driven" else "") + (if (endId.isNotEmpty()) " · tap to see the picture" else "")
+            tvEnd.visibility = View.VISIBLE
+            if (endId.isNotEmpty()) tvEnd.setOnClickListener { showPhotoDialog(session, endId) } else tvEnd.setOnClickListener(null)
+        } else {
+            tvEnd.visibility = View.GONE
+            tvEnd.setOnClickListener(null)
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------------------------------
@@ -627,25 +671,30 @@ class AttendanceActivity : AppCompatActivity() {
      * button), taken (the picture with its result on it, Retake button).
      */
     private fun applyMeterUi() {
-        val show = isDriver && !entryHidden
+        val endMode = isEndMode()                            // the same card is the Day End card once the attendance is marked
+        val show = (isDriver && !entryHidden) || endMode
         cardMeter.visibility = if (show) View.VISIBLE else View.GONE
         if (!show) {
             meterLive = false
             btnMeter.visibility = View.GONE
+            btnDayEnd.visibility = View.GONE
             return
         }
         val taken = meterFile != null
-        val camOn = meterLive && photoFile != null          // the back camera is on (it stays on for a moment after the picture is taken, until the picture is shown)
+        val camOn = meterLive && (endMode || photoFile != null)   // the back camera is on (it stays on for a moment after the picture is taken, until the picture is shown)
         val live = camOn && !taken
         previewMeter.visibility = if (camOn) View.VISIBLE else View.GONE
         imgMeter.visibility = if (taken && !camOn) View.VISIBLE else View.GONE
-        tvMeterIdle.text = meterNote ?: meterIdleDefault
+        tvMeterIdle.text = meterNote ?: (if (endMode) meterEndIdle else meterIdleDefault)
         tvMeterIdle.visibility = if (taken || camOn) View.GONE else View.VISIBLE
         tvMeterHint.visibility = if (taken || camOn) View.VISIBLE else View.GONE
         btnTorch.visibility = if (live && torchAvailable) View.VISIBLE else View.GONE
-        btnMeter.visibility = if (taken || camOn) View.VISIBLE else View.GONE
-        btnMeter.text = if (taken) "🔄  Retake car meter" else "📷  Capture car meter"
-        btnMeter.isEnabled = !meterBusy
+        btnMeter.visibility = if (taken || camOn || endMode) View.VISIBLE else View.GONE
+        btnMeter.text = if (taken) "🔄  Retake car meter" else if (endMode && !camOn) "📷  Start Day End" else "📷  Capture car meter"
+        btnMeter.isEnabled = !meterBusy && !dayEndSending
+        btnDayEnd.visibility = if (endMode && taken && meterOk) View.VISIBLE else View.GONE      // only after the new car meter picture is verified
+        btnDayEnd.text = if (dayEndSending) "Sending…" else "🏁  Submit Day End"
+        btnDayEnd.isEnabled = !meterBusy && !dayEndSending
     }
 
     /** The line over the meter picture. [tone]: "info" (dark), "good" (green) or "bad" (red). */
@@ -663,13 +712,15 @@ class AttendanceActivity : AppCompatActivity() {
 
     /** Switches from the front camera to the back one and shows it live in the meter card. */
     private fun startMeterCamera() {
-        if (!isDriver || entryHidden || photoFile == null || meterFile != null) return
+        if (!meterStepOpen()) return
         meterNote = "📷  Opening the back camera…"
+        meterStarting = true
         applyMeterUi()
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
+            meterStarting = false
             // things can change while the camera starts (a retake, an attendance that was just marked)
-            if (!isDriver || entryHidden || photoFile == null || meterFile != null || isFinishing || isDestroyed) return@addListener
+            if (!meterStepOpen() || isFinishing || isDestroyed) return@addListener
             try {
                 val provider = future.get()
                 previewMeter.visibility = View.VISIBLE
@@ -688,11 +739,15 @@ class AttendanceActivity : AppCompatActivity() {
                 meterLive = false
                 meterCamera = null
                 meterCapture = null
-                meterNote = "⚠️ The back camera could not start.\n\nClose this screen and open it again."
+                meterNote = if (isEndMode()) "⚠️ The back camera could not start.\n\nTap Start Day End to try again."
+                            else "⚠️ The back camera could not start.\n\nClose this screen and open it again."
             }
             applyMeterUi()
         }, ContextCompat.getMainExecutor(this))
     }
+
+    /** The back camera may be used for the car meter: in the morning after the selfie, or at the day end. */
+    private fun meterStepOpen() = isDriver && meterFile == null && (isEndMode() || (!entryHidden && photoFile != null))
 
     /** Switches the back camera on with its live picture in the meter card and an ImageCapture for the car meter picture. Throws when the phone cannot. */
     private fun bindMeterCamera(provider: ProcessCameraProvider, captureMode: Int): Camera {
@@ -775,18 +830,19 @@ class AttendanceActivity : AppCompatActivity() {
         if (!meterBusy || meterFile != file) return
         watchHandler.removeCallbacksAndMessages(null)
         meterBusy = false
+        val next = if (isEndMode()) "\nNow tap Submit Day End." else ""        // (the day end: what comes after the check)
         when {
             r == null -> {
                 meterOk = true; meterKm = ""
-                showMeterHint("✅ Car meter picture taken.", "good")
+                showMeterHint("✅ Car meter picture taken.$next", "good")
             }
             !r.ran -> {
                 meterOk = true; meterKm = ""
-                showMeterHint("✅ Car meter picture taken.\n(The number check could not run on this phone, so the picture is accepted.)", "good")
+                showMeterHint("✅ Car meter picture taken.\n(The number check could not run on this phone, so the picture is accepted.)$next", "good")
             }
             r.km.isNotEmpty() -> {
                 meterOk = true; meterKm = r.km
-                showMeterHint("✅ Car meter verified · ${r.km} km", "good")
+                showMeterHint("✅ Car meter verified · ${r.km} km${if (isEndMode()) drivenNote(r.km) else ""}", "good")
             }
             else -> {
                 meterOk = false; meterKm = ""
@@ -833,6 +889,115 @@ class AttendanceActivity : AppCompatActivity() {
                 v.performClick()
             }
             true
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------
+    // Driver: the DAY END. After the attendance is marked, the driver takes a new picture of the car meter (back camera); the phone reads the km number
+    // from it like in the morning; only then Submit Day End shows. The server keeps it with today's attendance (once a day) and works out the km driven.
+
+    /** A driver whose attendance is marked today and who has not sent the day end yet (never for a manual day). */
+    private fun isEndMode() = forDate == null && isDriver && attendedToday && !dayEndDone
+
+    /** "Start Day End": opens the back camera (asking for the camera permission first when it is missing). */
+    private fun openEndCamera() {
+        if (!isEndMode() || meterStarting || meterLive || meterFile != null) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) startMeterCamera()
+        else endPermLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    /** Throws away the selfie and the car meter picture taken for an attendance that was just submitted (or turned out to be marked already), or the day end picture after it was sent. */
+    private fun discardWork() {
+        watchHandler.removeCallbacksAndMessages(null)
+        meterFile?.delete(); meterFile = null
+        photoFile?.delete(); photoFile = null
+        meterOk = false; meterKm = ""; meterBusy = false; meterNote = null
+        meterLive = false; meterCamera = null; meterCapture = null
+        imgMeter.setImageDrawable(null)
+        imgSelfie.visibility = View.GONE                       // (the selfie card is hidden anyway once the attendance is done; this keeps it tidy if it ever shows again)
+        btnCapture.text = "📸  Capture Selfie"
+    }
+
+    /** Submit Day End: sends the verified car meter picture and its km number. */
+    private fun submitDayEnd() {
+        if (!isEndMode() || dayEndSending) return
+        val file = meterFile ?: return
+        if (!meterOk) return
+        val km = meterKm
+        dayEndSending = true
+        applyMeterUi()
+        showEndSummary("Submitting the day end…", "info")
+        // Shrinking and encoding the picture is heavy, so it runs off the screen thread (the same size as the morning picture: 1280px, quality 70).
+        Thread {
+            val body: JSONObject? = try {
+                val out = ByteArrayOutputStream()
+                loadScaled(file.absolutePath, 1280).compress(Bitmap.CompressFormat.JPEG, 70, out)
+                JSONObject().put("action", "dayEnd").put("username", session.username)
+                    .put("meter", Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)).put("meterKm", km)
+            } catch (e: Exception) { null }
+            runOnUiThread {
+                if (body == null) {
+                    dayEndSending = false
+                    applyMeterUi()
+                    showEndSummary("❌ Couldn't prepare the picture. Please retake the car meter picture.", "bad")
+                } else sendDayEnd(body)
+            }
+        }.start()
+    }
+
+    private fun sendDayEnd(body: JSONObject) {
+        api(body) { res, err ->
+            dayEndSending = false
+            if (res != null) {
+                dayEndDone = true
+                discardWork()                                  // the picture now lives on the server
+                ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
+                val km = res.optString("km")
+                val driven = res.optInt("driven", -1)
+                val lines = "Time: ${res.optString("time")}" + (if (km.isNotEmpty()) "\nCar meter: $km km" else "") +
+                    (if (driven >= 0) "\nDriven today: $driven km" else "")
+                applyMeterUi()
+                showEndSummary("🏁 Day end submitted\n\n$lines", "good")
+                loadTodayStatus()                              // the card on top now shows the day end
+                popup("🏁 Day end submitted", lines)
+            } else {
+                val already = err?.contains("already", ignoreCase = true) == true
+                if (already) {                                 // a second day end for the same day can never work: show it as done
+                    dayEndDone = true
+                    discardWork()
+                    ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
+                    loadTodayStatus()
+                }
+                applyMeterUi()
+                showEndSummary(if (already) "ℹ️ $err" else "❌ $err", if (already) "info" else "bad")
+            }
+        }
+    }
+
+    /** The result card at the bottom of the page. [tone]: "info" (blue), "good" (green) or "bad" (red). */
+    private fun showEndSummary(text: String, tone: String) {
+        val (bg, fg) = when (tone) { "good" -> "#DCFCE7" to "#166534"; "bad" -> "#FFEBEE" to "#B71C1C"; else -> "#E3F2FD" to "#0D47A1" }
+        cardSummary.visibility = View.VISIBLE
+        cardSummary.setCardBackgroundColor(Pal.c(bg))
+        tvSummary.setTextColor(Pal.c(fg))
+        tvSummary.text = text
+        if (tone != "good") scrollToEnd()
+    }
+
+    /** End km minus the morning km (both digit text of 4 to 9 digits), or null when either is missing or the end reading is lower. */
+    private fun drivenKm(from: String, to: String): Long? {
+        if (from.length !in 4..9 || to.length !in 4..9 || !from.all { it in '0'..'9' } || !to.all { it in '0'..'9' }) return null
+        val d = to.toLong() - from.toLong()
+        return if (d >= 0) d else null
+    }
+
+    /** Under the verified day end picture: how far the car went since this morning's picture, or a warning when the new number is lower. */
+    private fun drivenNote(km: String): String {
+        val d = drivenKm(morningKm, km)
+        return when {
+            d != null -> "\n$d km since this morning.\nNow tap Submit Day End."
+            morningKm.isNotEmpty() -> "\n⚠️ Lower than this morning's $morningKm km. If the picture was misread, retake it; otherwise tap Submit Day End."
+            else -> "\nNow tap Submit Day End."
         }
     }
 
