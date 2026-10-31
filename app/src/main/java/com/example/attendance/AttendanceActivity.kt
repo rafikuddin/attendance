@@ -16,6 +16,7 @@ import android.util.Size
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
+import android.view.MotionEvent
 import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,6 +60,31 @@ class AttendanceActivity : AppCompatActivity() {
     private var entryHidden = false           // today is already Present / Late / Absent: no camera, no Submit
     private var forDate: String? = null          // set when an admin opened a past day for this person (manual entry)
 
+    // Driver (Admin Panel > Users > Menu access > Extra rights > Driver): after the selfie, the BACK camera takes a picture of the car meter.
+    // The phone reads the km number from it (MeterCheck.kt); a driver's Submit button only shows after that. The server insists on the picture too.
+    private lateinit var cardMeter: MaterialCardView
+    private lateinit var previewMeter: PreviewView
+    private lateinit var imgMeter: ImageView
+    private lateinit var tvMeterIdle: TextView
+    private lateinit var tvMeterHint: TextView
+    private lateinit var btnTorch: TextView
+    private lateinit var btnMeter: Button
+    private var isDriver = false                 // the admin gave this person the Driver right (the server tells on every Home / Attendance load)
+    private var meterCheckOn = true              // the phone must read a km number from the meter picture (the admin can switch that off: Admin Panel > Entry)
+    private var meterCapture: ImageCapture? = null
+    private var meterCamera: Camera? = null
+    private var meterFile: File? = null          // the car meter picture on the phone
+    private var meterOk = false                  // the picture is taken AND verified: only then does a driver's Submit button show
+    private var meterKm = ""                     // the km number the phone read from it ("" when none could be read)
+    private var meterBusy = false                // taking or checking the picture right now
+    private var meterLive = false                // the back camera is on and shows live in the meter card
+    private var frontOn = false                  // the front camera (the selfie) is the one switched on; false while the back camera (car meter) is on, or none
+    private var torchOn = false
+    private var torchAvailable = false
+    private val watchHandler = Handler(Looper.getMainLooper())
+    private val meterIdleDefault = "🚗  Next: a picture of the car meter\n\nIt opens as soon as your selfie is taken."
+    private var meterNote: String? = null        // what the meter card says while it has no live picture ("opening ...", or why the camera could not start)
+
     private val dateFmt = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     private val timeFmt = SimpleDateFormat("hh:mm:ss a", Locale.getDefault())
 
@@ -85,12 +111,28 @@ class AttendanceActivity : AppCompatActivity() {
         enforceAccess("attendance")
         btnCapture = findViewById(R.id.btnCapture)
         btnSubmit = findViewById(R.id.btnSubmit)
+        cardMeter = findViewById(R.id.cardMeter)
+        previewMeter = findViewById(R.id.previewMeter)
+        imgMeter = findViewById(R.id.imgMeter)
+        tvMeterIdle = findViewById(R.id.tvMeterIdle)
+        tvMeterHint = findViewById(R.id.tvMeterHint)
+        btnTorch = findViewById(R.id.btnTorch)
+        btnMeter = findViewById(R.id.btnMeter)
+        // the last answer of the server about the Driver right: the screen starts the right way, the fresh answer corrects it a moment later
+        val livePrefs = getSharedPreferences("live", MODE_PRIVATE)
+        isDriver = livePrefs.getBoolean("driver_${session.username}", false)
+        meterCheckOn = livePrefs.getBoolean("meterCheck", true)
 
         applyCaptureVisibility()                      // hidden until the live check is passed (when the check is on)
         btnCapture.setOnClickListener {
             if (photoFile != null) retake() else captureSelfie()
         }
         btnSubmit.setOnClickListener { submit() }
+        btnMeter.setOnClickListener { if (meterFile != null) retakeMeter() else captureMeter() }
+        btnTorch.setOnClickListener { toggleTorch() }
+        setupMeterFocus()
+        applyMeterUi()
+        applySubmitVisibility()
         if (forDate == null) loadTodayStatus() else findViewById<View>(R.id.atStatusCard).visibility = View.GONE   // a manual day is not "today"
 
         forDate?.let { d ->
@@ -118,12 +160,14 @@ class AttendanceActivity : AppCompatActivity() {
         val future = ProcessCameraProvider.getInstance(this)
         future.addListener({
             val provider = future.get()
-            if (entryHidden) { provider.unbindAll(); return@addListener }      // nothing to capture today
+            if (entryHidden) { provider.unbindAll(); frontOn = false; return@addListener }      // nothing to capture today
             val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
             imageCapture = ImageCapture.Builder().build()
             val selector = if (provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA))
                 CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
             provider.unbindAll()
+            frontOn = true                                        // the front camera takes over (a driver's car meter step had switched to the back one)
+            meterLive = false
             if (!liveRequired) {                                  // an admin switched the live check off
                 provider.bindToLifecycle(this, selector, preview, imageCapture)
                 liveOk = true
@@ -215,6 +259,7 @@ class AttendanceActivity : AppCompatActivity() {
                                 imgSelfie.setImageBitmap(preview)
                                 imgSelfie.visibility = View.VISIBLE
                             }
+                            if (photoFile == file && isDriver) enterMeterStage()       // a driver goes on to the car meter (back camera)
                         }
                     }.start()
                 }
@@ -249,7 +294,14 @@ class AttendanceActivity : AppCompatActivity() {
         photoFile = null
         imgSelfie.visibility = View.GONE
         btnCapture.text = "📸  Capture Selfie"
-        beginLiveness()                              // a new selfie needs a new live check (when it is on)
+        meterNote = null                             // (the meter card goes back to "next: the car meter" until the new selfie is taken)
+        if (!frontOn) {
+            // the back camera (car meter step) was on, or the camera was switched off after it: the front camera comes back for the new selfie (its live check starts with it)
+            liveOk = false
+            applyCaptureVisibility()
+            startCamera()
+        } else beginLiveness()                       // a new selfie needs a new live check (when it is on)
+        applyMeterUi()
         btnSubmit.isEnabled = false
         if (forDate == null) cardSummary.visibility = View.GONE
         tvLive.text = "Date: -\nTime: -\nLocation: -"
@@ -262,6 +314,7 @@ class AttendanceActivity : AppCompatActivity() {
     override fun onDestroy() {
         locHandle?.cancel()
         uiHandler.removeCallbacksAndMessages(null)
+        watchHandler.removeCallbacksAndMessages(null)
         liveness?.close()
         analysisExecutor.shutdown()
         super.onDestroy()
@@ -304,9 +357,14 @@ class AttendanceActivity : AppCompatActivity() {
         val t = captureTime ?: return
         val l = location ?: return
         val file = photoFile ?: return
+        // A driver sends the car meter picture too, and only after the phone verified it.
+        if (isDriver && (!meterOk || meterFile == null)) return
+        val mFile: File? = if (isDriver) meterFile else null
+        val mKm = meterKm
 
         btnSubmit.isEnabled = false
         btnCapture.isEnabled = false
+        btnMeter.isEnabled = false
         cardSummary.visibility = View.VISIBLE
         cardSummary.setCardBackgroundColor(Pal.c("#E3F2FD"))
         tvSummary.setTextColor(Pal.c("#0D47A1"))
@@ -323,6 +381,12 @@ class AttendanceActivity : AppCompatActivity() {
                 val out = ByteArrayOutputStream()
                 loadScaled(file.absolutePath, 640).compress(Bitmap.CompressFormat.JPEG, 65, out)
                 val photo = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+                // The car meter picture (drivers only): 1280px at quality 70 keeps the digits readable for a manager and is far below the server's 1.5 MB limit.
+                val meterPhoto: String? = if (mFile != null) {
+                    val mo = ByteArrayOutputStream()
+                    loadScaled(mFile.absolutePath, 1280).compress(Bitmap.CompressFormat.JPEG, 70, mo)
+                    Base64.encodeToString(mo.toByteArray(), Base64.NO_WRAP)
+                } else null
                 // Face check (only when the face model is in the app): the face print is made here on the phone and only the numbers are sent.
                 val face = if (FaceId.available(this)) FaceId.embed(this, loadScaled(file.absolutePath, 1024)) else null
                 JSONObject()
@@ -333,13 +397,15 @@ class AttendanceActivity : AppCompatActivity() {
                     .put("address", addr)
                     .put("photo", photo)
                     .also { if (forDate != null) it.put("forDate", forDate) }
+                    .also { if (meterPhoto != null) it.put("meter", meterPhoto).put("meterKm", mKm) }
                     .also { if (face?.print != null) it.put("face", face.print) else if (face?.noFace == true) it.put("faceState", "noface") }
             } catch (e: Exception) {
                 runOnUiThread {
-                    btnSubmit.isEnabled = true; btnCapture.isEnabled = true
+                    btnSubmit.isEnabled = true; btnCapture.isEnabled = true; btnMeter.isEnabled = !meterBusy
                     cardSummary.setCardBackgroundColor(Pal.c("#FFEBEE"))
                     tvSummary.setTextColor(Pal.c("#B71C1C"))
-                    tvSummary.text = "❌ Couldn't prepare the photo. Please retake the selfie."
+                    tvSummary.text = if (mFile != null) "❌ Couldn't prepare the photos. Please retake the selfie and the car meter picture."
+                        else "❌ Couldn't prepare the photo. Please retake the selfie."
                 }
                 return@Thread
             }
@@ -355,12 +421,15 @@ class AttendanceActivity : AppCompatActivity() {
                 ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
                 Reminders.clearSelf(this)   // the "mark your attendance" reminder is no longer needed
                 photoFile?.delete()   // the selfie now lives on the server; don't keep a copy on the phone
+                meterFile?.delete()   // so does the car meter picture
+                val meterLine = if (res.optBoolean("meter"))
+                    "\nCar meter: " + (body.optString("meterKm").let { if (it.isNotEmpty()) "$it km" else "picture saved" }) else ""
                 val late = res.optBoolean("late")
                 cardSummary.setCardBackgroundColor(Pal.c(if (late) "#FFEDD5" else "#DCFCE7"))
                 tvSummary.setTextColor(Pal.c(if (late) "#9A3412" else "#166534"))
                 tvSummary.text = "${if (late) "⏰ Late Present" else "✅ Attendance Submitted"}${if (res.optBoolean("manual")) " (manual)" else ""}\n\nDate: ${res.optString("date")}\nTime: ${res.optString("time")}\n" +
                     "Selfie time: ${dateFmt.format(t)} ${timeFmt.format(t)}\n" +
-                    "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address"
+                    "Location: ${String.format(Locale.US, "%.5f, %.5f", l.latitude, l.longitude)}\n$address$meterLine"
                 loadTodayStatus()      // the card on top now shows the new attendance
                 if (late && forDate == null) {
                     LateReason.require(this) { loadTodayStatus() }          // compulsory: the reason must be written before going on
@@ -370,13 +439,19 @@ class AttendanceActivity : AppCompatActivity() {
             } else {
                 val already = err?.contains("already", ignoreCase = true) == true
                 btnSubmit.isEnabled = !already          // a second submit for the same day can never work
+                btnMeter.isEnabled = !meterBusy
                 if (already) {                           // the saved copy of Home was out of date: refresh the status card, which then hides the form
                     ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
                     loadTodayStatus()
                 }
-                cardSummary.setCardBackgroundColor(Pal.c(if (already) "#E3F2FD" else "#FFEBEE"))
-                tvSummary.setTextColor(Pal.c(if (already) "#0D47A1" else "#B71C1C"))
-                tvSummary.text = if (already) "ℹ️ $err" else "❌ $err"
+                // The server says the car meter picture is missing: this phone did not know yet that the person is a driver. The meter step opens now.
+                val needMeter = !already && !isDriver && err?.contains("car meter", ignoreCase = true) == true
+                if (needMeter) applyDriverSetting(true, meterCheckOn)
+                cardSummary.setCardBackgroundColor(Pal.c(if (already) "#E3F2FD" else if (needMeter) "#FFF6C4" else "#FFEBEE"))
+                tvSummary.setTextColor(Pal.c(if (already) "#0D47A1" else if (needMeter) "#6B352A" else "#B71C1C"))
+                tvSummary.text = if (already) "ℹ️ $err"
+                    else if (needMeter) "🚗 You are a driver: take the picture of the car meter below (back camera), then submit."
+                    else "❌ $err"
                 if (already) popup("ℹ️ Already submitted", err ?: "Your attendance for today is already submitted.")
             }
         }
@@ -406,6 +481,7 @@ class AttendanceActivity : AppCompatActivity() {
             var todayRecord: JSONObject? = null
             val presentDays = HashSet<String>()
             if (res.has("liveCheck")) applyLiveSetting(res.optBoolean("liveCheck", true))
+            if (res.has("driver")) applyDriverSetting(res.optBoolean("driver", false), res.optBoolean("meterCheck", true))
             val recs = res.optJSONArray("records") ?: return@render
             for (i in 0 until recs.length()) {
                 val r = recs.getJSONObject(i); val d = r.getString("date")
@@ -472,9 +548,11 @@ class AttendanceActivity : AppCompatActivity() {
         findViewById<View>(R.id.cardCamera).visibility = v
         findViewById<View>(R.id.cardLive).visibility = v
         applyCaptureVisibility()
-        btnSubmit.visibility = v
+        applySubmitVisibility()                            // a driver's Submit button also waits for the verified car meter picture
+        applyMeterUi()
         if (!show) {
             try { ProcessCameraProvider.getInstance(this).get().unbindAll() } catch (e: Exception) { }
+            frontOn = false
         }
     }
 
@@ -509,6 +587,263 @@ class AttendanceActivity : AppCompatActivity() {
         val addr = rec.optString("address")
         val coords = "${rec.optString("lat")}, ${rec.optString("lng")}"
         findViewById<TextView>(R.id.atLoc).text = "📍 " + (if (addr.isNotEmpty() && addr != "Address unavailable") "$addr\n$coords" else coords)
+        // A driver's car meter picture (and the km the phone read from it): tap the line to see the picture.
+        val tvMeter = findViewById<TextView>(R.id.atMeter)
+        val meterId = rec.optString("meter")
+        if (meterId.isNotEmpty()) {
+            val km = rec.optString("meterKm")
+            tvMeter.text = "🚗 Car meter" + (if (km.isNotEmpty()) " · $km km" else "") + " · tap to see the picture"
+            tvMeter.visibility = View.VISIBLE
+            tvMeter.setOnClickListener { showPhotoDialog(session, meterId) }
+        } else {
+            tvMeter.visibility = View.GONE
+            tvMeter.setOnClickListener(null)
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------------
+    // Driver: the car meter picture. The order is: selfie (front camera) -> picture of the car meter (back camera) -> the phone reads the
+    // km number from it -> only then the Submit button shows. A person who is not a driver never sees any of this.
+
+    /** The Driver right and the number-check setting, as the server says them. A change shows at once and is remembered for the next start. */
+    private fun applyDriverSetting(driver: Boolean, check: Boolean) {
+        getSharedPreferences("live", MODE_PRIVATE).edit()
+            .putBoolean("driver_${session.username}", driver).putBoolean("meterCheck", check).apply()
+        meterCheckOn = check
+        if (driver == isDriver) return
+        isDriver = driver
+        applyMeterUi()
+        applySubmitVisibility()
+        if (driver && photoFile != null && meterFile == null) enterMeterStage()      // the selfie was taken before the answer came
+    }
+
+    /** Submit shows when attendance can be marked AND (for a driver) the car meter picture is verified. */
+    private fun applySubmitVisibility() {
+        btnSubmit.visibility = if (entryHidden || (isDriver && !meterOk)) View.GONE else View.VISIBLE
+    }
+
+    /**
+     * The meter card, for a driver while attendance can be marked. Three looks: waiting for the selfie (a note), live (back camera, Capture button, a light
+     * button), taken (the picture with its result on it, Retake button).
+     */
+    private fun applyMeterUi() {
+        val show = isDriver && !entryHidden
+        cardMeter.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) {
+            meterLive = false
+            btnMeter.visibility = View.GONE
+            return
+        }
+        val taken = meterFile != null
+        val camOn = meterLive && photoFile != null          // the back camera is on (it stays on for a moment after the picture is taken, until the picture is shown)
+        val live = camOn && !taken
+        previewMeter.visibility = if (camOn) View.VISIBLE else View.GONE
+        imgMeter.visibility = if (taken && !camOn) View.VISIBLE else View.GONE
+        tvMeterIdle.text = meterNote ?: meterIdleDefault
+        tvMeterIdle.visibility = if (taken || camOn) View.GONE else View.VISIBLE
+        tvMeterHint.visibility = if (taken || camOn) View.VISIBLE else View.GONE
+        btnTorch.visibility = if (live && torchAvailable) View.VISIBLE else View.GONE
+        btnMeter.visibility = if (taken || camOn) View.VISIBLE else View.GONE
+        btnMeter.text = if (taken) "🔄  Retake car meter" else "📷  Capture car meter"
+        btnMeter.isEnabled = !meterBusy
+    }
+
+    /** The line over the meter picture. [tone]: "info" (dark), "good" (green) or "bad" (red). */
+    private fun showMeterHint(text: String, tone: String) {
+        tvMeterHint.text = text
+        tvMeterHint.setBackgroundColor(Color.parseColor(when (tone) { "good" -> "#E6166534"; "bad" -> "#E6B71C1C"; else -> "#B3000000" }))
+    }
+
+    /** The selfie is taken: a driver goes on to the car meter. The back camera opens in the meter card and the page scrolls down to it. */
+    private fun enterMeterStage() {
+        applyMeterUi()
+        if (meterFile == null) { startMeterCamera(); scrollToView(cardMeter) }
+        else if (meterOk) scrollToEnd()                                     // a new selfie after a verified meter picture: only Submit is left
+    }
+
+    /** Switches from the front camera to the back one and shows it live in the meter card. */
+    private fun startMeterCamera() {
+        if (!isDriver || entryHidden || photoFile == null || meterFile != null) return
+        meterNote = "📷  Opening the back camera…"
+        applyMeterUi()
+        val future = ProcessCameraProvider.getInstance(this)
+        future.addListener({
+            // things can change while the camera starts (a retake, an attendance that was just marked)
+            if (!isDriver || entryHidden || photoFile == null || meterFile != null || isFinishing || isDestroyed) return@addListener
+            try {
+                val provider = future.get()
+                previewMeter.visibility = View.VISIBLE
+                // best picture quality first; a phone that cannot do that next to the live picture gets the plain setting
+                val cam = try { bindMeterCamera(provider, ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY) }
+                          catch (e: Exception) { bindMeterCamera(provider, ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY) }
+                meterCamera = cam
+                frontOn = false
+                meterLive = true
+                meterNote = null
+                torchOn = false
+                btnTorch.alpha = 0.7f
+                torchAvailable = try { cam.cameraInfo.hasFlashUnit() } catch (e: Exception) { false }
+                showMeterHint("Hold the phone close to the car meter so the km number is sharp and fills the picture. Tap the picture to focus.", "info")
+            } catch (e: Exception) {
+                meterLive = false
+                meterCamera = null
+                meterCapture = null
+                meterNote = "⚠️ The back camera could not start.\n\nClose this screen and open it again."
+            }
+            applyMeterUi()
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    /** Switches the back camera on with its live picture in the meter card and an ImageCapture for the car meter picture. Throws when the phone cannot. */
+    private fun bindMeterCamera(provider: ProcessCameraProvider, captureMode: Int): Camera {
+        val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewMeter.surfaceProvider) }
+        val capture = ImageCapture.Builder().setCaptureMode(captureMode).build()
+        provider.unbindAll()
+        val cam = provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture)
+        meterCapture = capture
+        return cam
+    }
+
+    private fun stopMeterCamera() {
+        meterLive = false
+        meterCamera = null
+        meterCapture = null
+        frontOn = false
+        try { ProcessCameraProvider.getInstance(this).get().unbindAll() } catch (e: Exception) { }
+    }
+
+    private fun captureMeter() {
+        val capture = meterCapture ?: return
+        if (meterBusy || meterFile != null || !meterLive) return
+        meterBusy = true
+        applyMeterUi()
+        showMeterHint("📸 Taking the picture…", "info")
+        val file = File(cacheDir, "meter_${System.currentTimeMillis()}.jpg")
+        capture.takePicture(ImageCapture.OutputFileOptions.Builder(file).build(),
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(r: ImageCapture.OutputFileResults) {
+                    if (isFinishing || isDestroyed) { file.delete(); return }
+                    meterFile = file
+                    meterOk = false
+                    meterKm = ""
+                    verifyMeter(file)
+                }
+                override fun onError(e: ImageCaptureException) {
+                    meterBusy = false
+                    showMeterHint("❌ The picture could not be taken: ${e.message}\nTap Capture car meter again.", "bad")
+                    applyMeterUi()
+                }
+            })
+    }
+
+    /** The picture is taken: show it, switch the back camera off, and let the phone read the km number from it. */
+    private fun verifyMeter(file: File) {
+        meterBusy = true
+        applyMeterUi()
+        showMeterHint("🔎 Checking the picture…", "info")
+        Thread {
+            // 1600px is plenty for the number reader; the picture that is sent is made from the file again later (1280px)
+            val bmp = try { loadScaled(file.absolutePath, 1600) } catch (e: Exception) { null }
+            runOnUiThread {
+                if (meterFile != file) return@runOnUiThread                  // retaken in the meantime
+                if (bmp == null) {                                           // the picture cannot be opened: take it again (the camera is still on)
+                    meterFile = null
+                    file.delete()
+                    meterBusy = false
+                    showMeterHint("❌ The picture could not be read. Tap Capture car meter again.", "bad")
+                    applyMeterUi()
+                    return@runOnUiThread
+                }
+                imgMeter.setImageBitmap(bmp)
+                stopMeterCamera()
+                applyMeterUi()
+                if (!meterCheckOn) { meterChecked(file, null); return@runOnUiThread }       // the admin switched the number check off: the picture is enough
+                watchHandler.removeCallbacksAndMessages(null)
+                // if the reader never answers, the picture is accepted after 25 seconds (a phone problem must not block a real attendance)
+                watchHandler.postDelayed({ meterChecked(file, MeterCheck.Reading(false, "")) }, 25000)
+                MeterCheck.check(bmp) { r -> meterChecked(file, r) }
+            }
+        }.start()
+    }
+
+    /**
+     * The number reader answered ([r] is null when the admin switched the number check off). Verified = a km number was read in the picture.
+     * When the phone cannot run the reader at all, the picture is accepted without a number.
+     */
+    private fun meterChecked(file: File, r: MeterCheck.Reading?) {
+        if (!meterBusy || meterFile != file) return
+        watchHandler.removeCallbacksAndMessages(null)
+        meterBusy = false
+        when {
+            r == null -> {
+                meterOk = true; meterKm = ""
+                showMeterHint("✅ Car meter picture taken.", "good")
+            }
+            !r.ran -> {
+                meterOk = true; meterKm = ""
+                showMeterHint("✅ Car meter picture taken.\n(The number check could not run on this phone, so the picture is accepted.)", "good")
+            }
+            r.km.isNotEmpty() -> {
+                meterOk = true; meterKm = r.km
+                showMeterHint("✅ Car meter verified · ${r.km} km", "good")
+            }
+            else -> {
+                meterOk = false; meterKm = ""
+                showMeterHint("❌ No km number could be read in this picture.\nTap Retake car meter, hold the phone steady and closer so the digits fill the picture and do not shine or blur (🔦 gives light).", "bad")
+            }
+        }
+        applyMeterUi()
+        applySubmitVisibility()
+        if (meterOk) scrollToEnd()
+    }
+
+    private fun retakeMeter() {
+        if (meterBusy) return
+        watchHandler.removeCallbacksAndMessages(null)
+        meterFile?.delete()
+        meterFile = null
+        meterOk = false
+        meterKm = ""
+        imgMeter.setImageDrawable(null)
+        applySubmitVisibility()                      // the Submit button hides again until a new picture is verified
+        applyMeterUi()
+        startMeterCamera()                           // (does nothing while the selfie is being retaken: the live picture opens after it)
+    }
+
+    private fun toggleTorch() {
+        val cam = meterCamera ?: return
+        torchOn = !torchOn
+        try { cam.cameraControl.enableTorch(torchOn) } catch (e: Exception) { torchOn = false }
+        btnTorch.alpha = if (torchOn) 1f else 0.7f
+    }
+
+    /** Tap the live car meter picture to focus there (small digits need a sharp picture). */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupMeterFocus() {
+        previewMeter.setOnTouchListener { v, ev ->
+            if (ev.action == MotionEvent.ACTION_UP) {
+                val cam = meterCamera
+                if (cam != null) {
+                    try {
+                        val point = previewMeter.meteringPointFactory.createPoint(ev.x, ev.y)
+                        cam.cameraControl.startFocusAndMetering(FocusMeteringAction.Builder(point).build())
+                    } catch (e: Exception) { }
+                }
+                v.performClick()
+            }
+            true
+        }
+    }
+
+    private fun scrollToView(v: View) {
+        val sv = findViewById<ScrollView>(R.id.atScroll) ?: return
+        sv.postDelayed({ sv.smoothScrollTo(0, maxOf(0, v.top - (8 * resources.displayMetrics.density).toInt())) }, 200)
+    }
+
+    private fun scrollToEnd() {
+        val sv = findViewById<ScrollView>(R.id.atScroll) ?: return
+        sv.postDelayed({ sv.fullScroll(View.FOCUS_DOWN) }, 250)
     }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()

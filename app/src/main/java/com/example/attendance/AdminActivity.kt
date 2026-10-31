@@ -593,6 +593,9 @@ class AdminActivity : AppCompatActivity() {
             col.addView(label("💰 Orders: Accounts", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
         if (grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "delivery" })
             col.addView(label("🚚 Orders: Delivery", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
+        val driverByRole = o.optBoolean("driverRole")                      // the word "driver" in the Role column of the Users sheet
+        if (driverByRole || (grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "driver" }))
+            col.addView(label("🚗 Driver" + (if (driverByRole) " (Role column)" else "") + ": takes a car meter picture with every attendance", 12f, "#6B352A", true).apply { setPadding(0, dp(8), 0, 0) })
         if (lockedNow != null && lockedNow.length() > 0) {
             val names = (0 until lockedNow.length()).joinToString(", ") { Access.name(lockedNow.optString(it)) }
             col.addView(label("🔒 Locked: $names", 12f, "#B45309", true).apply { setPadding(0, dp(8), 0, 0) })
@@ -690,8 +693,18 @@ class AdminActivity : AppCompatActivity() {
             isChecked = grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "delivery" }
         }
         form.addView(cbDelivery)
+        // A person whose Role cell in the sheet says "driver" is a driver already: the tick shows it and cannot be changed here (change the Role cell instead).
+        val driverByRole = names.size == 1 && users.any { it.optString("username").equals(names[0], true) && it.optBoolean("driverRole") }
+        val cbDriver = CheckBox(this).apply {
+            text = if (driverByRole) "🚗  Driver (set in the Role column of the sheet)" else "🚗  Driver (selfie, then a back-camera picture of the car meter, with every attendance)"
+            textSize = 15f
+            isChecked = driverByRole || (grantsNow != null && (0 until grantsNow.length()).any { grantsNow.optString(it) == "driver" })
+            isEnabled = !driverByRole
+        }
+        form.addView(cbDriver)
         fun grantList() = JSONArray(listOfNotNull(if (cbSurvey.isChecked) "surveys" else null, if (cbTeam.isChecked) "teamview" else null,
-            if (cbAccounts.isChecked) "accounts" else null, if (cbDelivery.isChecked) "delivery" else null))
+            if (cbAccounts.isChecked) "accounts" else null, if (cbDelivery.isChecked) "delivery" else null, if (cbDriver.isChecked && cbDriver.isEnabled) "driver" else null))
+        form.addView(label("A driver takes the selfie, then a picture of the car meter with the back camera. The Submit button only shows after the phone has read the km number in that picture. Needs the updated app. The picture and the km are kept with the attendance; line managers above can open them.", 12f, "#A98578", false))
         form.addView(label("A line manager with this tick gets 📇 Team members in the menu: only the people below them, read only.", 12f, "#A98578", false))
         form.addView(label(if (names.size == 1) "Admins can always do this. Everybody else only with this tick; they then see ⚙️ Manage surveys inside Surveys."
             else "Applies to all ${names.size} chosen people (admins can always do this).", 12f, "#A98578", false))
@@ -1792,6 +1805,22 @@ class AdminActivity : AppCompatActivity() {
         })
         fLive.addView(label("Phones pick the change up the next time they open Attendance. Asks for your own password.", 12f, "#8A5F52", false))
         content.addView(cardOf(fLive))
+
+        // ---- 1c. car meter number check for drivers: on / off (the meter picture itself is always required from a driver) ----
+        val meterOn = res.optBoolean("meterCheck", true)
+        val fMeter = column()
+        fMeter.addView(label("🚗 Car meter check (drivers)", 16f, "#3E1D16", true))
+        fMeter.addView(label(
+            if (meterOn) "Now: ON. A driver (Users > Menu access > Driver) takes the selfie, then a back-camera picture of the car meter. The phone must read a km number in the picture; only then the Submit button shows."
+            else "Now: OFF. A driver still must take the car meter picture, but the phone does not look for a km number: any picture is enough.", 13f, "#8A5F52", false))
+        fMeter.addView(bigButton(if (meterOn) "⏸  Turn the number check OFF" else "▶️  Turn the number check ON") {
+            adminApi(JSONObject().put("action", "adminSetMeterCheck").put("on", !meterOn)) { r, err ->
+                if (r != null) { toast(if (!meterOn) "Car meter check is ON" else "Car meter check is OFF"); dropSavedCopies(); loadEntry() }
+                else toast(err ?: "Could not save")
+            }
+        })
+        fMeter.addView(label("Turn it OFF when the meters in your cars cannot be read by a phone (old dials with rolling digits, for example). Phones pick the change up the next time they open Attendance. Asks for your own password.", 12f, "#8A5F52", false))
+        content.addView(cardOf(fMeter))
 
         // ---- 2. open a date for manual attendance / night hold ----
         var kind = "attendance"

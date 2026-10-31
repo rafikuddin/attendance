@@ -608,6 +608,17 @@ class TeamActivity : AppCompatActivity() {
                 setTextColor(Pal.c("#B45309")); setPadding(0, dp(2), 0, 0)
             })
         }
+        // A driver's car meter picture (and the km the phone read from it): tap to open it. The server only sends it to the person and the managers above.
+        val meterId = o.optString("meter")
+        if (status == "Present" && meterId.isNotEmpty()) {
+            val km = o.optString("meterKm")
+            nameCol.addView(TextView(this).apply {
+                text = "🚗 Car meter" + (if (km.isNotEmpty()) " · $km km" else "") + " · tap to see the picture"
+                textSize = 12f; setTypeface(null, Typeface.BOLD)
+                setTextColor(Pal.c("#6B352A")); setPadding(0, dp(4), 0, dp(2))
+                setOnClickListener { showPhotoDialog(session, meterId) }
+            })
+        }
         top.addView(nameCol)
         top.addView(pill(if (status == "On Leave" && detail.isNotEmpty()) detail.substringBefore(" ") else pillLabel, fg, bg))
         col.addView(top)
