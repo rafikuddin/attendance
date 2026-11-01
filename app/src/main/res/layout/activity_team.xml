@@ -16,7 +16,7 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="14dp" />
         </com.google.android.material.card.MaterialCardView>
 
-        <TextView android:text="Today's Attendance" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/ink"
+        <TextView android:id="@+id/tvAttTitle" android:text="Today's Attendance" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/ink"
             android:layout_marginStart="20dp" android:layout_marginTop="20dp" android:layout_marginBottom="10dp"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
         <LinearLayout android:id="@+id/listTeam" android:orientation="vertical"

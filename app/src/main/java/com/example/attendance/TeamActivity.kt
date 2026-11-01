@@ -20,6 +20,7 @@ class TeamActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_OF = "of"
         const val EXTRA_OF_NAME = "ofName"
+        const val EXTRA_DATE = "date"           // the day shown (yyyy-MM-dd); absent = today. A team opened from this screen keeps the same day.
     }
 
     private lateinit var session: Session
@@ -31,11 +32,15 @@ class TeamActivity : AppCompatActivity() {
     private var nightDate: String? = null            // a date picked by the manager; null = the latest night
     private var nightCycle: String? = null           // "prev" | "current" | "next" = a whole pay cycle (26th to 25th); null = one night
     private var canDecide = false           // true for anyone below you, at any depth (server re-checks every decision)
+    private var attDate: String? = null      // the day the manager picked for the attendance list and the numbers; null = today
+    private var shownDate = ""               // the day the server answered for (empty until the first answer)
+    private var shownIsToday = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_team)
         of = intent.getStringExtra(EXTRA_OF)
+        attDate = intent.getStringExtra(EXTRA_DATE)?.takeIf { it.isNotBlank() }
         val ofName = intent.getStringExtra(EXTRA_OF_NAME)
         setupHeader(if (ofName != null) "$ofName's Team" else "My Team") { loadAll() }
         setupBottomNav(Tab.TEAM)
@@ -55,15 +60,15 @@ class TeamActivity : AppCompatActivity() {
 
     private fun openTeamOf(username: String, name: String) {
         startActivity(Intent(this, TeamActivity::class.java)
-            .putExtra(EXTRA_OF, username).putExtra(EXTRA_OF_NAME, name))
+            .putExtra(EXTRA_OF, username).putExtra(EXTRA_OF_NAME, name).putExtra(EXTRA_DATE, attDate))
     }
 
     // One request for the whole screen — status, roll-ups, counts and leave requests together.
     // Opens instantly from the last saved copy (if it is from the last 30 minutes), then refreshes.
     private fun loadAll() {
         val showedSaved = apiCached(
-            cacheKey = ResponseCache.teamKey(session.username, of),
-            body = body().put("action", "team"),
+            cacheKey = ResponseCache.teamKey(session.username, of) + (attDate?.let { "|$it" } ?: ""),
+            body = body().put("action", "team").also { b -> attDate?.let { b.put("date", it) } },
             maxAgeMs = HOUR_MS / 2,
             busy = findViewById<View>(R.id.btnRefresh),
             onData = { res -> render(res) },
@@ -82,6 +87,13 @@ class TeamActivity : AppCompatActivity() {
 
     private fun render(res: JSONObject) {
         listTeam.removeAllViews(); listLeaves.removeAllViews()
+        shownDate = res.optString("date")
+        shownIsToday = res.optBoolean("isToday", true)
+        if (attDate != null && shownDate.isEmpty()) {                         // an older Code.gs answers with today and no date
+            attDate = null
+            android.widget.Toast.makeText(this, "Picking a day needs the latest Code.gs (deploy a New version).", android.widget.Toast.LENGTH_LONG).show()
+        }
+        findViewById<TextView>(R.id.tvAttTitle).text = if (shownIsToday || shownDate.isEmpty()) "Today's Attendance" else "Attendance · ${niceDay(shownDate)}"
         renderCounts(res.getJSONObject("counts"), res.optJSONArray("people"))
         if (res.getJSONArray("reports").length() > 0) loadNight()
         val reports = res.getJSONArray("reports")
@@ -112,6 +124,8 @@ class TeamActivity : AppCompatActivity() {
             card.clipToOutline = true
             card.addView(img)
             PhotoLoader.load(this, session, selfie, img)
+            card.isClickable = true; card.isFocusable = true
+            card.setOnClickListener { showPhotoDialog(session, selfie) }            // tap the small picture: the selfie, big
         } else {
             card.setCardBackgroundColor(Pal.c("#F0E3A6"))
             card.addView(TextView(this).apply {
@@ -138,11 +152,12 @@ class TeamActivity : AppCompatActivity() {
         val total = c.optInt("total", items.sumOf { v -> v[1] as Int })
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         head.addView(TextView(this).apply {
-            text = "TEAM TODAY"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")); letterSpacing = 0.06f
+            text = if (shownIsToday || shownDate.isEmpty()) "TEAM TODAY" else "TEAM · " + niceShort(shownDate).uppercase(); textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")); letterSpacing = 0.06f
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
         head.addView(pill("$total member" + (if (total == 1) "" else "s"), "#6B352A", "#F0E3A6"))
         countsBox.addView(head)
+        countsBox.addView(dateBar())
 
         // the hero card: everybody below you, big, in the accent colour (tap = the whole list)
         val here = c.optInt("present") + c.optInt("late")
@@ -157,7 +172,7 @@ class TeamActivity : AppCompatActivity() {
         val hcol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
         hcol.addView(TextView(this).apply { text = "Team members"; textSize = 13f; setTextColor(Color.parseColor("#E6FFFFFF")) })
         hcol.addView(TextView(this).apply { text = total.toString(); textSize = 38f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE) })
-        hcol.addView(TextView(this).apply { text = "$here here today  ·  tap to see everyone"; textSize = 12f; setTextColor(Color.parseColor("#CCFFFFFF")) })
+        hcol.addView(TextView(this).apply { text = "$here here " + (if (shownIsToday || shownDate.isEmpty()) "today" else "on ${niceShort(shownDate)}") + "  ·  tap to see everyone"; textSize = 12f; setTextColor(Color.parseColor("#CCFFFFFF")) })
         hero.addView(hcol)
         hero.addView(TextView(this).apply {
             text = "↗"; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD)
@@ -198,6 +213,56 @@ class TeamActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(16) }
         }
         countsBox.addView(nightHost)
+    }
+
+    // ------------------------------------------------------------------ The day that is shown
+    private val isoFmt get() = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+
+    /** Today by the phone's clock, as yyyy-MM-dd. */
+    private fun phoneToday(): String = isoFmt.format(java.util.Date())
+
+    private fun shiftDay(iso: String, days: Int): String = try {
+        val c = java.util.Calendar.getInstance().apply { time = isoFmt.parse(iso)!!; add(java.util.Calendar.DAY_OF_MONTH, days) }
+        isoFmt.format(c.time)
+    } catch (e: Exception) { iso }
+
+    /** Shows another day: today (or later) means the normal "today" view. */
+    private fun setAttDate(day: String?) {
+        attDate = if (day == null || day >= phoneToday()) null else day
+        loadAll()
+    }
+
+    private fun pickAttDate(current: String) {
+        val c = java.util.Calendar.getInstance()
+        try { c.time = isoFmt.parse(current)!! } catch (e: Exception) { }
+        val dlg = android.app.DatePickerDialog(this, { _, y, m, d -> setAttDate(String.format(java.util.Locale.US, "%04d-%02d-%02d", y, m + 1, d)) },
+            c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+        dlg.datePicker.maxDate = System.currentTimeMillis()               // up to today
+        dlg.datePicker.minDate = 1577836800000L                           // 1 Jan 2020, as far back as the server looks
+        dlg.show()
+    }
+
+    /** The day of the numbers and the list: ‹ the day before · the date (tap to pick any earlier day) · the day after › · Today. Same look as the Night hold date. */
+    private fun dateBar(): View {
+        val today = phoneToday()
+        val shown = if (shownDate.isEmpty()) today else shownDate
+        val bar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+        }
+        fun chip(label: String, active: Boolean, weight: Float, fill: String, tap: () -> Unit) = TextView(this).apply {
+            text = label; textSize = 14f; gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD)
+            setTextColor(Pal.c(if (active) "#6B352A" else "#C9B3A8"))
+            background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Pal.c(fill)) }
+            minHeight = dp(40); setPadding(dp(14), dp(4), dp(14), dp(4))
+            layoutParams = LinearLayout.LayoutParams(if (weight > 0f) 0 else ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, weight).apply { marginEnd = dp(6) }
+            if (active) { isClickable = true; isFocusable = true; setOnClickListener { tap() } }
+        }
+        bar.addView(chip("‹", true, 0f, "#F8EFC4") { setAttDate(shiftDay(shown, -1)) })
+        bar.addView(chip("📅 ${niceDay(shown)} ▾", true, 1f, "#F0E3A6") { pickAttDate(shown) })
+        bar.addView(chip("›", shown < today, 0f, "#F8EFC4") { setAttDate(shiftDay(shown, 1)) })
+        if (!shownIsToday) bar.addView(chip("Today", true, 0f, "#F8EFC4") { setAttDate(null) })
+        return bar
     }
 
     // ------------------------------------------------------------------ Night hold summary (total, team by team, who / where / when)
@@ -588,11 +653,18 @@ class TeamActivity : AppCompatActivity() {
             text = "Own attendance: ${o.optInt("presentThisMonth")} day(s) this month" + if (detail.isNotEmpty() && status == "Present") " · $detail" else ""
             textSize = 12f; setTextColor(Pal.c("#8A5F52"))
         })
+        // Where the selfie was taken. Tap the line: the spot opens on the map. (No address: the coordinates are shown instead.)
         val address = o.optString("address")
-        if (status == "Present" && address.isNotEmpty()) {
+        val lat = o.optString("lat"); val lng = o.optString("lng")
+        val canMap = lat.isNotBlank() && lng.isNotBlank() && lat != "null" && lng != "null"
+        if (status == "Present" && (address.isNotEmpty() || canMap)) {
             nameCol.addView(TextView(this).apply {
-                text = "📍 $address"; textSize = 12f; setTextColor(Pal.c("#8A5F52"))
-                maxLines = 2; setPadding(0, dp(2), 0, 0)
+                text = "📍 " + (if (address.isNotEmpty() && address != "Address unavailable") address else if (canMap) "$lat, $lng" else address)
+                textSize = 12f; maxLines = 2; setPadding(0, dp(4), 0, dp(4))
+                if (canMap) {
+                    setTextColor(Pal.c("#6B352A")); paintFlags = paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
+                    setOnClickListener { openMap(lat, lng, o.optString("name")) }
+                } else setTextColor(Pal.c("#8A5F52"))
             })
         }
         if (status == "Present" && late) {
