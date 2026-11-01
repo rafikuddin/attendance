@@ -573,6 +573,7 @@ class MainActivity : AppCompatActivity() {
             showUpdate(res.optJSONObject("appUpdate"))
             findViewById<android.view.View>(R.id.navTeam).visibility = manager
             showTodayDetail(todayRecord, res.optBoolean("driver"))
+            Tracking.syncFrom(this, res, todayRecord)          // movement tracking (only when an admin ticked it for this person)
             LateReason.bind(this, findViewById(R.id.tvLateReason), todayRecord)
             if (todayLate && todayRecord?.optString("lateReason")?.isEmpty() == true)
                 LateReason.require(this) { loadStatus() }          // late today and no reason yet: compulsory

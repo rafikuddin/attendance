@@ -60,6 +60,7 @@ object Wipe {
     fun signOutLocally(ctx: Context) {
         cachedData(ctx)
         Reminders.stop(ctx)                  // no more reminders for someone who is signed out
+        Tracking.stop(ctx)                   // and no more location sharing (the points not sent yet are thrown away)
         Session(ctx).clear()
     }
 }

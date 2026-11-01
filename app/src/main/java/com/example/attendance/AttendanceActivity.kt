@@ -450,6 +450,7 @@ class AttendanceActivity : AppCompatActivity() {
                 // Saved copies of Home and Calendar are now out of date.
                 ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
                 Reminders.clearSelf(this)   // the "mark your attendance" reminder is no longer needed
+                Tracking.noteAttendance(this)      // movement tracking may start now (loadTodayStatus below does it)
                 photoFile?.delete()   // the selfie now lives on the server; don't keep a copy on the phone
                 meterFile?.delete()   // so does the car meter picture
                 val meterLine = if (res.optBoolean("meter"))
@@ -551,6 +552,7 @@ class AttendanceActivity : AppCompatActivity() {
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
             showTodayDetail(todayRecord)
+            if (forDate == null) Tracking.syncFrom(this, res, todayRecord)      // movement tracking starts right after the attendance (and ends with the Day End)
             LateReason.bind(this, findViewById(R.id.atLateReason), todayRecord)
             if (todayLate && todayRecord?.optString("lateReason")?.isEmpty() == true && forDate == null)
                 LateReason.require(this) { loadTodayStatus() }          // still no reason for today's late attendance

@@ -707,6 +707,22 @@ class TeamActivity : AppCompatActivity() {
                 if (endId.isNotEmpty()) setOnClickListener { showPhotoDialog(session, endId) }
             })
         }
+        // Movement tracking (an admin ticked it for this person): how many points the phone has sent that day and when the last one came. Tap: the route.
+        if (o.optBoolean("tracked") && (status == "Present" || o.optInt("trackCount") > 0)) {
+            val n = o.optInt("trackCount")
+            val last = Tracking.nice(o.optString("trackLast"))
+            nameCol.addView(TextView(this).apply {
+                text = if (n == 0) "🛰️ Movement · no points yet · tap to open"
+                    else "🛰️ Movement · $n point" + (if (n == 1) "" else "s") + (if (last.isNotEmpty()) " · last $last" else "") + " · tap to see the route"
+                textSize = 12f; setTypeface(null, Typeface.BOLD)
+                setTextColor(Pal.c("#6B352A")); setPadding(0, dp(2), 0, dp(2))
+                setOnClickListener {
+                    startActivity(Intent(this@TeamActivity, TrackActivity::class.java)
+                        .putExtra(TrackActivity.EXTRA_USER, o.optString("username")).putExtra(TrackActivity.EXTRA_NAME, o.optString("name"))
+                        .putExtra(TrackActivity.EXTRA_DATE, shownDate))
+                }
+            })
+        }
         top.addView(nameCol)
         top.addView(pill(if (status == "On Leave" && detail.isNotEmpty()) detail.substringBefore(" ") else pillLabel, fg, bg))
         col.addView(top)
