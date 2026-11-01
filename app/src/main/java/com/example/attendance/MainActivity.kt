@@ -551,10 +551,17 @@ class MainActivity : AppCompatActivity() {
                 leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Pal.c("#D97706")) }
                 holidayToday != null -> { tvStatus.text = "🎉 Holiday · $holidayToday"; tvStatus.setTextColor(Pal.c("#7C3AED")) }
                 isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Pal.c("#8A5F52")) }
-                isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Pal.c("#B91C1C")) }
+                isAfterCutoff && !res.optBoolean("driver") -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Pal.c("#B91C1C")) }   // a driver has no cut-off time
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Pal.c("#DC2626")) }
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
+            // A driver whose work ran past midnight: the day before is still open (the day end has no cut-off time). A reminder until it is sent.
+            res.optJSONObject("dayEndFor")?.let { de ->
+                if (res.optBoolean("driver") && todayRecord == null && de.optString("dayEnd").isEmpty() && de.optString("date") != today) {
+                    val shown = try { SimpleDateFormat("d MMM", Locale.getDefault()).format(fmt.parse(de.optString("date"))!!) } catch (e: Exception) { de.optString("date") }
+                    tvMonth.text = tvMonth.text.toString() + "\n🏁 Day end for $shown not sent yet: Mark Attendance > Send Day End"
+                }
+            }
             val manager = if (res.optBoolean("isManager")) android.view.View.VISIBLE else android.view.View.GONE
             session.isManager = res.optBoolean("isManager")
             AdminFlag.set(this, res.optBoolean("isAdmin"))

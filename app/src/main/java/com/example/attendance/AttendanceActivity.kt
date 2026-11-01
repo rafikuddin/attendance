@@ -93,6 +93,11 @@ class AttendanceActivity : AppCompatActivity() {
     private var dayEndDone = false               // today's day end is submitted already
     private var dayEndSending = false            // the day end is being sent right now
     private var morningKm = ""                   // the km number of this morning's car meter picture ("" when none was read)
+    // A driver has no cut-off time: the day end is possible at any hour, also after midnight. Then it closes the day BEFORE (the server joins it to
+    // yesterday's attendance while there is no attendance for today), and the driver chooses that explicitly so it never mixes with today's selfie.
+    private var dayEndDate = ""                  // the day the open day end belongs to (today, or yesterday when the work ran past midnight)
+    private var todayStr = ""                    // today by the phone's clock, yyyy-MM-dd
+    private var closeOld = false                 // the driver chose to close the earlier day first: the selfie form steps aside until it is sent
     private val meterEndIdle = "🏁  Day end\n\nWhen your work day is over, tap Start Day End and take a picture of the car meter."
 
     private val dateFmt = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
@@ -149,6 +154,7 @@ class AttendanceActivity : AppCompatActivity() {
                 meterFile != null -> retakeMeter()
                 meterLive -> captureMeter()
                 isEndMode() -> openEndCamera()                // the day end: the camera opens when the driver asks for it
+                oldDayOpen() -> chooseOldDayEnd()             // the day before was never closed: close it first
                 else -> captureMeter()
             }
         }
@@ -507,6 +513,8 @@ class AttendanceActivity : AppCompatActivity() {
             if (res.has("liveCheck")) applyLiveSetting(res.optBoolean("liveCheck", true))
             if (res.has("driver")) applyDriverSetting(res.optBoolean("driver", false), res.optBoolean("meterCheck", true))
             val recs = res.optJSONArray("records") ?: return@render
+            todayStr = today
+            val afterCutoff = isAfterCutoff && !isDriver                  // a driver has no cut-off time: never "Absent today", the form stays open
             for (i in 0 until recs.length()) {
                 val r = recs.getJSONObject(i); val d = r.getString("date")
                 if (d == today) { todayTime = r.optString("time"); todayLate = r.optBoolean("late"); todayRecord = r }
@@ -538,7 +546,7 @@ class AttendanceActivity : AppCompatActivity() {
                 leaveType != null -> { tvStatus.text = "🌴 On $leaveType"; tvStatus.setTextColor(Pal.c("#D97706")) }
                 holidayToday != null -> { tvStatus.text = "🎉 Holiday · $holidayToday"; tvStatus.setTextColor(Pal.c("#7C3AED")) }
                 isFridayToday -> { tvStatus.text = "🗓️ Weekly Off (Friday)"; tvStatus.setTextColor(Pal.c("#8A5F52")) }
-                isAfterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Pal.c("#B91C1C")) }
+                afterCutoff -> { tvStatus.text = "❌ Absent today"; tvStatus.setTextColor(Pal.c("#B91C1C")) }
                 else -> { tvStatus.text = "⏳ Not marked yet"; tvStatus.setTextColor(Pal.c("#DC2626")) }
             }
             tvMonth.text = "Present: $present day(s) (26th–25th)" + (if (absent > 0) "  ·  Absent: $absent" else "")
@@ -547,12 +555,23 @@ class AttendanceActivity : AppCompatActivity() {
             if (todayLate && todayRecord?.optString("lateReason")?.isEmpty() == true && forDate == null)
                 LateReason.require(this) { loadTodayStatus() }          // still no reason for today's late attendance
             // A driver who has marked attendance and has not sent the day end yet gets the Day End step (see isEndMode()).
-            attendedToday = todayTime != null
-            dayEndDone = todayRecord?.optString("dayEnd")?.isNotEmpty() == true
-            morningKm = todayRecord?.optString("meterKm") ?: ""
+            // The row the day end belongs to: today's, or yesterday's while there is no attendance for today yet (the server says which: dayEndFor).
+            val de = res.optJSONObject("dayEndFor")
+            if (de != null) {
+                attendedToday = true
+                dayEndDone = de.optString("dayEnd").isNotEmpty()
+                morningKm = de.optString("meterKm")
+                dayEndDate = de.optString("date")
+            } else {
+                attendedToday = todayTime != null
+                dayEndDone = todayRecord?.optString("dayEnd")?.isNotEmpty() == true
+                morningKm = todayRecord?.optString("meterKm") ?: ""
+                dayEndDate = today
+            }
+            if (!attendedToday || dayEndDone || dayEndDate == today) closeOld = false
             // Already submitted (Present / Late), or marked Absent: there is nothing left to capture or submit today.
-            val absentToday = todayTime == null && leaveType == null && holidayToday == null && !isFridayToday && isAfterCutoff
-            setEntryVisible(!(todayTime != null || absentToday))
+            val absentToday = todayTime == null && leaveType == null && holidayToday == null && !isFridayToday && afterCutoff
+            setEntryVisible(!(todayTime != null || absentToday || (closeOld && isEndMode())))
         }
 
         apiCached(
@@ -685,12 +704,15 @@ class AttendanceActivity : AppCompatActivity() {
         val live = camOn && !taken
         previewMeter.visibility = if (camOn) View.VISIBLE else View.GONE
         imgMeter.visibility = if (taken && !camOn) View.VISIBLE else View.GONE
-        tvMeterIdle.text = meterNote ?: (if (endMode) meterEndIdle else meterIdleDefault)
+        val oldOpen = oldDayOpen()
+        tvMeterIdle.text = meterNote ?: (if (endMode) endIdleText()
+            else if (oldOpen) "🏁  The day end for ${shortDay(dayEndDate)} was not sent.\n\nYou can close that day now, at any hour. Or go on with today's attendance below."
+            else meterIdleDefault)
         tvMeterIdle.visibility = if (taken || camOn) View.GONE else View.VISIBLE
         tvMeterHint.visibility = if (taken || camOn) View.VISIBLE else View.GONE
         btnTorch.visibility = if (live && torchAvailable) View.VISIBLE else View.GONE
-        btnMeter.visibility = if (taken || camOn || endMode) View.VISIBLE else View.GONE
-        btnMeter.text = if (taken) "🔄  Retake car meter" else if (endMode && !camOn) "📷  Start Day End" else "📷  Capture car meter"
+        btnMeter.visibility = if (taken || camOn || endMode || oldOpen) View.VISIBLE else View.GONE
+        btnMeter.text = if (taken) "🔄  Retake car meter" else if (endMode && !camOn) "📷  Start Day End" else if (oldOpen) "🏁  Send Day End for ${shortDay(dayEndDate)}" else "📷  Capture car meter"
         btnMeter.isEnabled = !meterBusy && !dayEndSending
         btnDayEnd.visibility = if (endMode && taken && meterOk) View.VISIBLE else View.GONE      // only after the new car meter picture is verified
         btnDayEnd.text = if (dayEndSending) "Sending…" else "🏁  Submit Day End"
@@ -897,7 +919,29 @@ class AttendanceActivity : AppCompatActivity() {
     // from it like in the morning; only then Submit Day End shows. The server keeps it with today's attendance (once a day) and works out the km driven.
 
     /** A driver whose attendance is marked today and who has not sent the day end yet (never for a manual day). */
-    private fun isEndMode() = forDate == null && isDriver && attendedToday && !dayEndDone
+    private fun isEndMode() = forDate == null && isDriver && attendedToday && !dayEndDone && (dayEndDate.isEmpty() || dayEndDate == todayStr || closeOld)
+
+    /** The day before was never closed (the work ran past midnight, or the day end was forgotten) and nothing else is going on: offer to close it. */
+    private fun oldDayOpen() = forDate == null && isDriver && attendedToday && !dayEndDone && dayEndDate.isNotEmpty() && dayEndDate != todayStr &&
+        !closeOld && photoFile == null && meterFile == null && !meterLive && !meterStarting
+
+    /** "Send Day End for 31 Oct": the selfie form steps aside (its camera is switched off) and the back camera opens for the car meter. */
+    private fun chooseOldDayEnd() {
+        if (!oldDayOpen()) return
+        closeOld = true
+        setEntryVisible(false)
+        applyMeterUi()
+        openEndCamera()
+    }
+
+    private fun shortDay(iso: String): String = try {
+        SimpleDateFormat("d MMM", Locale.getDefault()).format(SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(iso)!!)
+    } catch (e: Exception) { iso }
+
+    /** What the day end card says before the camera is opened. */
+    private fun endIdleText() =
+        if (dayEndDate.isNotEmpty() && dayEndDate != todayStr) "🏁  Day end for ${shortDay(dayEndDate)}\n\nTap Start Day End and take a picture of the car meter to close that day."
+        else meterEndIdle
 
     /** "Start Day End": opens the back camera (asking for the camera permission first when it is missing). */
     private fun openEndCamera() {
@@ -950,20 +994,24 @@ class AttendanceActivity : AppCompatActivity() {
             dayEndSending = false
             if (res != null) {
                 dayEndDone = true
+                closeOld = false
                 discardWork()                                  // the picture now lives on the server
                 ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
                 val km = res.optString("km")
                 val driven = res.optInt("driven", -1)
-                val lines = "Time: ${res.optString("time")}" + (if (km.isNotEmpty()) "\nCar meter: $km km" else "") +
-                    (if (driven >= 0) "\nDriven today: $driven km" else "")
+                val earlier = res.optBoolean("nextDay")        // after midnight: it closed the day before
+                val lines = "Time: ${res.optString("time")}" + (if (earlier) "\nFor the day: ${shortDay(res.optString("date"))}" else "") +
+                    (if (km.isNotEmpty()) "\nCar meter: $km km" else "") +
+                    (if (driven >= 0) (if (earlier) "\nDriven that day: $driven km" else "\nDriven today: $driven km") else "")
                 applyMeterUi()
                 showEndSummary("🏁 Day end submitted\n\n$lines", "good")
-                loadTodayStatus()                              // the card on top now shows the day end
+                loadTodayStatus()                              // the card on top now shows the day end (and the selfie form is back after an earlier day)
                 popup("🏁 Day end submitted", lines)
             } else {
                 val already = err?.contains("already", ignoreCase = true) == true
                 if (already) {                                 // a second day end for the same day can never work: show it as done
                     dayEndDone = true
+                    closeOld = false
                     discardWork()
                     ResponseCache.remove(this, ResponseCache.homeKey(session.username), ResponseCache.calKey(session.username))
                     loadTodayStatus()

@@ -31,6 +31,7 @@ class CalendarActivity : AppCompatActivity() {
     private val leaveDays = HashMap<String, JSONObject>()
     private val nightDays = HashMap<String, JSONObject>()   // date -> that day's night hold
     private val holidays = HashMap<String, String>()        // date -> holiday name (added by an admin)
+    private var driverView = false                          // the person is a driver: no cut-off time, so today is never "Absent" just because it is after 6 PM
     // `cal` always holds the 26th that starts the currently-shown pay period. Adding/subtracting a
     // MONTH is safe here because the 26th exists in every month, so the day-of-month never drifts.
     // Keep PERIOD_START_DAY/END in sync with Code.gs's PERIOD_START_DAY/PERIOD_END_DAY if ever changed.
@@ -93,6 +94,7 @@ class CalendarActivity : AppCompatActivity() {
     private fun showHistory(res: JSONObject) {
         run {
             records.clear(); leaveDays.clear(); nightDays.clear(); holidays.clear()
+            driverView = res.optBoolean("driver")
             res.optJSONArray("holidays")?.let { hl ->
                 for (i in 0 until hl.length()) hl.getJSONObject(i).let { holidays[it.optString("date")] = it.optString("name") }
             }
@@ -176,7 +178,7 @@ class CalendarActivity : AppCompatActivity() {
 
         val now = Calendar.getInstance()
         val todayKey = String.format(Locale.US, "%04d-%02d-%02d", now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
-        val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18   // matches Code.gs's ABSENT_AFTER_HOUR (6:00 PM)
+        val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18 && !driverView   // matches Code.gs's ABSENT_AFTER_HOUR (6:00 PM); a driver has none
         var present = 0; var late = 0; var leave = 0; var absent = 0; var off = 0; var holidayCount = 0; var nightCount = 0
 
         val cursor = periodStart.clone() as Calendar
@@ -258,7 +260,7 @@ class CalendarActivity : AppCompatActivity() {
         val lv = leaveDays[key]
         val now = Calendar.getInstance()
         val todayKey = String.format(Locale.US, "%04d-%02d-%02d", now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH))
-        val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18
+        val isAfterCutoff = now.get(Calendar.HOUR_OF_DAY) >= 18 && !driverView
         val p = key.split("-").map { it.toInt() }
         val dayCal = Calendar.getInstance().apply { set(p[0], p[1] - 1, p[2]) }
         val isFriday = dayCal.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY

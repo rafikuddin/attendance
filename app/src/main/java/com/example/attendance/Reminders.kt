@@ -125,10 +125,12 @@ class ReminderWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, param
         if (self == null) Reminders.clearSelf(app)                        // marked meanwhile, on leave, or the day is over
         else if (now - p.getLong("self_at", 0L) >= gap) {
             val late = self.optBoolean("late")
+            val driver = self.optBoolean("driver")                         // a driver has no cut-off time: no "be on time" line
             Reminders.show(
                 app, Reminders.ID_SELF,
                 if (late) "⏰ You have not marked attendance" else "⏰ Mark your attendance",
                 if (late) "Your attendance is not in yet today. Tap to submit it now."
+                else if (driver) "Your attendance is not in yet today. Tap to submit it now."
                 else "The office starts soon. Submit before ${r.optString("lateAtText", "9:10 AM")} to be on time. Tap to submit.",
                 AttendanceActivity::class.java
             )
