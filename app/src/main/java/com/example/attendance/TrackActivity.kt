@@ -54,8 +54,8 @@ class TrackActivity : AppCompatActivity() {
 
     private fun today(): String = iso.format(java.util.Date())
 
-    private fun shift(day: String, by: Int): String = try {
-        val c = Calendar.getInstance().apply { time = iso.parse(day)!!; add(Calendar.DAY_OF_MONTH, by) }
+    private fun shift(day: String, days: Int): String = try {
+        val c = Calendar.getInstance().apply { time = iso.parse(day)!!; add(Calendar.DAY_OF_MONTH, days) }
         iso.format(c.time)
     } catch (e: Exception) { day }
 

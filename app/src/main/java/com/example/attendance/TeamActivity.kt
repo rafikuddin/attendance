@@ -289,6 +289,42 @@ class TeamActivity : AppCompatActivity() {
         java.text.SimpleDateFormat("d MMM", java.util.Locale.US).format(java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(iso)!!)
     } catch (e: Exception) { iso }
 
+    /** A thin progress bar: [frac] of the track is filled with the accent colour (any value above zero keeps a small visible piece). */
+    private fun nightBar(frac: Float, heightDp: Int, trackHex: String, topDp: Int): View {
+        val h = dp(heightDp)
+        val f = if (frac <= 0f) 0f else frac.coerceIn(0.03f, 1f)
+        val track = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = GradientDrawable().apply { cornerRadius = h / 2f; setColor(Pal.c(trackHex)) }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, h).apply { topMargin = dp(topDp) }
+        }
+        if (f > 0f) {
+            track.addView(View(this).apply {
+                background = GradientDrawable().apply { cornerRadius = h / 2f; setColor(Pal.c("#6B352A")) }     // the accent text colour: dark by day, light at night
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, f)
+            })
+            if (f < 1f) track.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f - f) })
+        }
+        return track
+    }
+
+    /** "2 / 82": the first number bold and dark (quiet when it is 0), the rest in the soft colour. */
+    private fun nightRatio(done: Int, all: Int): CharSequence {
+        val first = done.toString()
+        val sb = android.text.SpannableStringBuilder(first)
+        sb.setSpan(android.text.style.StyleSpan(Typeface.BOLD), 0, first.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        sb.setSpan(android.text.style.ForegroundColorSpan(Pal.c(if (done == 0) "#8A5F52" else "#3E1D16")), 0, first.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        val start = sb.length
+        sb.append(" / $all")
+        sb.setSpan(android.text.style.ForegroundColorSpan(Pal.c("#8A5F52")), start, sb.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        return sb
+    }
+
+    /**
+     * The Night hold block at the bottom of the top card: a title with the date, one control for the four views (a night, or the previous / current /
+     * next pay cycle), the total as a big number with a bar, and the teams as one tidy list (name, how many of how many, a bar). Tapping the total or a
+     * team opens the list of names, places and dates ([showNightList]).
+     */
     private fun renderNight(host: LinearLayout, res: JSONObject) {
         val date = res.optString("nightDate")
         val cycleMode = res.optString("mode") == "cycle"
@@ -296,80 +332,150 @@ class TeamActivity : AppCompatActivity() {
         val records = res.optJSONArray("records") ?: org.json.JSONArray()
         val groups = res.optJSONArray("groups") ?: org.json.JSONArray()
         val total = res.optInt("total")
-        val divider = View(this).apply {
-            setBackgroundColor(Pal.c("#EBDDA0")); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { bottomMargin = dp(12) }
-        }
-        host.addView(divider)
+        val people = res.optInt("people")
+        val submitted = res.optInt("submitted")
+        val matchW = ViewGroup.LayoutParams.MATCH_PARENT
+        val wrapH = ViewGroup.LayoutParams.WRAP_CONTENT
+
+        // the line that separates it from the numbers above
+        host.addView(View(this).apply {
+            setBackgroundColor(Pal.c("#EBDDA0")); layoutParams = LinearLayout.LayoutParams(matchW, dp(1)).apply { bottomMargin = dp(14) }
+        })
+
+        // title: a moon tile, "Night hold", what is shown, and (for one night) the date button
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         head.addView(TextView(this).apply {
-            text = "🌙 NIGHT HOLD"; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")); letterSpacing = 0.06f
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            text = "🌙"; textSize = 20f; gravity = Gravity.CENTER
+            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F0E3A6")) }
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(12) }
         })
-        // the date pill opens the date picker, so it is a proper tap target (40dp tall); the cycle pill is the same size so the row does not jump
-        val datePill = pill(if (cycleMode) "🗓 $span" else "📅 $span ▾", "#6B352A", "#F0E3A6").apply {
-            minHeight = dp(40); gravity = Gravity.CENTER; setPadding(dp(14), dp(4), dp(14), dp(4))
+        val titles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, wrapH, 1f) }
+        titles.addView(TextView(this).apply { text = "Night hold"; textSize = 17f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")) })
+        val cycleName = when (res.optString("cycle")) { "prev" -> "Previous pay cycle"; "next" -> "Next pay cycle"; else -> "Current pay cycle" }
+        titles.addView(TextView(this).apply {
+            text = if (cycleMode) "$cycleName · $span" else "One night"
+            textSize = 12f; setTextColor(Pal.c("#8A5F52")); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        head.addView(titles)
+        if (!cycleMode) {
+            head.addView(TextView(this).apply {                          // opens the date picker, so it is a proper tap target (40dp tall)
+                text = "📅 $span ▾"; textSize = 13f; gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A"))
+                background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(Pal.c("#F0E3A6")) }
+                setPadding(dp(12), 0, dp(12), 0)
+                layoutParams = LinearLayout.LayoutParams(wrapH, dp(40)).apply { marginStart = dp(8) }
+                isClickable = true; isFocusable = true
+                setOnClickListener { pickNightDate(date) }
+            })
         }
-        if (!cycleMode) datePill.setOnClickListener { pickNightDate(date) }
-        head.addView(datePill)
         host.addView(head)
 
-        // one night  |  previous / current / next pay cycle
+        // one control for the four views: one night | previous / current / next pay cycle
         val modes = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(Pal.c("#F8EFC4")) }
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            layoutParams = LinearLayout.LayoutParams(matchW, wrapH).apply { topMargin = dp(14) }
         }
         listOf(Pair(null, "Night"), Pair("prev", "Previous"), Pair("current", "Current"), Pair("next", "Next")).forEach { (key, label) ->
             val on = (nightCycle == key)
             modes.addView(TextView(this).apply {
-                text = label; textSize = 13f; gravity = Gravity.CENTER; setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
-                setTextColor(Pal.c(if (on) "#FFFFFF" else "#6B352A"))
-                background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Pal.c(if (on) "#6B352A" else "#F8EFC4")) }
-                setPadding(dp(4), dp(8), dp(4), dp(8))
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(6) }
+                text = label; textSize = 13f; gravity = Gravity.CENTER; maxLines = 1
+                setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
+                setTextColor(if (on) Color.WHITE else Pal.c("#6F4A3F"))
+                if (on) background = GradientDrawable().apply { cornerRadius = dp(19).toFloat(); setColor(Pal.chipOn) }
+                layoutParams = LinearLayout.LayoutParams(0, dp(38), 1f)
                 isClickable = true; isFocusable = true
                 setOnClickListener { if (nightCycle != key) { nightCycle = key; loadNight() } }
             })
         }
         host.addView(modes)
 
-        // the total
-        val totalRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c("#FFF1A6")) }
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+        // the total: a big number, what it counts, a bar, and the way into the list
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Pal.c("#FFF1A6")) }
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            layoutParams = LinearLayout.LayoutParams(matchW, wrapH).apply { topMargin = dp(14) }
             isClickable = true; isFocusable = true
             setOnClickListener { showNightList("Night hold · $span", records, null) }
         }
-        val people = res.optInt("people")
-        totalRow.addView(TextView(this).apply { text = "${res.optInt("submitted")}"; textSize = 30f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
-        val tcol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0); layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
-        tcol.addView(TextView(this).apply { text = if (cycleMode) "Night holds · by $people ${if (people == 1) "person" else "people"}" else "Total night holds · of $total"; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
-        tcol.addView(TextView(this).apply { text = "Tap to see names, places and dates"; textSize = 12f; setTextColor(Pal.c("#8A5F52")) })
-        totalRow.addView(tcol)
-        totalRow.addView(TextView(this).apply { text = "›"; textSize = 24f; setTextColor(Pal.c("#6B352A")) })
-        host.addView(totalRow)
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val left = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, wrapH, 1f) }
+        left.addView(TextView(this).apply {
+            text = "TOTAL NIGHT HOLDS"; textSize = 11f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#8A5F52")); letterSpacing = 0.08f
+        })
+        val figures = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }      // no gravity: the number and its words sit on one text line
+        figures.addView(TextView(this).apply { text = "$submitted"; textSize = 34f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")) })
+        figures.addView(TextView(this).apply {
+            text = if (cycleMode) "by $people of $total members" else "of $total members"
+            textSize = 14f; setTextColor(Pal.c("#8A5F52")); setPadding(dp(8), 0, 0, 0)
+        })
+        left.addView(figures)
+        top.addView(left)
+        top.addView(TextView(this).apply {
+            text = "›"; textSize = 20f; gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A")); setPadding(0, 0, 0, dp(2))
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Pal.c("#F0E3A6")) }
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(32))
+        })
+        hero.addView(top)
+        val heroDone = if (cycleMode) people else submitted                  // a cycle: how many people held a night; one night: how many nights
+        hero.addView(nightBar(if (total > 0) heroDone.toFloat() / total else 0f, 8, "#EBDDA0", 12))
+        hero.addView(TextView(this).apply { text = "Tap to see names, places and dates"; textSize = 12f; setTextColor(Pal.c("#8A5F52")); setPadding(0, dp(8), 0, 0) })
+        host.addView(hero)
 
-        // team by team
+        // team by team: one grouped list, a thin bar under each name
+        if (groups.length() == 0) return
+        val cap = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(4), 0, dp(34), dp(8))                              // the right edge lines up with the numbers below
+            layoutParams = LinearLayout.LayoutParams(matchW, wrapH).apply { topMargin = dp(20) }
+        }
+        cap.addView(TextView(this).apply {
+            text = "BY TEAM"; textSize = 11f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#8A5F52")); letterSpacing = 0.08f
+            layoutParams = LinearLayout.LayoutParams(0, wrapH, 1f)
+        })
+        cap.addView(TextView(this).apply {
+            text = if (cycleMode) "PEOPLE / MEMBERS" else "SUBMITTED / MEMBERS"
+            textSize = 10f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#8A5F52")); letterSpacing = 0.04f
+        })
+        host.addView(cap)
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Pal.c("#FFFAE3")) }
+            setPadding(0, dp(2), 0, dp(2))
+            layoutParams = LinearLayout.LayoutParams(matchW, wrapH)
+        }
         for (i in 0 until groups.length()) {
             val g = groups.getJSONObject(i)
             val key = g.optString("key"); val name = g.optString("name")
+            val all = g.optInt("total")
+            val nights = g.optInt("submitted")
+            val done = if (cycleMode) g.optInt("people") else nights
             val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#FFFAE3")) }
-                setPadding(dp(14), dp(10), dp(14), dp(10))
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) }
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(14), dp(12), dp(14), dp(12))
                 isClickable = true; isFocusable = true
                 setOnClickListener { showNightList("$name · $span", records, key) }
             }
-            row.addView(TextView(this).apply {
-                text = name; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")); maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            line.addView(TextView(this).apply {
+                text = name; textSize = 14f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(if (done == 0) "#6F4A3F" else "#3E1D16")); maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END; layoutParams = LinearLayout.LayoutParams(0, wrapH, 1f)
             })
-            row.addView(pill(if (cycleMode) "${g.optInt("submitted")} by ${g.optInt("people")} of ${g.optInt("total")}" else "${g.optInt("submitted")} of ${g.optInt("total")}", "#6B352A", "#F0E3A6"))
-            row.addView(TextView(this).apply { text = "›"; textSize = 20f; setTextColor(Pal.c("#B39284")); setPadding(dp(8), 0, 0, 0) })
-            host.addView(row)
+            line.addView(TextView(this).apply { text = nightRatio(done, all); textSize = 14f; setPadding(dp(8), 0, 0, 0) })
+            line.addView(TextView(this).apply { text = "›"; textSize = 20f; setTextColor(Pal.c("#B39284")); setPadding(dp(8), 0, 0, 0) })
+            row.addView(line)
+            row.addView(nightBar(if (all > 0) done.toFloat() / all else 0f, 6, "#F0E3A6", 8))
+            if (cycleMode && nights > 0) row.addView(TextView(this).apply {
+                text = "$nights night hold" + (if (nights == 1) "" else "s"); textSize = 12f; setTextColor(Pal.c("#8A5F52")); setPadding(0, dp(6), 0, 0)
+            })
+            box.addView(row)
+            if (i < groups.length() - 1) box.addView(View(this).apply {
+                setBackgroundColor(Pal.c("#EBDDA0"))
+                layoutParams = LinearLayout.LayoutParams(matchW, dp(1)).apply { marginStart = dp(14); marginEnd = dp(14) }
+            })
         }
+        host.addView(box)
     }
 
     private fun pickNightDate(current: String) {
