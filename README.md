@@ -219,6 +219,20 @@ Releases are signed with a private key that is **never** stored in the repo.
 - Download the APK from the run's **`app-release`** artifact (a zip containing the APK), or from the repo's **Releases** page (easiest on a phone). Builds signed with your own key are published as normal releases; temporary-key builds are saved as a **draft** release that only you can see, because repositories with *immutable releases* refuse files on a pre-release.
 - Install it on an Android phone (Android 7.0+).
 
+### 5. Website (optional, GitHub Pages)
+The folder `docs/` holds a one-page website for the app (`docs/index.html`, no build step, no tracking). It shows what the app does, the daily rules with a live Dhaka clock, a sample of the Team screen, how it fits together, how to install, and links to the Wiki, the Releases page and the source. To switch it on:
+1. In GitHub open **Settings → Pages**.
+2. Under *Build and deployment*, set **Source** to **Deploy from a branch**, choose your main branch and the folder **/docs**, then **Save**.
+3. Wait a few minutes (up to about 10). The site is then at `https://<your-user>.github.io/<repo>/` — for this repo **https://rafikuddin.github.io/attendance/**.
+
+Good to know:
+- A GitHub Pages site is **always public**, and **everything inside `docs/` becomes public**, including `docs/screenshots`. Blur names, logos and real figures before you put a picture there. On the Free plan the repository itself must be public.
+- The page uses only the app's own screens, made-up numbers in the sample phone, and no password, key or server address.
+- The *Download the APK* button asks GitHub for the newest release and falls back to the Releases page if GitHub does not answer.
+- If you rename the repository or your GitHub user name, change the address in the `<head>` of `docs/index.html` (the `canonical`, `og:url` and `og:image` lines) and the links in the page.
+- An `update.zip` that contains `docs/` also starts one APK build (harmless). Changing only `.md` files starts none.
+- The page is set in the free fonts **Big Shoulders** and **Work Sans** (SIL Open Font License; the licence texts sit next to the files in `docs/fonts`).
+
 ---
 
 ## 📦 App size
@@ -349,6 +363,13 @@ The late/absent hours and pay period are also used by the app screens (Home and 
   build.yml            Builds the APK, numbers it, signs it, publishes it
   apply-update.yml     Unpacks an uploaded update.zip into the project
   update-wiki.yml      Unpacks an uploaded wiki zip and replaces the GitHub Wiki with it
+docs/                  The website (GitHub Pages: Settings → Pages → /docs)
+  index.html           One page with its own styles and script; no build step
+  fonts/               Big Shoulders and Work Sans (WOFF) with their licence texts
+  og.png               The picture shown when the website link is shared
+  screenshots/         The pictures used by the README and the website
+  .nojekyll            Tells GitHub Pages to publish the folder as it is
+SECURITY.md            How to report a problem, how the system protects people, what to do if something leaks
 app/
   build.gradle
   src/main/

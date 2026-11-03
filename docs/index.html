@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAM BOND Attendance: an Android attendance app for field teams</title>
+<meta name="description" content="SAM BOND is an Android attendance app for field teams. Check in with a selfie and live GPS, ask for leave, report night holds and download Excel reports. Everything lives in a Google Sheet.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FFF1A6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2B130E" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://rafikuddin.github.io/attendance/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SAM BOND Attendance">
+<meta property="og:title" content="SAM BOND Attendance">
+<meta property="og:description" content="Check in with a selfie, a location and the server’s clock. Leave, night hold, team views and Excel reports, all on a Google Sheet.">
+<meta property="og:url" content="https://rafikuddin.github.io/attendance/">
+<meta property="og:image" content="https://rafikuddin.github.io/attendance/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236B352A'/%3E%3Cpath d='M8 17l5.5 5.5L24 11' fill='none' stroke='%23FFF1A6' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/BigShoulders-Bold.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="fonts/WorkSans-Regular.woff" as="font" type="font/woff" crossorigin>
+<script>
+/* Apply a saved Light / Dark choice before the page paints. */
+(function () {
+  try {
+    var t = localStorage.getItem('sb-theme');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) { /* storage can be blocked: the page then follows the phone's setting */ }
+})();
+</script>
+<style>
+@font-face{font-family:"Big Shoulders";src:url("fonts/BigShoulders-Bold.woff") format("woff");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Work Sans";src:url("fonts/WorkSans-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Work Sans";src:url("fonts/WorkSans-Bold.woff") format("woff");font-weight:700;font-style:normal;font-display:swap}
+
+/* ---------- Tokens: the app's own colours. Light = butter day, Dark = clay night ---------- */
+:root{
+  --display:"Big Shoulders","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+  --text:"Work Sans",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --paper:#FFFDF4; --ink:#2B130E; --soft:#5B3A31; --accent:#6B352A;
+  --line:#E4D488; --line-strong:#CDB955;
+  --ground:#FFF1A6; --ground-ink:#2B130E; --ground-soft:#5A2E24;
+  --btn:#6B352A; --btn-ink:#FFF1A6; --focus:#6B352A;
+  --board:#2B130E; --board-ink:#FFF1A6; --board-soft:#D9C592; --board-line:rgba(255,241,166,.2);
+  --trust:#FFF1A6; --trust-ink:#2B130E; --trust-soft:#5A2E24;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --paper:#1D0E0A; --ink:#F6E7AE; --soft:#CDB78A; --accent:#FFF1A6;
+  --line:#4A2A22; --line-strong:#6A4034;
+  --ground:#2B130E; --ground-ink:#FFF1A6; --ground-soft:#D9C592;
+  --btn:#FFF1A6; --btn-ink:#2B130E; --focus:#FFF1A6;
+  --board:#120805; --board-ink:#FFF1A6; --board-soft:#CDB78A; --board-line:rgba(255,241,166,.18);
+  --trust:#3A1D16; --trust-ink:#FBEBB0; --trust-soft:#D9C592;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#1D0E0A; --ink:#F6E7AE; --soft:#CDB78A; --accent:#FFF1A6;
+    --line:#4A2A22; --line-strong:#6A4034;
+    --ground:#2B130E; --ground-ink:#FFF1A6; --ground-soft:#D9C592;
+    --btn:#FFF1A6; --btn-ink:#2B130E; --focus:#FFF1A6;
+    --board:#120805; --board-ink:#FFF1A6; --board-soft:#CDB78A; --board-line:rgba(255,241,166,.18);
+    --trust:#3A1D16; --trust-ink:#FBEBB0; --trust-soft:#D9C592;
+    color-scheme:dark;
+  }
+}
+
+/* ---------- Base ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:1rem}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1.0625rem/1.6 var(--text);font-synthesis:none;text-rendering:optimizeLegibility}
+img{max-width:100%;height:auto}
+a{color:inherit}
+p{text-wrap:pretty}
+h1,h2,h3{text-wrap:balance}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:4px}
+.skip{position:absolute;left:1rem;top:-5rem;z-index:20;background:var(--btn);color:var(--btn-ink);padding:.7rem 1rem;border-radius:8px;font-weight:700}
+.skip:focus{top:1rem}
+.wrap{width:100%;max-width:1180px;margin-inline:auto;padding-inline:1.25rem}
+h2{margin:0 0 1rem;font:700 clamp(2.1rem,6.2vw,3.5rem)/.95 var(--display);letter-spacing:.005em;word-spacing:.08em}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:3rem;padding:.55rem 1.4rem;border:2px solid transparent;border-radius:10px;font:700 1rem/1.2 var(--text);text-decoration:none;cursor:pointer}
+.btn--primary{background:var(--btn);color:var(--btn-ink)}
+.btn--primary:hover{filter:brightness(1.12)}
+.btn--ghost{border-color:currentColor;color:inherit;background:transparent}
+.btn--ghost:hover{background:rgba(127,127,127,.16)}
+.btn:active{transform:translateY(1px)}
+
+/* ---------- Header ---------- */
+.bar{background:var(--ground);color:var(--ground-ink)}
+.bar .wrap{display:flex;align-items:center;gap:1rem;min-height:4.5rem}
+.mark{display:flex;align-items:center;gap:.6rem;margin-right:auto;text-decoration:none;white-space:nowrap}
+.mark svg{width:30px;height:30px;flex:none}
+.mark b{font:700 1.8rem/1 var(--display);letter-spacing:.02em;word-spacing:.08em}
+.mark span{font-size:.8125rem;font-weight:700;color:var(--ground-soft)}
+@media (max-width:519px){.mark span{display:none}}
+@media (max-width:379px){
+  .bar .wrap{gap:.5rem;padding-inline:1rem}
+  .mark{gap:.45rem}
+  .mark svg{width:26px;height:26px}
+  .mark b{font-size:1.55rem}
+  .bar__go{padding:.45rem .7rem}
+  .mode{width:40px;height:40px}
+}
+.nav{display:none;gap:1.5rem}
+.nav a{font-size:.9375rem;font-weight:700;text-decoration:none}
+.nav a:hover{text-decoration:underline;text-underline-offset:5px}
+.bar__go{font-size:.9375rem;font-weight:700;padding:.5rem .95rem;border-radius:8px;background:var(--btn);color:var(--btn-ink);text-decoration:none}
+.mode{display:grid;place-items:center;width:44px;height:44px;border:2px solid currentColor;border-radius:50%;background:transparent;color:inherit;font-size:1.1rem;line-height:1;cursor:pointer}
+@media (min-width:760px){.nav{display:flex}.bar__go{display:none}}
+
+/* ---------- Intro ---------- */
+.intro{background:var(--ground);color:var(--ground-ink);padding-block:clamp(1.25rem,4vw,2.5rem) clamp(3.5rem,8vw,6rem)}
+.intro .wrap{display:grid;gap:2.75rem}
+@media (min-width:920px){.intro .wrap{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center;gap:3rem}}
+h1{margin:0 0 1.25rem;font:700 clamp(2.9rem,10.6vw,5.9rem)/.92 var(--display);letter-spacing:.003em;word-spacing:.08em}
+.lede{max-width:34rem;margin:0 0 1.75rem;font-size:clamp(1.0625rem,2.4vw,1.25rem)}
+.actions{display:flex;flex-wrap:wrap;gap:.75rem}
+.fine{max-width:34rem;margin:1rem 0 0;font-size:.875rem;color:var(--ground-soft)}
+
+/* The sample phone: real layout, sample numbers */
+.demo{margin:0}
+.phone{--pw:320px;--sw:304px;--z:.8444;width:var(--pw);margin-inline:auto;padding:8px;border-radius:40px;background:#120805;box-shadow:0 0 0 1px rgba(255,241,166,.22),0 30px 46px -22px rgba(43,19,14,.65)}
+@media (min-width:920px){.phone{--pw:344px;--sw:328px;--z:.9111}}
+@media (max-width:359px){.phone{--pw:280px;--sw:264px;--z:.7333}}
+.screen{width:var(--sw);overflow:hidden;border-radius:32px;background:#1b1210}
+.demo figcaption{max-width:var(--pw);margin:1rem auto 0;font-size:.875rem;color:var(--ground-soft);text-align:center}
+.app{width:360px;zoom:var(--z);padding:14px 16px 0;background:linear-gradient(#1b1210,#241713);color:#FBEBB0;font:400 14px/1.3 var(--text)}
+@supports not (zoom:1){.app{transform:scale(var(--z));transform-origin:0 0}.screen{height:calc(var(--sw) * 2.05)}}
+.a-bar{display:flex;align-items:center;gap:12px;height:44px;margin-bottom:10px}
+.a-back{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#3A2A24;font-size:22px;line-height:1;padding-bottom:3px}
+.a-title{font-size:19px}
+.a-card{padding:14px;border-radius:24px;background:#2E1813}
+.a-th{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.08em;color:#CDB78A}
+.a-pill{padding:3px 9px;border-radius:12px;background:#4A2A22;color:#F4B8A6;font-size:11px;letter-spacing:0}
+.a-trow{display:flex;gap:10px;margin-top:10px}
+.a-tile{flex:1;min-width:0;padding:12px 4px 10px;border-radius:16px;text-align:center}
+.a-tn{font-size:28px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.a-tl{font-size:12px;font-weight:700;white-space:nowrap}
+.a-sec{margin-top:16px}
+.a-div{height:1px;margin-bottom:14px;background:#5A362B}
+.a-head{display:flex;align-items:center}
+.a-ic{display:grid;place-items:center;flex:none;width:40px;height:40px;margin-right:12px;border-radius:14px;background:#4A2A22;font-size:20px}
+.a-ti{flex:1;min-width:0}
+.a-t{font-size:17px;font-weight:700;line-height:1.2;color:#FBEBB0}
+.a-s{margin-top:1px;overflow:hidden;font-size:12px;color:#CDB78A;white-space:nowrap;text-overflow:ellipsis}
+.a-chip{display:flex;align-items:center;height:40px;margin-left:8px;padding:0 12px;border-radius:20px;background:#4A2A22;color:#FFF1A6;font-size:13px;font-weight:700;white-space:nowrap}
+.a-chip[hidden]{display:none}
+.a-seg{display:flex;margin-top:14px;padding:3px;border-radius:22px;background:#3A2A1F}
+.a-seg button{flex:1;height:38px;min-width:0;border:0;border-radius:19px;background:transparent;color:#D9C592;font:400 13px var(--text);cursor:pointer}
+.a-seg button[aria-pressed="true"]{background:#8A4333;color:#fff;font-weight:700}
+.a-seg button:focus-visible{outline:2px solid #FFF1A6;outline-offset:1px}
+.a-hero{margin-top:14px;padding:14px 16px;border-radius:18px;background:#4A3A1A}
+.a-htop{display:flex;align-items:center}
+.a-hl{flex:1;min-width:0}
+.a-ov{font-size:11px;font-weight:700;letter-spacing:.08em;color:#CDB78A}
+.a-nr{display:flex;align-items:baseline;margin-top:2px}
+.a-big{font-size:34px;font-weight:700;line-height:1.15;color:#FFF1A6;font-variant-numeric:tabular-nums}
+.a-sfx{margin-left:8px;font-size:14px;color:#CDB78A}
+.a-cc{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#4A2A22;color:#FFF1A6;font-size:20px;font-weight:700;padding-bottom:2px}
+.a-track{display:flex;width:100%;overflow:hidden;background:#5A362B}
+.a-track i{display:block;height:100%;background:#FFF1A6;animation:grow .7s ease-out both}
+.a-hero .a-track{height:8px;margin-top:12px;border-radius:4px}
+.a-hint{margin-top:8px;font-size:12px;color:#CDB78A}
+.a-cap{display:flex;justify-content:space-between;margin-top:20px;padding:0 34px 8px 4px;font-size:11px;font-weight:700;letter-spacing:.08em;color:#CDB78A}
+.a-cap span:last-child{font-size:10px;letter-spacing:.04em}
+.a-grp{padding:2px 0;border-radius:18px;background:#38201A}
+.a-row{padding:12px 14px}
+.a-rl{display:flex;align-items:center;margin-bottom:8px}
+.a-rn{flex:1;min-width:0;overflow:hidden;font-size:14px;font-weight:700;color:#FBEBB0;white-space:nowrap;text-overflow:ellipsis}
+.a-rn.is0{color:#D9C592}
+.a-rr{margin-left:8px;font-size:14px;color:#CDB78A;font-variant-numeric:tabular-nums}
+.a-rr b{color:#FBEBB0}
+.a-rr b.is0{color:#CDB78A}
+.a-ch{margin-left:8px;font-size:20px;line-height:1;color:#A68A6C}
+.a-row .a-track{height:6px;border-radius:3px;background:#4A2A22}
+.a-rc{margin-top:6px;font-size:12px;color:#CDB78A}
+.a-hr{height:1px;margin:0 14px;background:#5A362B}
+.a-nav{display:flex;margin:16px -16px 0;padding:8px 8px 12px;background:#1b1210;border-top:1px solid #3A2A24}
+.a-nav span{flex:1;font-size:10px;text-align:center;color:#A68A6C}
+.a-nav b{display:block;font-size:18px;font-weight:400;line-height:1.3}
+.a-nav .on{color:#FFF1A6}
+@keyframes grow{from{width:0}}
+
+/* ---------- The board ---------- */
+.board{--focus:var(--board-ink);padding-block:clamp(3.5rem,8vw,6rem);background:var(--board);color:var(--board-ink)}
+.board .wrap{display:grid;gap:2.5rem}
+@media (min-width:920px){.board .wrap{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:4.5rem}}
+.board p{margin:0 0 .75rem;color:var(--board-soft)}
+.now{display:flex;flex-wrap:wrap;align-items:baseline;gap:.35rem .8rem;margin-top:1.75rem;padding:1rem 0;border-block:1px solid var(--board-line);color:var(--board-ink)}
+.now b{font:700 3rem/1 var(--display);letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.now span{color:var(--board-soft);max-width:22rem}
+.rules{margin:0;padding:0;list-style:none}
+.rule{display:grid;grid-template-columns:5.6rem minmax(0,1fr);gap:0 1.25rem;padding:1.25rem 1rem;border-top:1px solid var(--board-line)}
+.rule:last-child{border-bottom:1px solid var(--board-line)}
+.rule__time{font:700 3rem/.9 var(--display);font-variant-numeric:tabular-nums;color:var(--board-ink)}
+.rule__time small{display:block;margin-top:.4rem;font:700 .8125rem/1 var(--text);color:var(--board-soft)}
+.rule h3{margin:0 0 .25rem;font:700 1.1875rem/1.25 var(--text);color:var(--board-ink)}
+.rule p{margin:0;font-size:.9844rem}
+.rule .tag{display:none;margin-left:.6rem;padding:.12rem .55rem;border-radius:999px;background:var(--board-ink);color:var(--board);font-size:.75rem;vertical-align:.12em}
+.rule.is-now{background:rgba(255,241,166,.1);box-shadow:inset 4px 0 0 var(--board-ink)}
+.rule.is-now .tag{display:inline-block}
+.board .board__note{margin-top:1.5rem;font-size:.9375rem}
+
+/* ---------- Features ---------- */
+.feat{padding-block:clamp(3.5rem,8vw,6rem)}
+.feat h2{color:var(--accent)}
+.tabs{display:flex;flex-wrap:wrap;gap:.25rem;margin:1.5rem 0 2rem;border-bottom:2px solid var(--line-strong)}
+.tabs button{margin-bottom:-2px;padding:.85rem 1.1rem;border:0;border-bottom:4px solid transparent;background:none;color:var(--soft);font:700 1.0625rem/1 var(--text);cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.panel{display:grid;gap:2.25rem}
+.panel[hidden]{display:none}
+@media (min-width:920px){.panel{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:4rem;align-items:start}}
+.ticks{display:grid;gap:1.1rem;max-width:40rem;margin:0;padding:0;list-style:none}
+.ticks li{position:relative;padding-left:1.75rem}
+.ticks li::before{content:"";position:absolute;left:0;top:.58em;width:.62rem;height:.62rem;border-radius:2px;background:var(--accent)}
+.shots{display:flex;justify-content:center;gap:.9rem;margin:0}
+.shots img{width:min(46%,220px);aspect-ratio:360/708;border:6px solid #120805;border-radius:28px;background:#120805;box-shadow:0 0 0 1px var(--line-strong)}
+
+/* ---------- Safety and how it fits ---------- */
+.trust{--focus:var(--trust-ink);padding-block:clamp(3.5rem,8vw,6rem);background:var(--trust);color:var(--trust-ink)}
+.trust .wrap{display:grid;gap:2.5rem}
+@media (min-width:920px){.trust .wrap{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:4.5rem}}
+.trust p{max-width:34rem;color:var(--trust-soft)}
+.trust a{font-weight:700}
+.facts{display:grid;gap:1.25rem;margin:0}
+.facts div{display:grid;gap:.1rem}
+.facts dt{font-weight:700}
+.facts dd{margin:0;color:var(--trust-soft)}
+.fit{grid-column:1/-1;margin-top:1rem;padding-top:2rem;border-top:2px solid currentColor}
+.fit h3{margin:0 0 1.25rem;font:700 clamp(1.7rem,4.4vw,2.4rem)/1 var(--display)}
+.flow{display:grid;gap:.75rem;margin:0;padding:0;list-style:none}
+.flow li{position:relative;padding:.9rem 1rem;border:2px solid currentColor;border-radius:10px}
+.flow li + li::before{content:"";position:absolute;left:1.5rem;top:calc(-.75rem - 2px);height:.75rem;border-left:2px solid currentColor}
+.flow li + li::after{content:"";position:absolute;left:calc(1.5rem - .3rem + 1px);top:calc(-.3rem - 2px);border:.3rem solid transparent;border-top:.45rem solid currentColor;border-bottom:0}
+.flow b{display:block}
+.flow span{display:block;font-size:.9375rem;color:var(--trust-soft)}
+.fit__note{margin:1.25rem 0 0;max-width:46rem}
+@media (min-width:920px){
+  .flow{grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem}
+  .flow li + li::before{left:-1.5rem;top:50%;width:1.5rem;height:0;border-left:0;border-top:2px solid currentColor}
+  .flow li + li::after{left:calc(-.45rem - 2px);top:calc(50% - .3rem + 1px);border:.3rem solid transparent;border-left:.45rem solid currentColor;border-right:0}
+}
+
+/* ---------- Install ---------- */
+.install{padding-block:clamp(3.5rem,8vw,6rem)}
+.install h2{color:var(--accent)}
+.steps{display:grid;gap:2rem;margin:2rem 0 0;padding:0;list-style:none;counter-reset:s}
+@media (min-width:920px){.steps{grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5rem}}
+.steps li{display:grid;grid-template-columns:3.2rem minmax(0,1fr);gap:0 1rem;counter-increment:s}
+.steps li::before{content:counter(s);font:700 4.2rem/.82 var(--display);color:var(--accent)}
+.steps h3{margin:0 0 .35rem;font:700 1.1875rem/1.25 var(--text)}
+.steps p{margin:0;color:var(--soft)}
+.install__go{margin-top:2.25rem}
+.install__notes{max-width:44rem;margin:1.75rem 0 0;color:var(--soft)}
+.install__notes a{color:var(--accent);font-weight:700}
+
+/* ---------- Guides ---------- */
+.guides{padding-block:clamp(3rem,7vw,5rem);border-top:1px solid var(--line)}
+.guides h2{color:var(--accent)}
+.glist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2rem 1.5rem;margin-top:2rem}
+@media (min-width:920px){.glist{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.glist h3{margin:0 0 .6rem;font:700 1rem/1.3 var(--text);color:var(--accent)}
+.glist ul{display:grid;gap:.4rem;margin:0;padding:0;list-style:none}
+.glist a{text-underline-offset:3px}
+
+/* ---------- Footer ---------- */
+.foot{--focus:var(--board-ink);padding-block:2.5rem;background:var(--board);color:var(--board-soft);font-size:.9375rem}
+.foot .wrap{display:grid;gap:.75rem}
+.foot p{margin:0;max-width:44rem}
+.foot a{color:var(--board-ink)}
+.foot__links{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="mark" href="#top" aria-label="SAM BOND Attendance, top of the page">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#6B352A"/><path d="M8 17l5.5 5.5L24 11" fill="none" stroke="#FFF1A6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <b>SAM BOND</b><span>Attendance</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#day">The day</a>
+      <a href="#features">Features</a>
+      <a href="#trust">Safety</a>
+      <a href="#install">Install</a>
+      <a href="#guides">Guides</a>
+    </nav>
+    <a class="bar__go" href="#install">Install</a>
+    <button class="mode" id="mode" type="button" aria-label="Switch to the dark theme">🌙</button>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="intro" id="top">
+  <div class="wrap">
+    <div>
+      <h1>Attendance with a selfie, a location and the server’s clock.</h1>
+      <p class="lede">SAM BOND is an Android app for teams that work in the field. People check in from their phone. Managers see who is in, who is late and who is on leave. Admins download Excel reports. All of it lives in a Google Sheet, so there is no server to run.</p>
+      <div class="actions">
+        <a class="btn btn--primary" id="dl" href="https://github.com/rafikuddin/attendance/releases/latest">Download the APK</a>
+        <a class="btn btn--ghost" href="#day">See how a day works</a>
+      </div>
+      <p class="fine" id="rel">Needs Android 7.0 or newer. Free to install.</p>
+    </div>
+
+    <figure class="demo">
+      <div class="phone">
+        <div class="screen">
+          <div class="app" id="app">
+            <div class="a-bar" aria-hidden="true"><span class="a-back">‹</span><span class="a-title">My Team</span></div>
+            <div class="a-card">
+              <div class="a-th" aria-hidden="true"><span>TEAM TODAY</span><span class="a-pill">120 members</span></div>
+              <div class="a-trow" aria-hidden="true">
+                <div class="a-tile" style="background:#0C301E;color:#86E3A8"><div class="a-tn" data-to="96">96</div><div class="a-tl">✅ Present</div></div>
+                <div class="a-tile" style="background:#3A2F0C;color:#F5C84B"><div class="a-tn" data-to="6">6</div><div class="a-tl">⏰ Late</div></div>
+                <div class="a-tile" style="background:#4A3418;color:#FDBA74"><div class="a-tn" data-to="8">8</div><div class="a-tl">🌴 On Leave</div></div>
+              </div>
+              <div class="a-trow" aria-hidden="true">
+                <div class="a-tile" style="background:#301812;color:#D9C592"><div class="a-tn" data-to="0">0</div><div class="a-tl">🗓 Off</div></div>
+                <div class="a-tile" style="background:#3C181E;color:#F5A3A3"><div class="a-tn" data-to="4">4</div><div class="a-tl">❌ Absent</div></div>
+                <div class="a-tile" style="background:#3C2A18;color:#FFE27A"><div class="a-tn" data-to="6">6</div><div class="a-tl">⏳ Pending</div></div>
+              </div>
+
+              <div class="a-sec">
+                <div class="a-div"></div>
+                <div class="a-head">
+                  <div class="a-ic" aria-hidden="true">🌙</div>
+                  <div class="a-ti"><div class="a-t">Night hold</div><div class="a-s" id="nhSub">One night</div></div>
+                  <div class="a-chip" id="nhChip" aria-hidden="true">📅 Last night ▾</div>
+                </div>
+                <div class="a-seg" id="nhSeg" role="group" aria-label="Night hold period">
+                  <button type="button" data-mode="night" aria-pressed="true">Night</button>
+                  <button type="button" data-mode="prev" aria-pressed="false">Previous</button>
+                  <button type="button" data-mode="current" aria-pressed="false">Current</button>
+                  <button type="button" data-mode="next" aria-pressed="false">Next</button>
+                </div>
+                <div class="a-hero">
+                  <div class="a-htop">
+                    <div class="a-hl">
+                      <div class="a-ov">TOTAL NIGHT HOLDS</div>
+                      <div class="a-nr"><span class="a-big" id="nhBig">7</span><span class="a-sfx" id="nhSfx">of 120 members</span></div>
+                    </div>
+                    <div class="a-cc" aria-hidden="true">›</div>
+                  </div>
+                  <div class="a-track" id="nhBar"><i style="width:5.8%"></i></div>
+                  <div class="a-hint">Tap to see names, places and dates</div>
+                </div>
+                <div class="a-cap"><span>BY TEAM</span><span id="nhCol">SUBMITTED / MEMBERS</span></div>
+                <div class="a-grp" id="nhRows"></div>
+              </div>
+            </div>
+            <div class="a-nav" aria-hidden="true">
+              <span><b>🏠</b>Home</span><span><b>📸</b>Attendance</span><span><b>🌴</b>Leave</span><span class="on"><b>👥</b>Team</span><span><b>📅</b>Calendar</span><span><b>🌙</b>Night Hold</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Sample numbers in the app’s real layout. Tap Night, Previous, Current or Next.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="board" id="day" aria-labelledby="day-h">
+  <div class="wrap">
+    <div>
+      <h2 id="day-h">The day runs on five clock times</h2>
+      <p>These are the default times in Dhaka. The server stamps every check-in, so changing the phone’s clock does nothing.</p>
+      <div class="now"><b id="nowT">9:10 AM</b><span id="nowMsg">in Dhaka.</span></div>
+      <p class="board__note">Friday is the weekly off day, and so is any holiday an admin adds: nobody is counted absent. Admins can change the night hold hours in the Admin panel. The other times are set in the code.</p>
+    </div>
+    <ol class="rules" id="rules">
+      <li class="rule" data-id="r1">
+        <div class="rule__time">8:30<small>AM</small></div>
+        <div><h3>Reminders start<span class="tag">now</span></h3><p>A phone notification asks anyone who has not marked attendance. Managers get the names of who has not, from 9:10.</p></div>
+      </li>
+      <li class="rule" data-id="r2">
+        <div class="rule__time">9:10<small>AM</small></div>
+        <div><h3>Late from here<span class="tag">now</span></h3><p>The office starts at 9:00 with ten minutes of grace. After that a check-in is Late Present, and the app asks for a reason.</p></div>
+      </li>
+      <li class="rule" data-id="r3">
+        <div class="rule__time">6:00<small>PM</small></div>
+        <div><h3>Unmarked becomes Absent<span class="tag">now</span></h3><p>Location sharing stops too, for the people an admin has ticked. Drivers carry on until they send their Day End.</p></div>
+      </li>
+      <li class="rule" data-id="r4">
+        <div class="rule__time">9:00<small>PM</small></div>
+        <div><h3>Night hold opens<span class="tag">now</span></h3><p>Staying away overnight? Report the place, the district and thana, and the hotel. One report per night.</p></div>
+      </li>
+      <li class="rule" data-id="r5">
+        <div class="rule__time">6:00<small>AM, next day</small></div>
+        <div><h3>Night hold closes<span class="tag">now</span></h3><p>A report sent at 2:00 AM counts for the night before.</p></div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="feat" id="features" aria-labelledby="feat-h">
+  <div class="wrap">
+    <h2 id="feat-h">What each person gets</h2>
+    <div class="tabs" role="tablist" aria-label="Choose a role">
+      <button type="button" role="tab" id="tab-staff" aria-controls="panel-staff" aria-selected="true">Staff</button>
+      <button type="button" role="tab" id="tab-mgr" aria-controls="panel-mgr" aria-selected="false" tabindex="-1">Managers</button>
+      <button type="button" role="tab" id="tab-admin" aria-controls="panel-admin" aria-selected="false" tabindex="-1">Admins</button>
+    </div>
+
+    <div class="panel" role="tabpanel" id="panel-staff" aria-labelledby="tab-staff">
+      <ul class="ticks">
+        <li>Check in with a front-camera selfie and a live GPS fix. The server adds the date and time, and refuses locations from fake-GPS apps.</li>
+        <li>Blink, turn your head or smile when the camera asks. This live check helps show a real person is there, not a photo. An admin can switch it off.</li>
+        <li>Ask for Casual, Sick, Earn or Paternity leave. Attach a photo of the signed application; the phone checks that the picture looks like one.</li>
+        <li>See your leave balance, and your pay period (26th to 25th) on a calendar of present, late, leave, holiday and night hold days.</li>
+        <li>Report a night hold with your location, district, thana and hotel.</li>
+        <li>Get reminders and notices, order for your customers, follow your target, answer surveys and open the PDF files your admin shares.</li>
+        <li>Drivers add a car meter picture each morning and at the Day End. The phone reads the km number.</li>
+      </ul>
+      <div class="shots">
+        <img src="screenshots/home.jpg" width="360" height="708" loading="lazy" decoding="async" alt="Home screen with today’s status, quick actions and leave balance">
+        <img src="screenshots/leave.jpg" width="360" height="708" loading="lazy" decoding="async" alt="Leave screen with balances for Casual, Sick, Earn and Paternity leave">
+      </div>
+    </div>
+
+    <div class="panel" role="tabpanel" id="panel-mgr" aria-labelledby="tab-mgr" hidden>
+      <ul class="ticks">
+        <li>See today’s team at a glance: present, late, on leave, off, absent and pending.</li>
+        <li>Open a person’s selfie, and the place it was taken on the map.</li>
+        <li>Approve or reject leave for the people below you. Nobody can decide their own.</li>
+        <li>Read the night hold summary by team, for one night or a whole pay cycle.</li>
+        <li>Post a notice to your team, and download their attendance and night hold reports as Excel.</li>
+        <li>Follow a tracked person’s route on the map, when an admin has switched tracking on for them.</li>
+      </ul>
+      <div class="shots">
+        <img src="screenshots/team.jpg" width="360" height="708" loading="lazy" decoding="async" alt="My Team screen with today’s counts and each person’s status">
+        <img src="screenshots/notices.jpg" width="360" height="708" loading="lazy" decoding="async" alt="Notices screen with a button to post a notice to your team">
+      </div>
+    </div>
+
+    <div class="panel" role="tabpanel" id="panel-admin" aria-labelledby="tab-admin" hidden>
+      <ul class="ticks">
+        <li>Add people, approve new account requests, set roles, choose who may use which menu, and switch people active or inactive.</li>
+        <li>Add holidays, post notices to everyone (with an optional SMS) and set the night hold hours.</li>
+        <li>Upload the target and collection Excel files. Everyone sees their own numbers; managers see their team.</li>
+        <li>Download Attendance and Night hold reports as Excel, or e-mail them to staff.</li>
+        <li>Build surveys with nine kinds of question, including picture attachments.</li>
+        <li>Publish a new version of the app from your phone, and make it compulsory.</li>
+        <li>Risky actions ask for your own password again.</li>
+      </ul>
+      <div class="shots">
+        <img src="screenshots/admin-report.jpg" width="360" height="708" loading="lazy" decoding="async" alt="Admin report screen: download attendance or night hold as Excel">
+        <img src="screenshots/admin-app.jpg" width="360" height="708" loading="lazy" decoding="async" alt="Admin app screen: publish a new version to everyone">
+      </div>
+    </div>
+    <noscript><style>.panel[hidden]{display:grid}</style></noscript>
+  </div>
+</section>
+
+<section class="trust" id="trust" aria-labelledby="trust-h">
+  <div class="wrap">
+    <div>
+      <h2 id="trust-h">Built so people can trust it</h2>
+      <p>The script address is public, because anyone with the APK has it. So every rule is checked on the server, not in the app.</p>
+      <p>What it cannot do: a modified app or a rooted phone can still lie about its location. Managers looking at selfies and places is the practical check.</p>
+      <p><a href="https://github.com/rafikuddin/attendance/wiki/Security">Read the Security page</a></p>
+    </div>
+    <dl class="facts">
+      <div><dt>Passwords</dt><dd>Stored only as salted hashes. The app keeps a signed token, encrypted on the phone, and never the password.</dd></div>
+      <div><dt>Guessing</dt><dd>Five wrong passwords pause an account for 15 minutes.</dd></div>
+      <div><dt>Photos</dt><dd>Selfies and leave pictures are visible only to the person and the managers above them.</dd></div>
+      <div><dt>Location</dt><dd>Movement tracking exists only for people an admin ticks. The phone shows a permanent notification and asks the person once.</dd></div>
+      <div><dt>Updates</dt><dd>The phone checks an update’s SHA-256 fingerprint, and Android installs it only if it carries the same signing key as the installed app.</dd></div>
+    </dl>
+    <div class="fit">
+      <h3>How it fits together</h3>
+      <ol class="flow">
+        <li><b>The Android app</b><span>Selfie, location and every screen.</span></li>
+        <li><b>A front door</b><span>Optional Cloudflare Worker. It adds a secret key and limits requests per address.</span></li>
+        <li><b>Google Apps Script</b><span>Code.gs checks every rule on the server.</span></li>
+        <li><b>Google Sheet and Drive</b><span>People, attendance, photos and reports. You own them.</span></li>
+      </ol>
+      <p class="fit__note">GitHub Actions builds and signs the APK. An admin publishes it to everyone from the Admin panel, and phones update from inside the app.</p>
+    </div>
+  </div>
+</section>
+
+<section class="install" id="install" aria-labelledby="install-h">
+  <div class="wrap">
+    <h2 id="install-h">Install it</h2>
+    <ol class="steps">
+      <li><div><h3>Download the APK</h3><p>Use the button below, or open the Releases page on GitHub.</p></div></li>
+      <li><div><h3>Open it and tap Install</h3><p>If Android asks, allow installs from the app you opened it from (Chrome, Files or WhatsApp). You need Android 7.0 or newer.</p></div></li>
+      <li><div><h3>Sign in</h3><p>Use the Employee ID and password your admin gave you. No account yet? Tap Create account. A 6-digit code goes to your e-mail, then an admin approves the request.</p></div></li>
+    </ol>
+    <p class="install__go"><a class="btn btn--primary" id="dl2" href="https://github.com/rafikuddin/attendance/releases/latest">Download the APK</a></p>
+    <p class="install__notes">If Android says conflicting app signatures, uninstall the older copy once. Your data is safe: it lives in the Google Sheet. Want to run your own copy? The <a href="https://github.com/rafikuddin/attendance/wiki/Setup-Guide">Setup guide</a> covers the Google Sheet, the script and the GitHub build.</p>
+  </div>
+</section>
+
+<section class="guides" id="guides" aria-labelledby="guides-h">
+  <div class="wrap">
+    <h2 id="guides-h">Guides</h2>
+    <div class="glist">
+      <div><h3>Staff</h3><ul>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Getting-Started">Getting started</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Attendance">Attendance</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Leave">Leave</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Night-Hold">Night hold</a></li>
+      </ul></div>
+      <div><h3>Managers</h3><ul>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Manager-Guide">Manager guide</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Reports-and-Excel">Reports and Excel</a></li>
+      </ul></div>
+      <div><h3>Admins</h3><ul>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Admin-Guide">Admin guide</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Updating-the-App">Updating the app</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/SMS-Notifications">SMS notifications</a></li>
+      </ul></div>
+      <div><h3>Setting up</h3><ul>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Setup-Guide">Setup guide</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Configuration">Configuration</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Architecture">Architecture</a></li>
+      </ul></div>
+      <div><h3>Help</h3><ul>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/FAQ">FAQ</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Troubleshooting">Troubleshooting</a></li>
+        <li><a href="https://github.com/rafikuddin/attendance/wiki/Security">Security</a></li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot__links">
+      <a href="https://github.com/rafikuddin/attendance">Source code</a>
+      <a href="https://github.com/rafikuddin/attendance/releases">Releases</a>
+      <a href="https://github.com/rafikuddin/attendance/wiki">Wiki</a>
+    </div>
+    <p>Screenshots come from the app, with names and logos blurred. The numbers in the sample phone are made up.</p>
+    <p>Set in Big Shoulders and Work Sans, both under the SIL Open Font License (<a href="fonts/BigShoulders-OFL.txt">Big Shoulders</a>, <a href="fonts/WorkSans-OFL.txt">Work Sans</a>).</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  /* ---------- Light / Dark ---------- */
+  var root = document.documentElement, modeBtn = $('#mode');
+  function isDark() {
+    var t = root.getAttribute('data-theme');
+    if (t) return t === 'dark';
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  function paintMode() {
+    var d = isDark();
+    modeBtn.textContent = d ? '☀️' : '🌙';
+    modeBtn.setAttribute('aria-label', d ? 'Switch to the light theme' : 'Switch to the dark theme');
+  }
+  modeBtn.addEventListener('click', function () {
+    var next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('sb-theme', next); } catch (e) { /* not saved: fine */ }
+    paintMode();
+  });
+  paintMode();
+
+  /* ---------- Count-up for numbers (skipped when the phone asks for less motion) ---------- */
+  function countTo(el, to, ms) {
+    var from = parseInt(el.getAttribute('data-v'), 10); if (isNaN(from)) from = 0;
+    el.setAttribute('data-v', to);
+    el._tok = (el._tok || 0) + 1;
+    var tok = el._tok;
+    if (reduce || from === to) { el.textContent = to; return; }
+    var t0 = null;
+    function step(ts) {
+      if (el._tok !== tok) return;
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / ms), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(from + (to - from) * e);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  $$('.a-tn').forEach(function (el, i) {
+    var to = parseInt(el.getAttribute('data-to'), 10) || 0;
+    el.setAttribute('data-v', 0);
+    if (!reduce) el.textContent = '0';
+    setTimeout(function () { countTo(el, to, 900); }, 150 + i * 70);
+  });
+
+  /* ---------- Dhaka dates for the sample phone ---------- */
+  function dhakaDate() {
+    try {
+      var s = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      var a = s.split('-'); return { y: +a[0], m: +a[1], d: +a[2] };
+    } catch (e) { var n = new Date(); return { y: n.getFullYear(), m: n.getMonth() + 1, d: n.getDate() }; }
+  }
+  function short(d) { return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+  function cycleText(offset) {          /* pay period: 26th to 25th */
+    var t = dhakaDate(), m = t.m - 1, y = t.y;
+    if (t.d < 26) m -= 1;
+    m += offset;
+    y += Math.floor(m / 12); m = ((m % 12) + 12) % 12;
+    return short(new Date(Date.UTC(y, m, 26))) + ' – ' + short(new Date(Date.UTC(y, m + 1, 25)));
+  }
+  function lastNight() {
+    var t = dhakaDate(), d = new Date(Date.UTC(t.y, t.m - 1, t.d - 1));
+    return d.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' }) + ', ' + short(d);
+  }
+  $('#nhChip').textContent = '📅 ' + lastNight() + ' ▾';
+
+  /* ---------- Night hold sample ---------- */
+  var DATA = {
+    night:   { sub: 'One night',                                      big: 7,  sfx: 'of 120 members',      col: 'SUBMITTED / MEMBERS', cycle: false,
+               rows: [['Alpha team', 3, 40, 0], ['Bravo team', 2, 38, 0], ['Charlie team', 2, 36, 0], ['Direct reports', 0, 6, 0]] },
+    prev:    { sub: 'Previous pay cycle · ' + cycleText(-1),          big: 28, sfx: 'by 11 of 120 members', col: 'PEOPLE / MEMBERS',    cycle: true,
+               rows: [['Alpha team', 4, 40, 12], ['Bravo team', 4, 38, 9], ['Charlie team', 3, 36, 7], ['Direct reports', 0, 6, 0]] },
+    current: { sub: 'Current pay cycle · ' + cycleText(0),            big: 31, sfx: 'by 12 of 120 members', col: 'PEOPLE / MEMBERS',    cycle: true,
+               rows: [['Alpha team', 5, 40, 14], ['Bravo team', 4, 38, 10], ['Charlie team', 3, 36, 7], ['Direct reports', 0, 6, 0]] },
+    next:    { sub: 'Next pay cycle · ' + cycleText(1),               big: 0,  sfx: 'by 0 of 120 members',  col: 'PEOPLE / MEMBERS',    cycle: true,
+               rows: [['Alpha team', 0, 40, 0], ['Bravo team', 0, 38, 0], ['Charlie team', 0, 36, 0], ['Direct reports', 0, 6, 0]] }
+  };
+  function barHtml(done, all) {
+    var w = (!all || !done) ? 0 : Math.max(3, done / all * 100);
+    return '<i style="width:' + w.toFixed(1) + '%"></i>';
+  }
+  function rowHtml(r, last, cycle) {
+    var zero = r[1] === 0;
+    var h = '<div class="a-row"><div class="a-rl"><span class="a-rn' + (zero ? ' is0' : '') + '">' + r[0] + '</span>' +
+            '<span class="a-rr"><b' + (zero ? ' class="is0"' : '') + '>' + r[1] + '</b> / ' + r[2] + '</span><span class="a-ch" aria-hidden="true">›</span></div>' +
+            '<div class="a-track">' + barHtml(r[1], r[2]) + '</div>';
+    if (cycle && r[3] > 0) h += '<div class="a-rc">' + r[3] + ' night hold' + (r[3] === 1 ? '' : 's') + '</div>';
+    return h + '</div>' + (last ? '' : '<div class="a-hr"></div>');
+  }
+  var firstPaint = true;
+  function showNight(mode) {
+    var d = DATA[mode]; if (!d) return;
+    $$('#nhSeg button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-mode') === mode ? 'true' : 'false'); });
+    $('#nhSub').textContent = d.sub;
+    $('#nhChip').hidden = d.cycle;
+    $('#nhSfx').textContent = d.sfx;
+    $('#nhCol').textContent = d.col;
+    var done = d.cycle ? d.rows.reduce(function (n, r) { return n + r[1]; }, 0) : d.big;
+    $('#nhBar').innerHTML = barHtml(done, 120);
+    var html = '';
+    d.rows.forEach(function (r, i) { html += rowHtml(r, i === d.rows.length - 1, d.cycle); });
+    $('#nhRows').innerHTML = html;
+    var big = $('#nhBig');
+    if (firstPaint) { big.setAttribute('data-v', 0); big.textContent = reduce ? d.big : '0'; }
+    countTo(big, d.big, 700);
+    firstPaint = false;
+  }
+  $$('#nhSeg button').forEach(function (b) {
+    b.addEventListener('click', function () { showNight(b.getAttribute('data-mode')); });
+  });
+  showNight('night');
+
+  /* ---------- The board: where the Dhaka clock is right now ---------- */
+  function dhakaClock() {
+    try {
+      var o = {};
+      new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Dhaka', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
+        .formatToParts(new Date()).forEach(function (p) { o[p.type] = p.value; });
+      var h = parseInt(o.hour, 10) % 24, m = parseInt(o.minute, 10);
+      return { h: h, m: m, t: h * 60 + m, fri: o.weekday === 'Fri' };
+    } catch (e) { return null; }
+  }
+  function clock12(h, m) {
+    var hh = h % 12; if (hh === 0) hh = 12;
+    return hh + ':' + (m < 10 ? '0' : '') + m + ' ' + (h >= 12 ? 'PM' : 'AM');
+  }
+  function paintBoard() {
+    var c = dhakaClock(); if (!c) return;
+    var row, msg;
+    if (c.t >= 360 && c.t < 510)        { row = 'r5'; msg = 'in Dhaka. Night hold is closed. A check-in now is on time.'; }
+    else if (c.t >= 510 && c.t < 550)   { row = 'r1'; msg = 'in Dhaka. Reminders are going out. A check-in now is on time.'; }
+    else if (c.t >= 550 && c.t < 1080)  { row = 'r2'; msg = 'in Dhaka. A check-in now is marked Late Present.'; }
+    else if (c.t >= 1080 && c.t < 1260) { row = 'r3'; msg = 'in Dhaka. Anyone still unmarked counts as Absent today.'; }
+    else                                { row = 'r4'; msg = 'in Dhaka. Night hold is open. One report per night.'; }
+    if (c.fri && c.t >= 360 && c.t < 1260) { row = ''; msg = 'in Dhaka. Friday is the weekly off day. Nobody is counted absent.'; }
+    $('#nowT').textContent = clock12(c.h, c.m);
+    $('#nowMsg').textContent = msg;
+    $$('#rules .rule').forEach(function (li) {
+      var on = li.getAttribute('data-id') === row;
+      li.classList.toggle('is-now', on);
+      if (on) li.setAttribute('aria-current', 'time'); else li.removeAttribute('aria-current');
+    });
+  }
+  paintBoard();
+  setInterval(function () { if (!document.hidden) paintBoard(); }, 30000);
+
+  /* ---------- Role tabs ---------- */
+  var tabs = $$('.tabs [role="tab"]');
+  function pick(tab, focus) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+      var p = document.getElementById(t.getAttribute('aria-controls'));
+      if (p) p.hidden = !on;
+    });
+    if (focus) tab.focus();
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { pick(t, false); });
+    t.addEventListener('keydown', function (e) {
+      var k = e.key, n = tabs.length, j = -1;
+      if (k === 'ArrowRight') j = (i + 1) % n;
+      else if (k === 'ArrowLeft') j = (i - 1 + n) % n;
+      else if (k === 'Home') j = 0;
+      else if (k === 'End') j = n - 1;
+      if (j >= 0) { e.preventDefault(); pick(tabs[j], true); }
+    });
+  });
+
+  /* ---------- Latest release (falls back to the Releases page if GitHub does not answer) ---------- */
+  function showRelease(j) {
+    var apk = null;
+    (j.assets || []).forEach(function (a) { if (!apk && /\.apk$/i.test(a.name || '')) apk = a; });
+    var link = apk ? apk.browser_download_url : j.html_url;
+    if (typeof link !== 'string' || link.indexOf('https://github.com/') !== 0) return;
+    ['#dl', '#dl2'].forEach(function (id) { var a = $(id); if (a) a.href = link; });
+    var v = /\d+\.\d+\.\d+/.exec((j.name || '') + ' ' + (j.tag_name || ''));
+    var bits = [];
+    if (v) bits.push('Version ' + v[0]);
+    if (j.published_at) {
+      var d = new Date(j.published_at);
+      if (!isNaN(d)) bits.push('released ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Dhaka' }));
+    }
+    if (apk && apk.size) bits.push((apk.size / 1048576).toFixed(1) + ' MB');
+    if (bits.length) $('#rel').textContent = bits.join(', ') + '. Needs Android 7.0 or newer.';
+  }
+  try {
+    var cached = sessionStorage.getItem('sb-release');
+    if (cached) showRelease(JSON.parse(cached));
+    else if (window.fetch) {
+      var ctl = window.AbortController ? new AbortController() : null;
+      var timer = ctl ? setTimeout(function () { ctl.abort(); }, 6000) : null;
+      fetch('https://api.github.com/repos/rafikuddin/attendance/releases/latest', { headers: { Accept: 'application/vnd.github+json' }, signal: ctl ? ctl.signal : undefined })
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function (j) { if (timer) clearTimeout(timer); showRelease(j); try { sessionStorage.setItem('sb-release', JSON.stringify(j)); } catch (e) { /* fine */ } })
+        .catch(function () { /* keep the plain Releases link */ });
+    }
+  } catch (e) { /* keep the plain Releases link */ }
+})();
+</script>
+</body>
+</html>
