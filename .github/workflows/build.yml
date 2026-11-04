@@ -12,9 +12,10 @@ concurrency:
   group: build-apk
   cancel-in-progress: true
 
-# Needed so the build can publish the APK on the repo's Releases page.
+# contents: lets the build publish the APK on the repo's Releases page. pages: lets its last step ask GitHub to rebuild the website.
 permissions:
   contents: write
+  pages: write
 
 jobs:
   build:
@@ -136,3 +137,16 @@ jobs:
           name: SAM BOND Attendance v${{ env.VERSION }}${{ env.APK_SUFFIX != '' && ' (temporary key)' || '' }}
           draft: ${{ env.APK_SUFFIX != '' }}
           files: ${{ env.APK_NAME }}
+
+      # Last step: ask GitHub to rebuild the website (GitHub Pages; the Actions list shows it as "pages build and deployment"),
+      # so it also runs right after the APK is built. It can never fail the build: if Pages is off it only prints a note.
+      - name: Refresh the website
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api --method POST "repos/${{ github.repository }}/pages/builds" --jq '"Website rebuild requested: " + .status'; then
+            echo "### 🌐 Website refresh requested (pages build and deployment)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::notice::Could not ask for a website rebuild (is Settings > Pages switched on?). The APK is not affected."
+          fi
