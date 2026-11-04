@@ -276,7 +276,7 @@ class LeaveActivity : AppCompatActivity() {
         list.removeAllViews()
         renderBalance(res)
         val arr = res.getJSONArray("leaves")
-        if (arr.length() == 0) list.addView(TextView(this).apply { text = "No leave requests yet."; setTextColor(Pal.c("#8A5F52")) })
+        if (arr.length() == 0) list.addView(emptyState("No leave requests yet.", "🌴"))
         for (o in pendingFirst(arr)) list.addView(card(o))
     }
 

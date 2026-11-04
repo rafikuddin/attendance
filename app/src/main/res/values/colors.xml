@@ -8,7 +8,7 @@
     <color name="white">#FFFFFF</color>
     <color name="ink">#6B352A</color>
     <color name="muted">#8A5F52</color>
-    <color name="field_line">#CDB88A</color>
+    <color name="field_line">#A58F6C</color>
     <color name="field_focus">#6B352A</color>
     <color name="chip">#FFEFA0</color>
     <color name="btn_disabled">#D9C9A8</color>
@@ -53,4 +53,10 @@
     <color name="on_accent">#FFF1A6</color>
     <color name="clay">#6B352A</color>
     <color name="butter">#FFF1A6</color>
+    <!-- "Late reason" line on Home and Attendance: amber by day, a brighter amber at night (it was one fixed amber that is too dim on the dark cards) -->
+    <color name="late_text">#B45309</color>
+    <!-- The dark "hero" behind the logo and title of the sign-in, sign-up and update pages (see bg_hero.xml) -->
+    <color name="hero_top">#6B352A</color>
+    <color name="hero_mid">#8A4333</color>
+    <color name="hero_end">#008A4333</color>
 </resources>

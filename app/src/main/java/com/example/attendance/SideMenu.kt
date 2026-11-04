@@ -96,7 +96,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
         val subOpen = prefs.getBoolean("side_sub_open", true)
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = if (collapsed) Gravity.CENTER else Gravity.CENTER_VERTICAL
-            setPadding(dp(if (child) 4 else 8), dp(if (child) 6 else 9), dp(10), dp(if (child) 6 else 9))
+            setPadding(dp(if (child) 4 else 8), dp(if (child) 8 else 9), dp(10), dp(if (child) 8 else 9))
             background = if (it0.current) GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#FFF6C4")) } else null
             if (!it0.current) setBackgroundResource(ripple.resourceId)
             isClickable = true; isFocusable = true
@@ -111,7 +111,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
         val ic = FrameLayout(this).apply { layoutParams = LinearLayout.LayoutParams(dp(size), dp(size)) }
         ic.addView(TextView(this).apply { text = it0.icon; textSize = if (child) 15f else 18f; gravity = Gravity.CENTER }, FrameLayout.LayoutParams(dp(size), dp(size)))
         if (collapsed && it0.badge > 0) ic.addView(View(this).apply {
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#EF4444")) }
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#DC2626")) }
         }, FrameLayout.LayoutParams(dp(9), dp(9)).apply { gravity = Gravity.TOP or Gravity.END })
         row.addView(ic)
         if (!collapsed) {
@@ -122,7 +122,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
                 text = if (it0.badge > 99) "99+" else it0.badge.toString(); textSize = 11f; setTextColor(Color.WHITE); setTypeface(null, Typeface.BOLD)
                 gravity = Gravity.CENTER; minWidth = dp(22)
                 setPadding(dp(6), dp(1), dp(6), dp(1))
-                background = GradientDrawable().apply { cornerRadius = dp(11).toFloat(); setColor(Color.parseColor("#EF4444")) }
+                background = GradientDrawable().apply { cornerRadius = dp(11).toFloat(); setColor(Color.parseColor("#DC2626")) }
             })
             if (hasSub) row.addView(txt(if (subOpen || query.isNotBlank()) "▾" else "▸", 16f, muted, true).apply {
                 contentDescription = if (subOpen) "Fold the sub-menu" else "Unfold the sub-menu"
@@ -248,7 +248,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
                 setOnClickListener { val i = Pal.ACCENTS.indexOf(Pal.accent); chooseAccent(Pal.ACCENTS[(i + 1) % Pal.ACCENTS.size].key) }       // one tap = the next colour
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(42)).apply { topMargin = dp(6) })
         } else {
-            panel.addView(txt("🎨  Accent colour", 11f, muted, true), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
+            panel.addView(txt("🎨  Accent colour", 12f, muted, true), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
             val dots = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
             for (a in Pal.ACCENTS) {
                 val on = a === Pal.accent
@@ -280,7 +280,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
         if (!collapsed) {
             val who = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             who.addView(txt(name, 14f, ink, true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-            who.addView(txt(sub, 11f, muted).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+            who.addView(txt(sub, 12f, muted).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
             me.addView(who, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(10); marginEnd = dp(6) })
             me.addView(TextView(this).apply {
                 text = "⎋"; textSize = 22f; setTextColor(Color.parseColor("#EF4444")); gravity = Gravity.CENTER
@@ -290,7 +290,7 @@ fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: Str
             }, LinearLayout.LayoutParams(dp(40), dp(40)))
         }
         panel.addView(me, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        if (!collapsed) panel.addView(txt(footer, 10f, faint).apply { gravity = Gravity.CENTER; setPadding(0, dp(8), 0, 0) },
+        if (!collapsed) panel.addView(txt(footer, 11f, faint).apply { gravity = Gravity.CENTER; setPadding(0, dp(8), 0, 0) },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
     render()

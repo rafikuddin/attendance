@@ -126,7 +126,8 @@ class SeekField(ctx: Context, private val hintText: String, private val openOnSh
 
     private fun pillBackground(focused: Boolean) = GradientDrawable().apply {
         cornerRadius = dp(24).toFloat(); setColor(Pal.c("#FFFAE3"))
-        if (focused) setStroke(dp(2), Pal.c("#6B352A")) else setStroke(dp(1), Pal.c("#EBDDA0"))
+        // the resting outline is the same one the labelled fields use (field_line), dark enough to see on the pale panel (the old one was about 1.3:1)
+        if (focused) setStroke(dp(2), Pal.c("#6B352A")) else setStroke(dp(1), context.getColor(R.color.field_line))
     }
 
     private fun setWidth(w: Int) { pill.layoutParams = (pill.layoutParams as LayoutParams).also { it.width = w }; pill.requestLayout() }

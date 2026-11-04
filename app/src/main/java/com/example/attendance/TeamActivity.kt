@@ -97,12 +97,12 @@ class TeamActivity : AppCompatActivity() {
         renderCounts(res.getJSONObject("counts"), res.optJSONArray("people"))
         if (res.getJSONArray("reports").length() > 0) loadNight()
         val reports = res.getJSONArray("reports")
-        if (reports.length() == 0) listTeam.addView(note("No one reports here yet."))
+        if (reports.length() == 0) listTeam.addView(emptyState("No one reports here yet.", "👥"))
         else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
 
         canDecide = res.optBoolean("canDecide", res.optBoolean("isOwn"))
         val leaves = res.getJSONArray("leaves")
-        if (leaves.length() == 0) listLeaves.addView(note("No leave requests here."))
+        if (leaves.length() == 0) listLeaves.addView(emptyState("No leave requests here.", "🌴"))
         else for (o in pendingFirst(leaves)) listLeaves.addView(leaveCard(o))
     }
 
@@ -716,7 +716,7 @@ class TeamActivity : AppCompatActivity() {
     }
 
     private fun note(text: String) = TextView(this).apply {
-        this.text = text; setTextColor(Pal.c("#6B352A"))
+        this.text = text; setTextColor(Pal.c("#3E1D16"))
         setPadding(dp(4), dp(6), dp(4), dp(6))
     }
 

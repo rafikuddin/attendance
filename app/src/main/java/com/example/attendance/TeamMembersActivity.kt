@@ -49,12 +49,12 @@ class TeamMembersActivity : AppCompatActivity() {
         content.addView(label("Loading…", 14f, "#8A5F52").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
         api(JSONObject().put("action", "teamMembers")) { res, err ->
             content.removeAllViews()
-            if (res == null) { content.addView(label(err ?: "Could not load.", 14f, "#DC2626").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) }); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             members.clear()
             val arr = res.optJSONArray("members")
             if (arr != null) for (i in 0 until arr.length()) members.add(arr.getJSONObject(i))
             if (members.isEmpty()) {
-                content.addView(label("Nobody reports to you yet.", 15f, "#8A5F52").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
+                content.addView(emptyState("Nobody reports to you yet.", "👥"))
                 return@api
             }
             etSearch = SeekField(this, "Search by name or Employee ID").also {

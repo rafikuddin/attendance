@@ -161,7 +161,7 @@ class SurveyAdminActivity : AppCompatActivity() {
         api(JSONObject().put("action", "adminSurveyList")) { res, err ->
             content.removeAllViews()
             content.addView(bigButton("➕  New survey") { newDraft(); renderBuilder() })
-            if (res == null) { content.addView(label(err ?: "Could not load.", 14f, "#DC2626").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) }); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             val list = res.optJSONArray("surveys") ?: JSONArray()
             if (list.length() == 0) {
                 val c = column()

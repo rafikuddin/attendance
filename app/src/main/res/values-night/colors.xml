@@ -4,7 +4,7 @@
     <color name="primary">#FFF1A6</color>
     <color name="ink">#FFF1A6</color>
     <color name="muted">#CDB78A</color>
-    <color name="field_line">#6A453A</color>
+    <color name="field_line">#8A6252</color>
     <color name="field_focus">#FFE680</color>
     <color name="chip">#4A2A22</color>
     <color name="accent_soft">#4A2A22</color>
@@ -49,4 +49,8 @@
     <color name="on_accent">#4A241C</color>
     <color name="on_dark">#FFF1A6</color>
     <color name="on_dark_soft">#D9FFF1A6</color>
+    <color name="late_text">#FBBF24</color>
+    <color name="hero_top">#1F0F0C</color>
+    <color name="hero_mid">#3A1D16</color>
+    <color name="hero_end">#003A1D16</color>
 </resources>

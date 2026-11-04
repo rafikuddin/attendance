@@ -20,6 +20,10 @@
         <item name="samAccent">@color/accent</item>
         <item name="android:alertDialogTheme">@style/Theme.Sam.Dialog</item>
         <item name="alertDialogTheme">@style/Theme.Sam.AppDialog</item>
+        <!-- One look for every text box: labelled fields (TextInputLayout) and the plain boxes the screens make in code.
+             Only the framework attribute (android:editTextStyle) is set for the plain ones: the field inside a labelled field keeps its own look. -->
+        <item name="textInputStyle">@style/Widget.Sam.Field</item>
+        <item name="android:editTextStyle">@style/Widget.Sam.EditText</item>
     </style>
     <!-- Pop-up dialogs. The app uses two kinds (the system one and the AppCompat one); both get the same soft card, brown text and accent buttons.
          The system one needs a light and a dark base, so Theme.Sam.Dialog is repeated in values-night. -->
@@ -99,6 +103,31 @@
         <item name="android:textColorHint">@color/muted</item>
         <item name="endIconTint">@color/muted</item>
         <item name="helperTextTextColor">@color/muted</item>
+    </style>
+    <!-- The same field with a drop-down arrow (Leave type, Profile lists): picks one of a few choices -->
+    <style name="Widget.Sam.Field.Dropdown" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxCornerRadiusTopStart">14dp</item>
+        <item name="boxCornerRadiusTopEnd">14dp</item>
+        <item name="boxCornerRadiusBottomStart">14dp</item>
+        <item name="boxCornerRadiusBottomEnd">14dp</item>
+        <item name="boxStrokeColor">@color/field_stroke</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item>
+        <item name="hintTextColor">@color/field_focus</item>
+        <item name="android:textColorHint">@color/muted</item>
+        <item name="endIconTint">@color/muted</item>
+        <item name="helperTextTextColor">@color/muted</item>
+    </style>
+    <!-- Plain text box made in code: soft 14dp outline (bg_field), brown text, about 48dp tall box (14dp inside + the 4dp gap the drawable leaves), 15sp -->
+    <style name="Widget.Sam.EditText" parent="android:Widget.Material.EditText">
+        <item name="android:background">@drawable/bg_field</item>
+        <item name="android:textColor">?attr/samOnSurface</item>
+        <item name="android:textColorHint">?attr/samMuted</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingTop">18dp</item>
+        <item name="android:paddingBottom">18dp</item>
     </style>
     <style name="ThemeOverlay.Sam.Field" parent="">
         <item name="textInputStyle">@style/Widget.Sam.Field</item>

@@ -138,9 +138,9 @@ class AdminActivity : AppCompatActivity() {
         if (bold) setTypeface(null, Typeface.BOLD)
     }
 
-    private fun note(text: String) = label(text, 14f, "#6B352A", false).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }
+    private fun note(text: String) = label(text, 14f, "#3E1D16", false).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }
 
-    private fun heading(text: String) = label(text, 13f, "#6B352A", true).apply {
+    private fun heading(text: String) = label(text, 13f, "#3E1D16", true).apply {
         letterSpacing = 0.08f
         setPadding(dp(6), dp(16), dp(6), dp(8))
     }
@@ -506,7 +506,7 @@ class AdminActivity : AppCompatActivity() {
                 val off = list.count { it.optBoolean("inactive") }
                 countLine.text = if (needle.isEmpty()) "${list.size - off} ACTIVE USERS" + (if (off > 0) " · $off INACTIVE" else "") else "${shown.size} OF ${list.size} USERS"
                 results.removeAllViews()
-                if (shown.isEmpty()) results.addView(note("No user matches \"${q.trim()}\"."))
+                if (shown.isEmpty()) results.addView(emptyState("No user matches \"${q.trim()}\".", "🔍"))
                 else shown.forEach { results.addView(userCard(it)) }
             }
             search.addTextChangedListener(object : android.text.TextWatcher {
@@ -737,7 +737,7 @@ class AdminActivity : AppCompatActivity() {
     }
 
     private fun addUserDialog() {
-        val etUser = field("Employee ID (letters, numbers, . _ -)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
+        val etUser = field("Employee ID (letters, digits, . _ -)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
         val etName = field("Full name", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
         var manager = ""
         val btnManager = chipButton("Manager: none  ▾") {}
@@ -753,7 +753,7 @@ class AdminActivity : AppCompatActivity() {
                 btnManager.text = if (which <= 0) "Manager: none  ▾" else "Manager: $manager  ▾"
             }
         }
-        val etPass = field("Temporary password (blank = make one for me)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
+        val etPass = field("Temporary password (blank = auto)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
         val cbAdmin = CheckBox(this).apply { text = "Make this person an admin" }
         val etAdminPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
@@ -925,7 +925,7 @@ class AdminActivity : AppCompatActivity() {
     private fun resetDialog(user: JSONObject) {
         val target = user.optString("username")
         val info = label("Set a temporary password for ${user.optString("name")} (Employee ID $target). They will be signed out everywhere and must choose their own password next time.", 14f, "#8A5F52", false)
-        val etPass = field("Temporary password (blank = make one for me)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
+        val etPass = field("Temporary password (blank = auto)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD)
         val etAdminPw = passField("Your own password (to confirm)")
         val error = label("", 14f, "#DC2626", false)
         val dialog = AlertDialog.Builder(this)
@@ -1043,7 +1043,7 @@ class AdminActivity : AppCompatActivity() {
             val arr = res.optJSONArray("notices")
             val n = arr?.length() ?: 0
             content.addView(heading("ACTIVE NOTICES ($n)"))
-            if (arr == null || n == 0) { content.addView(note("No active notices.")); return@api }
+            if (arr == null || n == 0) { content.addView(emptyState("No active notices.", "📢")); return@api }
             for (i in 0 until n) content.addView(noticeCard(arr.getJSONObject(i)))
         }
     }
@@ -1087,7 +1087,7 @@ class AdminActivity : AppCompatActivity() {
                 btnDate.text = "📅  $shown"
             }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
         }
-        val etName = field("Holiday name (for example Eid Holiday)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
+        val etName = field("Holiday name (e.g. Eid Holiday)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
         val msg = label("", 14f, "#DC2626", false)
         val form = column()
         form.addView(label("Add a holiday", 16f, "#3E1D16", true))
@@ -1115,7 +1115,7 @@ class AdminActivity : AppCompatActivity() {
             val arr = res.optJSONArray("holidays")
             val n = arr?.length() ?: 0
             content.addView(heading("HOLIDAYS ($n)"))
-            if (arr == null || n == 0) { content.addView(note("No custom holidays yet.")); return@api }
+            if (arr == null || n == 0) { content.addView(emptyState("No custom holidays yet.", "🎉")); return@api }
             val today = iso.format(Calendar.getInstance().time)
             for (i in n - 1 downTo 0) content.addView(holidayCard(arr.getJSONObject(i), today))   // newest date first
         }
@@ -1882,7 +1882,7 @@ class AdminActivity : AppCompatActivity() {
             } else pickPeople(pickedUsers) { refreshWho() }
         }
 
-        val etTime = field("Time to record (optional, 24-hour, for example 09:00)", InputType.TYPE_CLASS_TEXT)
+        val etTime = field("Time (optional, 24-hour, e.g. 09:00)", InputType.TYPE_CLASS_TEXT)
         val etAdminPw = passField("Your own password (to confirm)")
         val msg = label("", 14f, "#DC2626", false)
         val f2 = column()
@@ -1921,7 +1921,7 @@ class AdminActivity : AppCompatActivity() {
         val arr = res.optJSONArray("allowances")
         val n = arr?.length() ?: 0
         content.addView(heading("OPENED DATES ($n)"))
-        if (arr == null || n == 0) { content.addView(note("No manual-entry dates yet.")); return }
+        if (arr == null || n == 0) { content.addView(emptyState("No manual-entry dates yet.", "📝")); return }
         for (i in 0 until n) content.addView(allowCard(arr.getJSONObject(i)))
     }
 
@@ -2041,7 +2041,7 @@ class AdminActivity : AppCompatActivity() {
             holder.removeAllViews()
             if (res == null) { holder.addView(note(err ?: "Could not load the published version.")); return@api }
             val u = res.optJSONObject("update")
-            if (u == null) { holder.addView(note("Nothing is published yet.")); return@api }
+            if (u == null) { holder.addView(emptyState("Nothing is published yet.", "📦")); return@api }
             val col = column()
             col.addView(label("Version ${u.optString("versionName")}  (build ${u.optLong("versionCode")})", 16f, "#3E1D16", true))
             col.addView(label("%.1f MB · uploaded ${u.optString("uploadedOn")}".format(u.optLong("size") / 1048576.0), 13f, "#8A5F52", false))
@@ -2111,7 +2111,7 @@ class AdminActivity : AppCompatActivity() {
             else -> ""
         }
         val info = label("Version $name (build $code)\n%.1f MB".format(size / 1048576.0) + "\n\nEveryone on an older build will be offered this update." + warn, 14f, "#4A241C", false)
-        val etNotes = field("What's new? (optional, shown to users)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
+        val etNotes = field("What's new? (optional, shown to all)", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)
         val cbForce = android.widget.CheckBox(this).apply {
             text = "Compulsory: people cannot use the app until they install it"; isChecked = true; setTextColor(Pal.c("#3E1D16"))
         }

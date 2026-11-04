@@ -7,7 +7,7 @@
 
         <!-- Header: same look as the login page, shorter -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:background="@drawable/bg_header" android:gravity="center_horizontal"
+            android:background="@drawable/bg_hero" android:gravity="center_horizontal"
             android:orientation="vertical" android:paddingTop="30dp" android:paddingBottom="84dp">
             <com.google.android.material.card.MaterialCardView
                 app:cardCornerRadius="16dp" app:cardElevation="4dp"
@@ -48,7 +48,7 @@
             app:cardCornerRadius="24dp" app:cardElevation="8dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:padding="20dp">
-                <TextView android:text="ABOUT YOU" android:textSize="11sp" android:textStyle="bold" android:textColor="@color/muted"
+                <TextView android:text="ABOUT YOU" android:textSize="12sp" android:textStyle="bold" android:textColor="@color/muted"
                     android:letterSpacing="0.08" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.Sam.Field"
@@ -72,7 +72,7 @@
                         android:inputType="textEmailAddress" android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <TextView android:text="CHOOSE A PASSWORD" android:textSize="11sp" android:textStyle="bold" android:textColor="@color/muted"
+                <TextView android:text="CHOOSE A PASSWORD" android:textSize="12sp" android:textStyle="bold" android:textColor="@color/muted"
                     android:letterSpacing="0.08" android:layout_marginTop="18dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 <com.google.android.material.textfield.TextInputLayout

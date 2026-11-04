@@ -36,7 +36,7 @@ class NoticesActivity : AppCompatActivity() {
     }
 
     private fun note(text: String) = TextView(this).apply {
-        this.text = text; textSize = 14f; setTextColor(Pal.c("#6B352A"))
+        this.text = text; textSize = 14f; setTextColor(Pal.c("#3E1D16"))
         setPadding(dp(4), dp(8), dp(4), dp(8))
     }
 
@@ -45,11 +45,11 @@ class NoticesActivity : AppCompatActivity() {
         list.addView(note("Loading…"))
         api(JSONObject().put("action", "notices")) { res, err ->
             list.removeAllViews()
-            if (res == null) { list.addView(note(err ?: "Could not load notices.")); return@api }
+            if (res == null) { list.addView(messageCard(err ?: "Could not load notices.", tone = "error")); return@api }
             val arr = res.optJSONArray("notices")
             NoticeState.markSeen(this, arr)          // opening the list clears the bell's red count
             if (session.isManager || res.optBoolean("canPost")) list.addView(postCard())
-            if (arr == null || arr.length() == 0) { list.addView(note("No notices right now.")); return@api }
+            if (arr == null || arr.length() == 0) { list.addView(emptyState("No notices right now.", "🔔")); return@api }
             for (i in 0 until arr.length()) list.addView(card(arr.getJSONObject(i)))
         }
     }

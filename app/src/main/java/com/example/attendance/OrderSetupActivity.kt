@@ -49,7 +49,7 @@ class OrderSetupActivity : AppCompatActivity() {
         api(JSONObject().put("action", "adminOrderCatalog")) { res, err ->
             if (id != loadId) return@api
             content.removeAllViews()
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             products = res.optJSONArray("products").toObjects()
             offers = res.optJSONArray("offers").toObjects()
             draw(res.optInt("customerCount"))
@@ -169,7 +169,7 @@ class OrderSetupActivity : AppCompatActivity() {
         api(JSONObject().put("action", "adminCustomers").put("q", custQuery)) { res, err ->
             if (id != loadId) return@api
             content.removeView(status)
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             content.addView(oLabel("${res.optInt("total")} customer(s)" + (if (res.optInt("total") > 100) " — first 100 shown, use Search" else ""), 12f, "#8A5F52").apply { setPadding(dp(6), 0, 0, dp(6)) })
             res.optJSONArray("customers").toObjects().forEach { c ->
                 val col = oColumn()
@@ -206,7 +206,7 @@ class OrderSetupActivity : AppCompatActivity() {
     private fun drawOffers() {
         content.addView(oBig("➕  New trade offer") { editOffer(null) })
         hintCard("Buy a quantity of a product and get free items. Leave the customer empty to give the offer to every customer. A customer-specific offer wins over an all-customer offer.")
-        if (offers.isEmpty()) content.addView(oLabel("No offers yet.", 14f).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) })
+        if (offers.isEmpty()) content.addView(emptyState("No offers yet.", "🎁"))
         offers.forEach { o ->
             val c = oColumn()
             val free = if (o.optString("freeSku").isEmpty() || o.optString("freeSku").equals(o.optString("sku"), true)) "free" else "free " + nameOf(o.optString("freeSku"))
@@ -233,7 +233,7 @@ class OrderSetupActivity : AppCompatActivity() {
             pickFromList("Product", products.map { it.optString("sku") to (it.optString("name") + "  (" + it.optString("sku") + ")") }) { k -> sku = k; pickProduct.text = "Product: " + nameOf(k) }
         }
         col.addView(pickProduct)
-        val customer = field(col, "Customer code (empty = all customers)", o?.optString("customer") ?: "")
+        val customer = field(col, "Customer code (empty = everyone)", o?.optString("customer") ?: "")
         val buy = field(col, "Buy quantity", o?.optInt("buy")?.toString() ?: "", numeric = true)
         val free = field(col, "Free quantity", o?.optInt("free")?.toString() ?: "", numeric = true)
         val pickFree = oChip(if (freeSku.isEmpty()) "Free product: same product" else "Free product: " + nameOf(freeSku)) {}

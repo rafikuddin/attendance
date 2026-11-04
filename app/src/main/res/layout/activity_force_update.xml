@@ -4,7 +4,7 @@
     android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:background="@drawable/bg_header" android:gravity="center"
+            android:background="@drawable/bg_hero" android:gravity="center"
             android:orientation="vertical" android:paddingTop="48dp" android:paddingBottom="96dp">
             <com.google.android.material.card.MaterialCardView
                 app:cardCornerRadius="20dp" app:cardElevation="4dp"
@@ -43,7 +43,7 @@
                 <TextView android:id="@+id/tvFuMsg" android:textColor="@color/muted" android:gravity="center"
                     android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
                 <TextView android:id="@+id/tvFuCheck" android:text="Check again" android:textColor="@color/accent"
-                    android:textStyle="bold" android:textSize="14sp" android:gravity="center" android:padding="10dp"
+                    android:textStyle="bold" android:textSize="14sp" android:gravity="center" android:padding="10dp" android:minHeight="48dp"
                     android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true"
                     android:layout_width="match_parent" android:layout_height="wrap_content" />
             </LinearLayout>

@@ -4,6 +4,7 @@ import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Typeface
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ScrollView
@@ -15,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.card.MaterialCardView
 
 fun AppCompatActivity.setupHeader(title: String, onRefresh: (() -> Unit)? = null) {
     findViewById<TextView>(R.id.tvTitle).text = title
@@ -145,3 +147,33 @@ object Spin {
             .setInterpolator(DecelerateInterpolator()).withEndAction { v.rotation = 0f }.start()
     }
 }
+
+/**
+ * A short message on its own soft card: "nothing here yet", "could not load". Loose text on the page glow is hard to read by day (the glow turns tan
+ * and the brown text was only about 1.5 to 3.5:1 on it), so these sit on a card with the same surface as every other panel.
+ * [tone] "error" gives a pale red card with red text; anything else is the normal card. For an empty list use [emptyState].
+ */
+fun AppCompatActivity.messageCard(text: String, icon: String? = null, tone: String = "info"): View {
+    val bad = tone == "error"
+    val card = MaterialCardView(this).apply {
+        radius = dp(20).toFloat(); cardElevation = dp(2).toFloat()
+        setCardBackgroundColor(if (bad) Pal.c("#FEE2E2") else Pal.card)
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4); bottomMargin = dp(10) }
+    }
+    val tall = icon != null
+    val col = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+        setPadding(dp(20), dp(if (tall) 20 else 16), dp(20), dp(if (tall) 20 else 16))
+    }
+    if (icon != null) col.addView(TextView(this).apply { this.text = icon; textSize = 30f; gravity = Gravity.CENTER })
+    col.addView(TextView(this).apply {
+        this.text = text; textSize = 14f; gravity = Gravity.CENTER; setLineSpacing(dp(2).toFloat(), 1f)
+        setTextColor(if (bad) Pal.c("#B91C1C") else Pal.c("#3E1D16"))
+        if (tall) setPadding(0, dp(6), 0, 0)
+    })
+    card.addView(col)
+    return card
+}
+
+/** The "nothing here yet" panel for an empty list: an icon and one line on a soft card. */
+fun AppCompatActivity.emptyState(text: String, icon: String = "🗂️"): View = messageCard(text, icon)

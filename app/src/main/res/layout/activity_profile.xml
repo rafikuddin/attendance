@@ -44,7 +44,7 @@
                         <TextView android:text="Take photo" android:textSize="14sp" android:textStyle="bold"
                             android:textColor="@color/primary" android:gravity="center" android:maxLines="1" android:layout_marginTop="6dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Use the camera" android:textSize="11sp" android:textColor="@color/muted"
+                        <TextView android:text="Use the camera" android:textSize="12sp" android:textColor="@color/muted"
                             android:gravity="center" android:maxLines="1"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>
@@ -60,7 +60,7 @@
                         <TextView android:text="Choose picture" android:textSize="14sp" android:textStyle="bold"
                             android:textColor="@color/primary" android:gravity="center" android:maxLines="1" android:layout_marginTop="6dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="From gallery" android:textSize="11sp" android:textColor="@color/muted"
+                        <TextView android:text="From gallery" android:textSize="12sp" android:textColor="@color/muted"
                             android:gravity="center" android:maxLines="1"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>
@@ -81,7 +81,7 @@
                     android:textColor="@color/primary" android:letterSpacing="0.06"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Official phone number" android:layout_marginTop="8dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.TextInputEditText android:id="@+id/etOfficial"
@@ -89,7 +89,7 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Personal phone number" android:layout_marginTop="12dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.TextInputEditText android:id="@+id/etPersonal"
@@ -97,7 +97,7 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Email address" android:layout_marginTop="12dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.TextInputEditText android:id="@+id/etEmail"
@@ -109,7 +109,7 @@
                     android:textColor="@color/primary" android:letterSpacing="0.06" android:layout_marginTop="20dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Emergency phone number" android:layout_marginTop="8dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.TextInputEditText android:id="@+id/etEmergency"
@@ -117,7 +117,7 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    style="@style/Widget.Sam.Field.Dropdown"
                     android:hint="Relation with emergency contact" android:layout_marginTop="12dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/ddRelation"
@@ -125,7 +125,7 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout android:id="@+id/tilOther"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Write the relation (for example Sister)" android:layout_marginTop="12dp"
                     android:visibility="gone"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
@@ -138,7 +138,7 @@
                     android:textColor="@color/primary" android:letterSpacing="0.06" android:layout_marginTop="20dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Base Name (tap to choose)" android:layout_marginTop="8dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.TextInputEditText android:id="@+id/etBaseName"
@@ -146,7 +146,7 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Base Code (fills in by itself)" android:layout_marginTop="12dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.TextInputEditText android:id="@+id/etBaseCode"
@@ -154,7 +154,7 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    style="@style/Widget.Sam.Field.Dropdown"
                     android:hint="T-shirt size" android:layout_marginTop="12dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/ddTshirt"
@@ -162,7 +162,7 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    style="@style/Widget.Sam.Field.Dropdown"
                     android:hint="Designation (set by admin)" android:layout_marginTop="12dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/ddDesig"
@@ -174,7 +174,7 @@
                     android:textColor="@color/primary" android:letterSpacing="0.06" android:layout_marginTop="20dp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Bike number" android:layout_marginTop="8dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.TextInputEditText android:id="@+id/etBike"
@@ -182,7 +182,7 @@
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout android:id="@+id/tilLaptop"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.Sam.Field"
                     android:hint="Laptop model (managers)" android:layout_marginTop="12dp"
                     android:visibility="gone"
                     android:layout_width="match_parent" android:layout_height="wrap_content">

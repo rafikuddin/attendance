@@ -93,7 +93,7 @@ class TargetActivity : AppCompatActivity() {
         content.addView(label("Loading…", 14f, "#8A5F52", false).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) })
         api(JSONObject().put("action", "targetView")) { res, err ->
             content.removeAllViews()
-            if (res == null) { content.addView(label(err ?: "Could not load.", 14f, "#DC2626", false).apply { setPadding(dp(8), dp(12), dp(8), dp(12)) }); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             show(res)
         }
     }
@@ -163,7 +163,7 @@ class TargetActivity : AppCompatActivity() {
             }
             content.addView(label("PEOPLE", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(10), dp(6), dp(6)) })
             val rows = res.getJSONArray("rows")
-            if (rows.length() == 0) content.addView(label("No one has a target or a collection yet.", 14f, "#8A5F52", false).apply { setPadding(dp(6), 0, dp(6), 0) })
+            if (rows.length() == 0) content.addView(emptyState("No one has a target or a collection yet.", "🎯"))
             for (i in 0 until rows.length()) content.addView(personCard(rows.getJSONObject(i), null, big = false))
         } else if (me == null || (!me.optBoolean("hasTarget") && me.optDouble("collected") == 0.0)) {
             content.addView(cardOf(column().apply { addView(label("There is no target or collection for you in the uploaded files.", 14f, "#8A5F52", false)) }))

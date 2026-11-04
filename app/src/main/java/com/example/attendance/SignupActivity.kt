@@ -1,5 +1,6 @@
 package com.example.attendance
 
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -79,12 +80,16 @@ class SignupActivity : AppCompatActivity() {
         (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(etCode.windowToken, 0)
     }
 
+    /**
+     * One step of the "1 Details · 2 Verify e-mail · 3 Done" row. It sits on the dark hero, so the current step is a butter pill with dark clay text
+     * in Day AND Night (the old white pill took its text colour from Pal.c, which turns butter at night: butter on white, about 1.2:1). It follows the accent.
+     */
     private fun pill(v: TextView, active: Boolean, done: Boolean) {
         v.background = GradientDrawable().apply {
             cornerRadius = 40f * resources.displayMetrics.density
-            setColor(if (active) Pal.c("#FFFFFF") else if (done) Pal.c("#33FFFFFF") else Pal.c("#1AFFFFFF"))
+            setColor(if (active) Pal.tintIfBrand(Color.parseColor("#FFF1A6")) else if (done) Pal.c("#33FFFFFF") else Pal.c("#1AFFFFFF"))
         }
-        v.setTextColor(if (active) Pal.c("#6B352A") else Pal.c("#CCFFFFFF"))
+        v.setTextColor(if (active) Pal.tintIfBrand(Color.parseColor("#4A241C")) else Pal.c("#E6FFFFFF"))
     }
 
     private fun setStep(s: Int) {

@@ -67,9 +67,9 @@ class DownloadsActivity : AppCompatActivity() {
         api(JSONObject().put("action", if (isAdmin) "adminDownloadList" else "downloadList")) { res, err ->
             if (id != loadId) return@api
             content.removeView(status)
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             val files = res.optJSONArray("files").toObjects()
-            if (files.isEmpty()) content.addView(oLabel(if (isAdmin) "No files yet. Tap “Upload a PDF”." else "There are no files to download yet.", 14f).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) })
+            if (files.isEmpty()) content.addView(emptyState(if (isAdmin) "No files yet. Tap “Upload a PDF”." else "There are no files to download yet.", "📂"))
             files.forEach { content.addView(fileCard(it)) }
         }
     }

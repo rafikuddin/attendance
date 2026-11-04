@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sign-in, sign-up and update pages: the logo and the title sit on a dark clay "hero" that melts into the page glow.
+     By day the glow behind them is tan, where the butter text was only about 2:1; on the hero it is 6:1.
+     At night the colours match the page, so nothing changes there. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:type="linear" android:angle="270"
+        android:startColor="@color/hero_top" android:centerColor="@color/hero_mid" android:endColor="@color/hero_end" android:centerY="0.72" />
+</shape>

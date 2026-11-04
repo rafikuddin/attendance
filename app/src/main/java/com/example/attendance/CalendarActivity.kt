@@ -120,13 +120,21 @@ class CalendarActivity : AppCompatActivity() {
     private val C_PRESENT = "#15803D"; private val C_LATE = "#C2410C"; private val C_LEAVE = "#B45309"
     private val C_HOLIDAY = "#7C3AED"; private val C_OFF = "#EBDDA0"; private val C_ABSENT = "#DC2626"; private val C_LEAVE_WAIT = "#FDE68A"
 
-    /** The key under the calendar: a coloured dot for every kind of date (drawn, so it matches the circles and shows on every phone). */
+    /**
+     * The fill of a circle. The strong colours are the same by day and night (their numbers are white). The two pale ones ("Friday off", "leave waiting")
+     * go through Pal.c, so at night they become deep tiles; their numbers also use Pal.c, which makes them light at night. (Before, the fill stayed pale
+     * while the number turned light: on Fridays and on days with a waiting leave the number could not be read at night, about 1:1.)
+     */
+    private fun fillOf(hex: String): Int = if (hex == C_OFF || hex == C_LEAVE_WAIT) Pal.c(hex) else Color.parseColor(hex)
+
+    /** The key under the calendar: a coloured dot for every kind of date (drawn with the same colours as the circles, so they always match). */
     private fun buildLegend() {
         val box = findViewById<LinearLayout>(R.id.legend)
         box.removeAllViews()
-        val items = listOf("Present" to C_PRESENT, "Late" to C_LATE, "Leave" to C_LEAVE, "Holiday" to C_HOLIDAY,
-            "Friday off" to C_OFF, "Absent" to C_ABSENT, "Night hold" to "")
-        val legend = GridLayout(this).apply { columnCount = 4 }
+        val items = listOf("Present" to C_PRESENT, "Late" to C_LATE, "Absent" to C_ABSENT,
+            "Leave" to C_LEAVE, "Leave waiting" to C_LEAVE_WAIT, "Holiday" to C_HOLIDAY,
+            "Friday off" to C_OFF, "Night hold" to "")
+        val legend = GridLayout(this).apply { columnCount = 3 }       // three columns keep every label on one line at a readable size
         for ((label, hex) in items) {
             val one = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
@@ -134,12 +142,15 @@ class CalendarActivity : AppCompatActivity() {
                     width = 0; setMargins(0, dp(4), dp(4), dp(4))
                 }
             }
-            if (hex.isEmpty()) one.addView(TextView(this).apply { text = "🌙"; textSize = 11f })
+            if (hex.isEmpty()) one.addView(TextView(this).apply { text = "🌙"; textSize = 12f })
             else one.addView(View(this).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(hex)) }
-                layoutParams = LinearLayout.LayoutParams(dp(11), dp(11))
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL; setColor(fillOf(hex))
+                    if (hex == C_OFF || hex == C_LEAVE_WAIT) setStroke(dp(1), Pal.c("#8A5F52"))      // a pale dot needs an edge to be seen on a pale card
+                }
+                layoutParams = LinearLayout.LayoutParams(dp(12), dp(12))
             })
-            one.addView(TextView(this).apply { text = label; textSize = 11f; setTextColor(Pal.c("#8A5F52")); setPadding(dp(5), 0, 0, 0) })
+            one.addView(TextView(this).apply { text = label; textSize = 12f; setTextColor(Pal.c("#8A5F52")); setPadding(dp(6), 0, 0, 0) })
             legend.addView(one)
         }
         box.addView(legend)
@@ -156,7 +167,7 @@ class CalendarActivity : AppCompatActivity() {
 
     private fun circle(fill: String?, stroke: Boolean) = GradientDrawable().apply {
         shape = GradientDrawable.OVAL
-        if (fill != null) setColor(Color.parseColor(fill))
+        if (fill != null) setColor(fillOf(fill))
         if (stroke) setStroke(dp(2), Pal.c("#6B352A"))
     }
 

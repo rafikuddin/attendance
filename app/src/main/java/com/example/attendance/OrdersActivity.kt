@@ -71,7 +71,7 @@ class OrdersActivity : AppCompatActivity() {
         api(JSONObject().put("action", "orderPending")) { res, err ->
             if (id != loadId) return@api
             content.removeAllViews()
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             roles = res.optJSONObject("roles") ?: JSONObject()
             queue = res
             drawTab()
@@ -125,16 +125,16 @@ class OrdersActivity : AppCompatActivity() {
         api(JSONObject().put("action", "orderList")) { res, err ->
             if (id != loadId) return@api
             content.removeView(status)
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             val list = res.optJSONArray("orders").toObjects()
-            if (list.isEmpty()) content.addView(oLabel("You have no orders yet. Tap “New order”.", 14f).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) })
+            if (list.isEmpty()) content.addView(emptyState("You have no orders yet. Tap “New order”.", "🧾"))
             list.forEach { content.addView(orderCard(it, false)) }
         }
     }
 
     private fun drawQueue(key: String, empty: String) {
         val list = queue.optJSONArray(key).toObjects()
-        if (list.isEmpty()) content.addView(oLabel(empty, 14f).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) })
+        if (list.isEmpty()) content.addView(emptyState(empty, "✅"))
         list.forEach { content.addView(orderCard(it, true)) }
     }
 
@@ -150,7 +150,7 @@ class OrdersActivity : AppCompatActivity() {
         api(JSONObject().put("action", "adminOrders").put("status", allStatus).put("q", allQuery)) { res, err ->
             if (id != loadId) return@api
             content.removeView(status)
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             content.addView(oLabel("${res.optInt("total")} order(s)" + (if (res.optInt("total") > 200) " (newest 200 shown)" else ""), 12f, "#8A5F52").apply { setPadding(dp(6), 0, 0, dp(6)) })
             res.optJSONArray("orders").toObjects().forEach { content.addView(orderCard(it, true)) }
         }
@@ -195,7 +195,7 @@ class OrdersActivity : AppCompatActivity() {
         if (manage) {
             val list = queue.optJSONArray("returns").toObjects()
             content.addView(oLabel("NEEDS ACTION", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(6), 0, dp(6)) })
-            if (list.isEmpty()) content.addView(oLabel("No returns are waiting.", 14f).apply { setPadding(dp(4), dp(4), dp(4), dp(8)) })
+            if (list.isEmpty()) content.addView(emptyState("No returns are waiting.", "✅"))
             list.forEach { content.addView(returnCard(it, true)) }
             content.addView(oLabel("MY RETURNS", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(dp(6), dp(14), 0, dp(6)) })
         }
@@ -205,9 +205,9 @@ class OrdersActivity : AppCompatActivity() {
         api(JSONObject().put("action", "returnList")) { res, err ->
             if (id != loadId) return@api
             content.removeView(status)
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             val list = res.optJSONArray("returns").toObjects()
-            if (list.isEmpty()) content.addView(oLabel("You have not returned anything. Open a delivered order to return products.", 14f).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) })
+            if (list.isEmpty()) content.addView(emptyState("You have not returned anything. Open a delivered order to return products.", "↩️"))
             list.forEach { content.addView(returnCard(it, false)) }
         }
     }
@@ -221,7 +221,7 @@ class OrdersActivity : AppCompatActivity() {
         api(JSONObject().put("action", "orderGet").put("orderNo", orderNo)) { res, err ->
             if (id != loadId) return@api
             content.removeAllViews()
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); content.addView(oChip("← Back") { reload() }); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); content.addView(oChip("← Back") { reload() }); return@api }
             roles = res.optJSONObject("roles") ?: roles
             drawDetail(res)
         }
@@ -286,9 +286,9 @@ class OrdersActivity : AppCompatActivity() {
         }
         if (status == "Pending Accounts" && roles.optBoolean("accounts")) {
             any = true
-            act.addView(oLabel("Accounts: enter the amount received", 13f, "#B45309", true))
+            act.addView(oLabel("Accounts: enter the amount received  ·  total " + OrderFmt.money(o.optDouble("total")), 13f, "#B45309", true))
             val amount = EditText(this).apply {
-                hint = "Received amount (0 if none)  ·  total " + OrderFmt.money(o.optDouble("total"))
+                hint = "Received amount (0 if none)"
                 inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
             }
             act.addView(amount)

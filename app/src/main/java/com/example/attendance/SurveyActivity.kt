@@ -79,7 +79,7 @@ class SurveyActivity : AppCompatActivity() {
     }
 
     private fun chip(text: String, fg: String, bg: String) = TextView(this).apply {
-        this.text = text; textSize = 11f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(fg))
+        this.text = text; textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(fg))
         setPadding(dp(10), dp(3), dp(10), dp(3))
         background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(Pal.c(bg)) }
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(6) }
@@ -105,7 +105,7 @@ class SurveyActivity : AppCompatActivity() {
                 a.addView(label("Create a survey, see the results, download Excel", 12f, "#8A5F52"))
                 content.addView(cardOf(a) { startActivity(android.content.Intent(this, SurveyAdminActivity::class.java)) })
             }
-            if (res == null) { content.addView(label(err ?: "Could not load.", 14f, "#DC2626").apply { setPadding(dp(8), dp(12), dp(8), dp(12)) }); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             val list = res.optJSONArray("surveys") ?: JSONArray()
             if (list.length() == 0) {
                 val c = column()
@@ -126,7 +126,7 @@ class SurveyActivity : AppCompatActivity() {
         val answered = o.optBoolean("answered")
         val state = o.optString("state")
         if (answered) chips.addView(chip("✅ Answered ${niceDate(o.optString("answeredOn"))}", "#166534", "#DCFCE7"))
-        else chips.addView(chip("NEW", "#FFFFFF", "#6B352A").apply { (background as GradientDrawable).setColor(Color.parseColor("#6B352A")) })
+        else chips.addView(chip("NEW", "#FFFFFF", "#6B352A").apply { (background as GradientDrawable).setColor(Pal.chipOn) })
         if (state == "closed") chips.addView(chip("Closed", "#4A241C", "#EBDDA0"))
         if (o.optString("deadline").isNotBlank() && !answered) chips.addView(chip("⏰ ${niceDate(o.optString("deadline"))}", "#B45309", "#FEF3C7"))
         c.addView(chips)
@@ -258,13 +258,13 @@ class SurveyActivity : AppCompatActivity() {
                 fun paint() = cells.forEachIndexed { i, c ->
                     val on = i + 1 <= picked
                     c.setTextColor(if (on) Color.WHITE else Pal.c("#8A5F52"))
-                    c.background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(if (on) Color.parseColor("#6B352A") else Pal.c("#F0E3A6")) }
+                    c.background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#F0E3A6")) }
                 }
                 cells.forEachIndexed { i, c -> c.setOnClickListener { picked = i + 1; paint() } }
                 paint()
                 val wrap = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                 wrap.addView(row)
-                wrap.addView(label("1 = lowest, $max = highest", 11f, "#A98578").apply { setPadding(0, dp(4), 0, 0) })
+                wrap.addView(label("1 = lowest, $max = highest", 12f, "#A98578").apply { setPadding(0, dp(4), 0, 0) })
                 wrap to { if (picked == 0) null else picked }
             }
             "yesno" -> {
@@ -279,7 +279,7 @@ class SurveyActivity : AppCompatActivity() {
                 fun paint() = cells.forEach { c ->
                     val on = c.text.toString() == picked
                     c.setTextColor(if (on) Color.WHITE else Pal.c("#8A5F52"))
-                    c.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Color.parseColor("#6B352A") else Pal.c("#F0E3A6")) }
+                    c.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(if (on) Pal.chipOn else Pal.c("#F0E3A6")) }
                 }
                 cells.forEach { c -> c.setOnClickListener { picked = c.text.toString(); paint() } }
                 paint()

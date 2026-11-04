@@ -46,7 +46,7 @@ class OrderNewActivity : AppCompatActivity() {
         content.addView(oLabel("Loading…", 14f).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) })
         api(JSONObject().put("action", "orderInit")) { res, err ->
             content.removeAllViews()
-            if (res == null) { content.addView(oLabel(err ?: "Could not load.", 14f, "#DC2626")); return@api }
+            if (res == null) { content.addView(messageCard(err ?: "Could not load.", tone = "error")); return@api }
             customers = res.optJSONArray("customers").toObjects()
             products = res.optJSONArray("products").toObjects()
             if (customers.isEmpty()) { content.addView(oLabel("No customer is assigned to you yet. Ask the admin to assign your customers.", 15f, "#B45309", true).apply { setPadding(dp(4), dp(8), dp(4), dp(8)) }); return@api }
