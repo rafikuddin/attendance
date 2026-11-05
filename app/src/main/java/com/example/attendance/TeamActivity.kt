@@ -26,7 +26,6 @@ class TeamActivity : AppCompatActivity() {
     private lateinit var session: Session
     private lateinit var countsBox: LinearLayout
     private lateinit var listTeam: LinearLayout
-    private lateinit var listLeaves: LinearLayout
     private var of: String? = null          // null = viewing my own team
     private var nightHost: LinearLayout? = null      // the Night hold summary inside the top card
     private var nightDate: String? = null            // a date picked by the manager; null = the latest night
@@ -52,7 +51,6 @@ class TeamActivity : AppCompatActivity() {
         session = Session(this)
         countsBox = findViewById(R.id.countsBox)
         listTeam = findViewById(R.id.listTeam)
-        listLeaves = findViewById(R.id.listLeaves)
         loadAll()
     }
 
@@ -78,19 +76,18 @@ class TeamActivity : AppCompatActivity() {
             onData = { res -> render(res) },
             onError = { err, hadSaved ->
                 if (!hadSaved) {
-                    listTeam.removeAllViews(); listLeaves.removeAllViews()
-                    listTeam.addView(note(err ?: "Failed to load")); listLeaves.addView(note(err ?: "Failed to load"))
+                    listTeam.removeAllViews()
+                    listTeam.addView(note(err ?: "Failed to load"))
                 }
             }
         )
         if (!showedSaved) {
             listTeam.removeAllViews(); listTeam.addView(note("Loading..."))
-            listLeaves.removeAllViews(); listLeaves.addView(note("Loading..."))
         }
     }
 
     private fun render(res: JSONObject) {
-        listTeam.removeAllViews(); listLeaves.removeAllViews()
+        listTeam.removeAllViews()
         shownDate = res.optString("date")
         shownIsToday = res.optBoolean("isToday", true)
         if (attDate != null && shownDate.isEmpty()) {                         // an older Code.gs answers with today and no date
@@ -107,9 +104,6 @@ class TeamActivity : AppCompatActivity() {
         else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
 
         canDecide = res.optBoolean("canDecide", res.optBoolean("isOwn"))
-        val leaves = res.getJSONArray("leaves")
-        if (leaves.length() == 0) listLeaves.addView(emptyState("No leave requests here.", "🌴"))
-        else for (o in pendingFirst(leaves)) listLeaves.addView(leaveCard(o))
         leaveSheetRefresh?.invoke()                       // an open "leave applications" sheet shows the new answer too
     }
 
@@ -314,6 +308,19 @@ class TeamActivity : AppCompatActivity() {
         return out
     }
 
+    /**
+     * Pending requests whose leave days all fall outside the current cycle: an old one nobody decided, or one for a later cycle.
+     * They are not in the tile numbers, but the Pending list shows them under the cycle's own, so no request is ever left without a place to decide it.
+     */
+    private fun pendingOutside(): List<JSONObject> {
+        val out = ArrayList<JSONObject>()
+        for (i in 0 until leavesAll.length()) {
+            val o = leavesAll.optJSONObject(i) ?: continue
+            if (o.optString("status").ifEmpty { "Pending" } == "Pending" && !inCycle(o)) out.add(o)
+        }
+        return out
+    }
+
     /** Between the Team today numbers and Night hold: the leave applications of the current salary cycle as three tiles. Tap a tile for the applications. */
     private fun leaveSummary(): View {
         val matchW = ViewGroup.LayoutParams.MATCH_PARENT
@@ -376,12 +383,21 @@ class TeamActivity : AppCompatActivity() {
             text = "Counted by leave dates · tap a number for the list"
             textSize = 12f; setTextColor(Pal.c("#8A5F52")); setPadding(dp(2), dp(8), 0, 0)
         })
+        val outside = pendingOutside().size
+        if (outside > 0) {                                                           // a waiting request of another cycle still has its place to be decided
+            host.addView(TextView(this).apply {
+                text = if (outside == 1) "⏳ 1 more pending in another salary cycle · tap Pending to decide"
+                       else "⏳ $outside more pending in other salary cycles · tap Pending to decide"
+                textSize = 12f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#B45309")); setPadding(dp(2), dp(4), 0, 0)
+            })
+        }
         return host
     }
 
     /**
-     * The leave applications of one status in the current cycle, newest first, one card each (the same card as the Leave Requests list further down).
-     * A pending one can be approved or rejected right here; the sheet stays open and redraws when the new answer comes back ([leaveSheetRefresh]).
+     * The leave applications of one status in the current cycle, newest first, one card each. This is the only place a leave is decided from:
+     * a pending one can be approved or rejected right here; the sheet stays open and redraws when the new answer comes back ([leaveSheetRefresh]).
+     * The Pending list also shows, below the cycle's own, the pending ones of other cycles ([pendingOutside]).
      */
     private fun showLeaves(status: String, symbol: String, fg: String, bg: String) {
         val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
@@ -419,7 +435,8 @@ class TeamActivity : AppCompatActivity() {
             setPadding(dp(14), dp(10), dp(14), dp(10))
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12); bottomMargin = dp(6) }
         }
-        if (leavesOf(status).size > 6) root.addView(search)
+        fun others(): List<JSONObject> = if (status == "Pending") pendingOutside() else emptyList()      // only the Pending list shows other cycles
+        if (leavesOf(status).size + others().size > 6) root.addView(search)
 
         val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, 0) }
         val scroll = android.widget.ScrollView(this).apply {
@@ -432,11 +449,21 @@ class TeamActivity : AppCompatActivity() {
         fun fill(q: String) {
             list.removeAllViews()
             val key = q.trim().lowercase()
+            fun match(o: JSONObject) = key.isEmpty() || o.optString("name").lowercase().contains(key) || o.optString("username").lowercase().contains(key)
             val all = leavesOf(status)
-            val rows = all.filter { key.isEmpty() || it.optString("name").lowercase().contains(key) || it.optString("username").lowercase().contains(key) }
+            val rows = all.filter { match(it) }
+            val otherRows = others().filter { match(it) }
             count.text = (if (key.isEmpty()) "${all.size} application" + (if (all.size == 1) "" else "s") else "${rows.size} of ${all.size}") + "  ·  $span"
-            if (rows.isEmpty()) list.addView(note(if (all.isEmpty()) "No ${status.lowercase()} leave applications in this salary cycle." else "No match."))
+            if (all.isEmpty()) list.addView(note("No ${status.lowercase()} leave applications in this salary cycle."))
+            else if (rows.isEmpty() && otherRows.isEmpty()) list.addView(note("No match."))
             rows.forEach { list.addView(leaveCard(it, true)) }
+            if (otherRows.isNotEmpty()) {
+                list.addView(TextView(this).apply {
+                    text = "⏳ Pending in other salary cycles · ${otherRows.size}"
+                    textSize = 13f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#B45309")); setPadding(dp(4), dp(14), 0, dp(6))
+                })
+                otherRows.forEach { list.addView(leaveCard(it, true)) }
+            }
         }
         fill("")
         search.addTextChangedListener(object : android.text.TextWatcher {
