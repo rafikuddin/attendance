@@ -8,10 +8,12 @@ on:
   workflow_dispatch:
 
 # contents: read lets it read docs/. pages: write and id-token: write let it publish the site.
+# actions: write lets the last step tidy up the old runs of GitHub's own publisher (see the last step).
 permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write
 
 # One website publish at a time. A publish that is already running is allowed to finish.
 concurrency:
@@ -47,3 +49,33 @@ jobs:
           echo "### Website not published" >> "$GITHUB_STEP_SUMMARY"
           echo "If the error above says Pages is not enabled or not set up for GitHub Actions: open **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**, then run this workflow again (Actions → pages build and deployment → Run workflow). The APK is not affected." >> "$GITHUB_STEP_SUMMARY"
           echo "::error::Website not published. If Pages is not enabled for GitHub Actions: Settings > Pages > Source > GitHub Actions, then run this workflow again."
+
+      # Tidy-up. GitHub's own publisher ("pages-build-deployment", the old way, written with hyphens) is not used any more, but its old runs keep a
+      # second "pages build and deployment" entry in the Actions list. This deletes ONLY the finished runs of that one workflow (never any other
+      # workflow, never a run that is still going). It runs only after a successful publish, never fails the job, and has nothing to do once those runs are gone.
+      - name: Remove the old runs of GitHub's own publisher
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="$GITHUB_REPOSITORY"
+          ids=$(gh api "repos/$REPO/actions/workflows" --paginate --jq '.workflows[] | select(.name == "pages-build-deployment") | select(.path | startswith("dynamic/")) | .id') || {
+            echo "Could not read the list of workflows, so nothing was tidied. The website is not affected."
+            exit 0
+          }
+          if [ -z "$ids" ]; then
+            echo "No old publisher entry to tidy. The workflows of this repo are:"
+            gh api "repos/$REPO/actions/workflows" --paginate --jq '.workflows[] | "  \(.id)  \(.name)  \(.path)"' || true
+            exit 0
+          fi
+          removed=0
+          failed=0
+          for id in $ids; do
+            for run in $(gh api "repos/$REPO/actions/workflows/$id/runs?status=completed" --paginate --jq '.workflow_runs[].id'); do
+              if gh api --method DELETE "repos/$REPO/actions/runs/$run" > /dev/null 2>&1; then removed=$((removed + 1)); else failed=$((failed + 1)); fi
+            done
+          done
+          echo "Removed $removed old run(s) of GitHub's own publisher. Could not remove: $failed."
+          echo "### 🧹 Removed $removed old run(s) of GitHub's own publisher (pages-build-deployment)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$failed" -gt 0 ]; then echo "$failed run(s) could not be removed. They can be deleted by hand in the Actions list (⋯ → Delete workflow run)." >> "$GITHUB_STEP_SUMMARY"; fi
