@@ -35,6 +35,10 @@ class TeamActivity : AppCompatActivity() {
     private var attDate: String? = null      // the day the manager picked for the attendance list and the numbers; null = today
     private var shownDate = ""               // the day the server answered for (empty until the first answer)
     private var shownIsToday = true
+    private var leavesAll = org.json.JSONArray()           // every leave request below you, as the server sent it (pending first, newest first)
+    private var cycleFrom = ""                             // the current salary cycle (26th to 25th): first and last day, yyyy-MM-dd
+    private var cycleTo = ""
+    private var leaveSheetRefresh: (() -> Unit)? = null    // redraws the open "leave applications" sheet when a new answer arrives (after a decision)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,9 +98,11 @@ class TeamActivity : AppCompatActivity() {
             android.widget.Toast.makeText(this, "Picking a day needs the latest Code.gs (deploy a New version).", android.widget.Toast.LENGTH_LONG).show()
         }
         findViewById<TextView>(R.id.tvAttTitle).text = if (shownIsToday || shownDate.isEmpty()) "Today's Attendance" else "Attendance · ${niceDay(shownDate)}"
-        renderCounts(res.getJSONObject("counts"), res.optJSONArray("people"))
-        if (res.getJSONArray("reports").length() > 0) loadNight()
+        leavesAll = res.optJSONArray("leaves") ?: org.json.JSONArray()
+        setCycle(res.optJSONObject("payCycle"))
         val reports = res.getJSONArray("reports")
+        renderCounts(res.getJSONObject("counts"), res.optJSONArray("people"), reports.length() > 0)
+        if (reports.length() > 0) loadNight()
         if (reports.length() == 0) listTeam.addView(emptyState("No one reports here yet.", "👥"))
         else for (i in 0 until reports.length()) listTeam.addView(teamCard(reports.getJSONObject(i)))
 
@@ -104,6 +110,7 @@ class TeamActivity : AppCompatActivity() {
         val leaves = res.getJSONArray("leaves")
         if (leaves.length() == 0) listLeaves.addView(emptyState("No leave requests here.", "🌴"))
         else for (o in pendingFirst(leaves)) listLeaves.addView(leaveCard(o))
+        leaveSheetRefresh?.invoke()                       // an open "leave applications" sheet shows the new answer too
     }
 
     // Shows today's selfie (loaded privately through the Apps Script photo proxy) when present,
@@ -138,7 +145,7 @@ class TeamActivity : AppCompatActivity() {
     }
 
     /** A title line, then six equal coloured tiles in two rows of three. Nothing scrolls sideways, so no label is ever cut off. */
-    private fun renderCounts(c: JSONObject, people: org.json.JSONArray?) {
+    private fun renderCounts(c: JSONObject, people: org.json.JSONArray?, withLeaves: Boolean) {
         countsBox.removeAllViews()
         // label, number, text colour, tile colour, symbol
         val items = listOf(
@@ -208,6 +215,7 @@ class TeamActivity : AppCompatActivity() {
             }
             countsBox.addView(row)
         }
+        if (withLeaves) countsBox.addView(leaveSummary())              // leave applications of the current salary cycle, between the numbers and Night hold
         nightHost = LinearLayout(this).apply {                          // the Night hold summary is filled in by loadNight()
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(16) }
@@ -263,6 +271,187 @@ class TeamActivity : AppCompatActivity() {
         bar.addView(chip("›", shown < today, 0f, "#F8EFC4") { setAttDate(shiftDay(shown, 1)) })
         if (!shownIsToday) bar.addView(chip("Today", true, 0f, "#F8EFC4") { setAttDate(null) })
         return bar
+    }
+
+    // ------------------------------------------------------------------ Leave applications of the current salary cycle (Pending / Approved / Rejected)
+    /**
+     * The current salary cycle (26th to 25th) as the server names it ("payCycle"). An older Code.gs does not send it, so the same two dates are
+     * worked out from the phone's date.
+     */
+    private fun setCycle(p: JSONObject?) {
+        val s = p?.optString("start").orEmpty()
+        val e = p?.optString("end").orEmpty()
+        if (s.length == 10 && e.length == 10) { cycleFrom = s; cycleTo = e; return }
+        val own = cycleOf(java.util.Calendar.getInstance())
+        cycleFrom = own.first; cycleTo = own.second
+    }
+
+    /** The salary cycle (26th to 25th) that contains [day], as two yyyy-MM-dd texts: first day, last day. */
+    private fun cycleOf(day: java.util.Calendar): Pair<String, String> {
+        val c = day.clone() as java.util.Calendar
+        if (c.get(java.util.Calendar.DAY_OF_MONTH) < 26) c.add(java.util.Calendar.MONTH, -1)
+        c.set(java.util.Calendar.DAY_OF_MONTH, 26)
+        val first = isoFmt.format(c.time)
+        c.add(java.util.Calendar.MONTH, 1)
+        c.set(java.util.Calendar.DAY_OF_MONTH, 25)
+        return Pair(first, isoFmt.format(c.time))
+    }
+
+    /** A leave request belongs to the cycle when any day of it falls inside the cycle (the leave days are what the salary is worked out from). */
+    private fun inCycle(o: JSONObject): Boolean {
+        val from = o.optString("from").take(10)
+        val to = o.optString("to").take(10).ifEmpty { from }
+        return from.isNotEmpty() && from <= cycleTo && to >= cycleFrom
+    }
+
+    /** The leave requests of one status ("Pending", "Approved" or "Rejected") in the current cycle, in the order the server sent them (newest first). */
+    private fun leavesOf(status: String): List<JSONObject> {
+        val out = ArrayList<JSONObject>()
+        for (i in 0 until leavesAll.length()) {
+            val o = leavesAll.optJSONObject(i) ?: continue
+            if (o.optString("status").ifEmpty { "Pending" } == status && inCycle(o)) out.add(o)
+        }
+        return out
+    }
+
+    /** Between the Team today numbers and Night hold: the leave applications of the current salary cycle as three tiles. Tap a tile for the applications. */
+    private fun leaveSummary(): View {
+        val matchW = ViewGroup.LayoutParams.MATCH_PARENT
+        val wrapH = ViewGroup.LayoutParams.WRAP_CONTENT
+        val host = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(matchW, wrapH).apply { topMargin = dp(16) }
+        }
+        host.addView(View(this).apply {                                          // the line that separates it from the numbers above
+            setBackgroundColor(Pal.c("#EBDDA0")); layoutParams = LinearLayout.LayoutParams(matchW, dp(1)).apply { bottomMargin = dp(14) }
+        })
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        head.addView(TextView(this).apply {
+            text = "📝"; textSize = 20f; gravity = Gravity.CENTER
+            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F0E3A6")) }
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(12) }
+        })
+        val titles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, wrapH, 1f) }
+        titles.addView(TextView(this).apply { text = "Leave applications"; textSize = 17f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#3E1D16")) })
+        titles.addView(TextView(this).apply {
+            text = "Current salary cycle · ${niceShort(cycleFrom)} – ${niceShort(cycleTo)}"
+            textSize = 12f; setTextColor(Pal.c("#8A5F52")); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        head.addView(titles)
+        host.addView(head)
+
+        // status, symbol, text colour, tile colour: the same colours as Late, Present and Absent above, so they read at a glance
+        val items = listOf(
+            listOf("Pending", "⏳", "#B45309", "#FEF3C7"),
+            listOf("Approved", "✅", "#15803D", "#E6F6EC"),
+            listOf("Rejected", "❌", "#B91C1C", "#FDE8E8")
+        )
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(matchW, wrapH).apply { topMargin = dp(14) }
+        }
+        for (k in items.indices) {
+            val item = items[k]
+            val tile = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                setPadding(dp(4), dp(12), dp(4), dp(10))
+                background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c(item[3])) }
+                layoutParams = LinearLayout.LayoutParams(0, wrapH, 1f).apply {
+                    if (k > 0) marginStart = dp(5); if (k < 2) marginEnd = dp(5)
+                }
+                isClickable = true; isFocusable = true
+                setOnClickListener { showLeaves(item[0], item[1], item[2], item[3]) }
+            }
+            tile.addView(TextView(this).apply {
+                text = leavesOf(item[0]).size.toString(); textSize = 28f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(item[2]))
+            })
+            tile.addView(TextView(this).apply {
+                text = item[1] + " " + item[0]; textSize = 12f; setTypeface(null, Typeface.BOLD)
+                setTextColor(Pal.c(item[2])); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            row.addView(tile)
+        }
+        host.addView(row)
+        host.addView(TextView(this).apply {
+            text = "Counted by leave dates · tap a number for the list"
+            textSize = 12f; setTextColor(Pal.c("#8A5F52")); setPadding(dp(2), dp(8), 0, 0)
+        })
+        return host
+    }
+
+    /**
+     * The leave applications of one status in the current cycle, newest first, one card each (the same card as the Leave Requests list further down).
+     * A pending one can be approved or rejected right here; the sheet stays open and redraws when the new answer comes back ([leaveSheetRefresh]).
+     */
+    private fun showLeaves(status: String, symbol: String, fg: String, bg: String) {
+        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply { setColor(Pal.card); cornerRadii = floatArrayOf(dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), dp(24).toFloat(), 0f, 0f, 0f, 0f) }
+            setPadding(dp(16), dp(14), dp(16), dp(8))
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.88f).toInt())
+        }
+        // header: coloured symbol tile, the title with the count and the cycle, and a close button
+        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        head.addView(TextView(this).apply {
+            text = symbol; textSize = 22f; gravity = Gravity.CENTER
+            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(Pal.c(bg)) }
+            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(12) }
+        })
+        val titleCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) }
+        titleCol.addView(TextView(this).apply { text = "$status leave"; textSize = 20f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c(fg)) })
+        val count = TextView(this).apply { textSize = 13f; setTextColor(Pal.c("#8A5F52")) }
+        titleCol.addView(count)
+        head.addView(titleCol)
+        head.addView(TextView(this).apply {
+            text = "✕"; textSize = 18f; gravity = Gravity.CENTER; setTextColor(Pal.c("#6B352A"))
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Pal.c("#F0E3A6")) }
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
+            setOnClickListener { sheet.dismiss() }
+        })
+        root.addView(head)
+
+        // search (only when the list is long)
+        val search = android.widget.EditText(this).apply {
+            hint = "🔍  Search name or ID"; textSize = 15f; setSingleLine(true)
+            setTextColor(Pal.c("#3E1D16")); setHintTextColor(Pal.c("#A98578"))
+            background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c("#F8EFC4")) }
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12); bottomMargin = dp(6) }
+        }
+        if (leavesOf(status).size > 6) root.addView(search)
+
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, 0) }
+        val scroll = android.widget.ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+            addView(list)
+        }
+        root.addView(scroll)
+
+        val span = "${niceShort(cycleFrom)} – ${niceShort(cycleTo)}"
+        fun fill(q: String) {
+            list.removeAllViews()
+            val key = q.trim().lowercase()
+            val all = leavesOf(status)
+            val rows = all.filter { key.isEmpty() || it.optString("name").lowercase().contains(key) || it.optString("username").lowercase().contains(key) }
+            count.text = (if (key.isEmpty()) "${all.size} application" + (if (all.size == 1) "" else "s") else "${rows.size} of ${all.size}") + "  ·  $span"
+            if (rows.isEmpty()) list.addView(note(if (all.isEmpty()) "No ${status.lowercase()} leave applications in this salary cycle." else "No match."))
+            rows.forEach { list.addView(leaveCard(it, true)) }
+        }
+        fill("")
+        search.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(e: android.text.Editable?) { fill(e?.toString() ?: "") }
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+        })
+        leaveSheetRefresh = { fill(search.text?.toString() ?: "") }
+        sheet.setOnDismissListener { leaveSheetRefresh = null }
+        sheet.setContentView(root)
+        sheet.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+        sheet.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        sheet.show()
+        Fx.polish(root)
     }
 
     // ------------------------------------------------------------------ Night hold summary (total, team by team, who / where / when)
@@ -726,8 +915,10 @@ class TeamActivity : AppCompatActivity() {
         background = GradientDrawable().apply { cornerRadius = dp(20).toFloat(); setColor(if (fg == "#FFFFFF") Color.parseColor(bg) else Pal.c(bg)) }
     }
 
-    private fun cardWrap(inner: View): MaterialCardView = MaterialCardView(this).apply {
-        radius = dp(24).toFloat(); cardElevation = dp(3).toFloat(); setCardBackgroundColor(Pal.card)
+    /** [flat] = the quieter card for inside a sheet: a tinted fill and no shadow, like the rows of the people lists. */
+    private fun cardWrap(inner: View, flat: Boolean = false): MaterialCardView = MaterialCardView(this).apply {
+        radius = dp(if (flat) 18 else 24).toFloat(); cardElevation = if (flat) 0f else dp(3).toFloat()
+        setCardBackgroundColor(if (flat) Pal.c("#FFFAE3") else Pal.card)
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(10) }
         addView(inner)
     }
@@ -857,7 +1048,7 @@ class TeamActivity : AppCompatActivity() {
         return card
     }
 
-    private fun leaveCard(o: JSONObject): View {
+    private fun leaveCard(o: JSONObject, flat: Boolean = false): View {
         val status = o.optString("status")
         val (fg, bg) = when (status) {
             "Approved" -> "#166534" to "#DCFCE7"
@@ -905,7 +1096,7 @@ class TeamActivity : AppCompatActivity() {
             btnRow.addView(approve); btnRow.addView(reject)
             col.addView(btnRow)
         }
-        return cardWrap(col)
+        return cardWrap(col, flat)
     }
 
     private fun decide(o: JSONObject, decision: String, vararg buttons: MaterialButton) {
@@ -914,7 +1105,10 @@ class TeamActivity : AppCompatActivity() {
             .put("appliedOn", o.optString("appliedOn")).put("from", o.optString("from")).put("to", o.optString("to"))
             .put("decision", decision)
         api(body) { res, err ->
-            if (res != null) { loadAll() }
+            if (res != null) {
+                ResponseCache.remove(this, ResponseCache.teamKey(session.username, of) + (attDate?.let { "|$it" } ?: ""))     // the saved copy is out of date now: do not show it first
+                loadAll()
+            }
             else { buttons.forEach { it.isEnabled = true }; android.widget.Toast.makeText(this, err, android.widget.Toast.LENGTH_LONG).show() }
         }
     }
