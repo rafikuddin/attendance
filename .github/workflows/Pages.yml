@@ -1,0 +1,49 @@
+name: pages build and deployment
+
+# Publishes the website (the docs/ folder) with GitHub Pages.
+# Saving files does NOT start this workflow. The last step of "Build APK" starts it, so the website is published only AFTER the APK is built.
+# You can also start it by hand: Actions > pages build and deployment > Run workflow.
+# One-time setup: Settings > Pages > Build and deployment > Source = GitHub Actions.
+on:
+  workflow_dispatch:
+
+# contents: read lets it read docs/. pages: write and id-token: write let it publish the site.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One website publish at a time. A publish that is already running is allowed to finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check that Pages is set up
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Pack the website (docs folder)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Publish the website
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      # Only runs when a step above failed. It never changes the result; it just says what to do.
+      - name: What to do if the website was not published
+        if: failure()
+        run: |
+          echo "### Website not published" >> "$GITHUB_STEP_SUMMARY"
+          echo "If the error above says Pages is not enabled or not set up for GitHub Actions: open **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**, then run this workflow again (Actions → pages build and deployment → Run workflow). The APK is not affected." >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::Website not published. If Pages is not enabled for GitHub Actions: Settings > Pages > Source > GitHub Actions, then run this workflow again."
