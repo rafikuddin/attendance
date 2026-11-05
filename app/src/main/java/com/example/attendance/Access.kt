@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 
 /**
  * Menus an admin can lock for one person (Admin Panel > Users > 🔐 Access). The server refuses the actions of a locked
- * option; the app also hides the way in. The list of locked keys comes with every server reply (see Session.locks).
+ * option; the app does not show it to that person at all (side menu, bottom bar, Home tiles, bell). The list of locked keys comes with every server reply (see Session.locks).
  */
 object Access {
     /** key, icon + name. The keys must match ACCESS_ITEMS in Code.gs. */
@@ -84,5 +84,5 @@ fun AppCompatActivity.enforceAccess(key: String): Boolean {
     return false
 }
 
-/** A locked way in (tile, button) looks faded. */
-fun View.fadeIfLocked(activity: AppCompatActivity, key: String) { alpha = if (activity.isLocked(key)) 0.4f else 1f }
+/** A locked way in (tile, button) is not shown at all; it comes back by itself when the admin unlocks it. */
+fun View.hideIfLocked(activity: AppCompatActivity, key: String) { visibility = if (activity.isLocked(key)) View.GONE else View.VISIBLE }

@@ -662,7 +662,7 @@ class AdminActivity : AppCompatActivity() {
         if (now != null) for (i in 0 until now.length()) locked.add(now.optString(i))
         val boxes = LinkedHashMap<String, CheckBox>()
         val form = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
-        form.addView(label(if (names.size == 1) "Tick what this person may use. Untick to lock it. The server refuses a locked option, and the app hides the way in."
+        form.addView(label(if (names.size == 1) "Tick what this person may use. Untick to lock it: the person does not see that menu at all any more, and the server refuses it."
             else "These settings REPLACE the current ones of all ${names.size} chosen people. Tick what they may use; untick to lock it.", 13f, "#8A5F52", false))
         // The Admin Panel row only makes sense for admins, and never for yourself (you could not unlock it again).
         val anyAdmin = names.any { n -> users.any { it.optString("username").equals(n, true) && it.optBoolean("isAdmin") } }

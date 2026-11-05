@@ -74,7 +74,13 @@ fun AppCompatActivity.setupBottomNav(active: Tab?) {
     for (tab in Tab.values()) {
         val item = findViewById<LinearLayout>(tab.navId)
         val on = tab == active
-        if (tab == Tab.TEAM) item.visibility = if (manager || on) View.VISIBLE else View.GONE
+        val key = when (tab) { Tab.ATTENDANCE -> "attendance"; Tab.LEAVE -> "leave"; Tab.TEAM -> "team"; Tab.CALENDAR -> "calendar"; Tab.NIGHT -> "night"; else -> null }
+        val locked = key != null && !on && isLocked(key)          // a menu an admin locked for this person is not shown at all
+        item.visibility = when {
+            locked -> View.GONE
+            tab == Tab.TEAM -> if (manager || on) View.VISIBLE else View.GONE
+            else -> View.VISIBLE
+        }
         val dot = item.getChildAt(0)
         val icon = item.getChildAt(1) as TextView
         val label = item.getChildAt(2) as TextView
@@ -82,9 +88,6 @@ fun AppCompatActivity.setupBottomNav(active: Tab?) {
         icon.alpha = if (on) 1f else 0.6f
         label.setTextColor(Pal.tintIfBrand(ContextCompat.getColor(this, if (on) R.color.primary else R.color.muted)))
         label.setTypeface(null, if (on) Typeface.BOLD else Typeface.NORMAL)
-        val key = when (tab) { Tab.ATTENDANCE -> "attendance"; Tab.LEAVE -> "leave"; Tab.TEAM -> "team"; Tab.CALENDAR -> "calendar"; Tab.NIGHT -> "night"; else -> null }
-        label.text = label.text.toString().removePrefix("🔒 ")
-        if (key != null && !on && isLocked(key)) { icon.alpha = 0.25f; label.text = "🔒 " + label.text }
         item.setOnClickListener {
             if (key != null && !on && isLocked(key)) { toastLocked(key); return@setOnClickListener }
             if (!on) {

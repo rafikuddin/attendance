@@ -193,7 +193,7 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Quick actions: pastel gradient tiles with a white round icon -->
-            <TextView android:text="Quick Actions" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/ink"
+            <TextView android:id="@+id/tvQuickHeading" android:text="Quick Actions" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/ink"
                 android:layout_marginStart="22dp" android:layout_marginEnd="22dp" android:layout_marginTop="22dp"
                 android:layout_width="match_parent" android:layout_height="wrap_content" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"

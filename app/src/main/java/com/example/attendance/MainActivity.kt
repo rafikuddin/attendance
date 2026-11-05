@@ -172,13 +172,45 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(this, c))
     }
 
-    /** Locked ways in look faded (the server refuses them anyway). */
+    /**
+     * A menu an admin locked for this person is not shown at all: not as a Home button or tile, not in the Night hold section, not as the notice card
+     * or the bell, not in the bottom bar (setupBottomNav) and not in the side menu (showSideMenu). The server refuses it anyway.
+     * It all comes back by itself when the admin unlocks it (this runs again every time Home opens or refreshes).
+     */
     private fun showLocks() {
-        mapOf(R.id.btnQuickAttendance to "attendance", R.id.btnQuickLeave to "leave", R.id.cardNight to "night", R.id.tileNight to "night",
-            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.tileTarget to "target", R.id.tileSurvey to "survey", R.id.btnBell to "notices", R.id.bellIcon to "notices", R.id.cardNotice to "notices").forEach { (id, key) ->
-            findViewById<android.view.View>(id)?.fadeIfLocked(this, key)
+        fun v(id: Int): android.view.View? = findViewById(id)
+        fun goneIf(view: android.view.View?, hide: Boolean) { view?.visibility = if (hide) android.view.View.GONE else android.view.View.VISIBLE }
+        mapOf(R.id.btnQuickAttendance to "attendance", R.id.btnQuickLeave to "leave", R.id.tileNight to "night",
+            R.id.tileCalendar to "calendar", R.id.tileReports to "reports", R.id.tileTarget to "target", R.id.tileSurvey to "survey").forEach { (id, key) ->
+            v(id)?.hideIfLocked(this, key)
         }
+        // the row or heading around them goes too when nothing is left in it
+        goneIf(v(R.id.btnQuickAttendance)?.parent as? android.view.View, isLocked("attendance") && isLocked("leave"))
+        val noTiles = isLocked("night") && isLocked("calendar") && isLocked("reports")
+        goneIf(v(R.id.tileNight)?.parent as? android.view.View, noTiles)
+        goneIf(v(R.id.tvQuickHeading), noTiles)
+        tidyRow(R.id.btnQuickAttendance, R.id.btnQuickLeave)
+        tidyRow(R.id.tileNight, R.id.tileCalendar, R.id.tileReports)
+        // the Night hold section of Home (heading line and card)
+        goneIf(v(R.id.cardNight), isLocked("night"))
+        goneIf(v(R.id.tvNightHeading)?.parent as? android.view.View, isLocked("night"))
+        // notices: the bell in the header and the notice card (showNotices decides when the card is shown, but never when notices are locked)
+        goneIf(v(R.id.btnBell)?.parent as? android.view.View, isLocked("notices"))
+        if (isLocked("notices")) v(R.id.cardNotice)?.visibility = android.view.View.GONE
+        // the round picture opens My Profile: with Profile locked it is only a picture
+        v(R.id.cardAvatar)?.isClickable = !isLocked("profile")
         setupBottomNav(Tab.HOME)
+    }
+
+    /** After some tiles of a row were hidden: the first one visible touches the left edge, the last one the right edge, and 12 dp lie between the others. */
+    private fun tidyRow(vararg ids: Int) {
+        val shown = ids.toList().mapNotNull { findViewById<android.view.View>(it) }.filter { it.visibility == android.view.View.VISIBLE }
+        shown.forEachIndexed { i, tile ->
+            val lp = tile.layoutParams as? android.view.ViewGroup.MarginLayoutParams ?: return@forEachIndexed
+            lp.marginStart = if (i == 0) 0 else dp(6)
+            lp.marginEnd = if (i == shown.size - 1) 0 else dp(6)
+            tile.layoutParams = lp
+        }
     }
 
     /** The side menu (👤 button): search, the menus, Light / Dark switch, who is signed in and Logout. */
@@ -412,6 +444,7 @@ class MainActivity : AppCompatActivity() {
 
     fun refreshBell(arr: org.json.JSONArray?) {
         val badge = findViewById<TextView>(R.id.tvBellBadge)
+        if (isLocked("notices")) { badge.visibility = android.view.View.GONE; lastUnread = -1; return }      // no bell, no count and no ding while Notices is locked
         val n = NoticeState.unread(this, arr)
         val isNew = lastUnread in 0 until n
         if (isNew) Chime.play(this)          // a new notice arrived while the app was open: ding-ding
@@ -427,7 +460,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Once per sign-in / app start: fetch the current notices fresh and show them in a pop-up. */
     private fun maybeShowNoticePopup() {
-        if (!NoticePopup.isDue()) return
+        if (!NoticePopup.isDue() || isLocked("notices")) return
         api(JSONObject().put("action", "notices")) { res, _ ->
             val arr = res?.optJSONArray("notices") ?: return@api
             refreshBell(arr)
@@ -439,7 +472,7 @@ class MainActivity : AppCompatActivity() {
     private fun showNotices(arr: org.json.JSONArray?) {
         refreshBell(arr)
         val card = findViewById<android.view.View>(R.id.cardNotice)
-        if (arr == null || arr.length() == 0) { card.visibility = android.view.View.GONE; return }
+        if (isLocked("notices") || arr == null || arr.length() == 0) { card.visibility = android.view.View.GONE; return }
         val first = arr.getJSONObject(0)
         findViewById<TextView>(R.id.tvNoticeTitle).text = first.optString("title")
         findViewById<TextView>(R.id.tvNoticeText).text = first.optString("message")
@@ -571,7 +604,7 @@ class MainActivity : AppCompatActivity() {
             showAvatar(res.optString("myPhoto"))
             showNotices(res.optJSONArray("notices"))
             showUpdate(res.optJSONObject("appUpdate"))
-            findViewById<android.view.View>(R.id.navTeam).visibility = manager
+            findViewById<android.view.View>(R.id.navTeam).visibility = if (isLocked("team")) android.view.View.GONE else manager
             showTodayDetail(todayRecord, res.optBoolean("driver"))
             Tracking.syncFrom(this, res, todayRecord)          // movement tracking (only when an admin ticked it for this person)
             LateReason.bind(this, findViewById(R.id.tvLateReason), todayRecord)

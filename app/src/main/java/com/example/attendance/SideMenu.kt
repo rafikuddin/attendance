@@ -38,7 +38,8 @@ class SideItem(
  * a ☀️ Light / 🌙 Dark switch and the signed-in person with a logout button at the bottom. The › button folds it into a slim
  * icon strip (and the choice is remembered). Works in both Day and Night colours.
  */
-fun AppCompatActivity.showSideMenu(items: List<SideItem>, name: String, sub: String, footer: String, onLogout: () -> Unit) {
+fun AppCompatActivity.showSideMenu(allItems: List<SideItem>, name: String, sub: String, footer: String, onLogout: () -> Unit) {
+    val items = allItems.filter { !it.locked }      // a menu an admin locked for this person is not shown at all
     val prefs = getSharedPreferences("ui_theme", Context.MODE_PRIVATE)
     var collapsed = prefs.getBoolean("side_collapsed", false)
     var query = ""
