@@ -30,6 +30,7 @@ class TeamActivity : AppCompatActivity() {
     private var nightHost: LinearLayout? = null      // the Night hold summary inside the top card
     private var nightDate: String? = null            // a date picked by the manager; null = the latest night
     private var nightCycle: String? = null           // "prev" | "current" | "next" = a whole pay cycle (26th to 25th); null = one night
+    private var nightTeamsOpen = false               // the BY TEAM list of the Night hold block: hidden until "Show details by team" is tapped, then kept while this screen is open
     private var canDecide = false           // true for anyone below you, at any depth (server re-checks every decision)
     private var attDate: String? = null      // the day the manager picked for the attendance list and the numbers; null = today
     private var shownDate = ""               // the day the server answered for (empty until the first answer)
@@ -538,8 +539,8 @@ class TeamActivity : AppCompatActivity() {
 
     /**
      * The Night hold block at the bottom of the top card: a title with the date, one control for the four views (a night, or the previous / current /
-     * next pay cycle), the total as a big number with a bar, and the teams as one tidy list (name, how many of how many, a bar). Tapping the total or a
-     * team opens the list of names, places and dates ([showNightList]).
+     * next pay cycle), the total as a big number with a bar, and, behind a "Show details by team" button (hidden at first, see [nightTeamsOpen]), the teams
+     * as one tidy list (name, how many of how many, a bar). Tapping the total or a team opens the list of names, places and dates ([showNightList]).
      */
     private fun renderNight(host: LinearLayout, res: JSONObject) {
         val date = res.optString("nightDate")
@@ -639,12 +640,34 @@ class TeamActivity : AppCompatActivity() {
         hero.addView(TextView(this).apply { text = "Tap to see names, places and dates"; textSize = 12f; setTextColor(Pal.c("#8A5F52")); setPadding(0, dp(8), 0, 0) })
         host.addView(hero)
 
-        // team by team: one grouped list, a thin bar under each name
+        // team by team: hidden until the manager asks for it (one button); then one grouped list with a thin bar under each name
         if (groups.length() == 0) return
+        val teamsBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(matchW, wrapH)
+            visibility = if (nightTeamsOpen) View.VISIBLE else View.GONE
+        }
+        val toggle = TextView(this).apply {
+            textSize = 14f; gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#6B352A"))
+            background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(Pal.c("#F0E3A6")) }
+            layoutParams = LinearLayout.LayoutParams(matchW, dp(44)).apply { topMargin = dp(14) }
+            isClickable = true; isFocusable = true
+        }
+        fun paintToggle() { toggle.text = if (nightTeamsOpen) "▴  Hide details by team" else "▾  Show details by team" }
+        paintToggle()
+        toggle.setOnClickListener {
+            nightTeamsOpen = !nightTeamsOpen
+            paintToggle()
+            teamsBox.animate().cancel()
+            if (nightTeamsOpen) { teamsBox.alpha = 0f; teamsBox.visibility = View.VISIBLE; teamsBox.animate().alpha(1f).setDuration(180).start() }
+            else { teamsBox.alpha = 1f; teamsBox.visibility = View.GONE }
+        }
+        host.addView(toggle)
+        host.addView(teamsBox)
         val cap = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(4), 0, dp(34), dp(8))                              // the right edge lines up with the numbers below
-            layoutParams = LinearLayout.LayoutParams(matchW, wrapH).apply { topMargin = dp(20) }
+            layoutParams = LinearLayout.LayoutParams(matchW, wrapH).apply { topMargin = dp(16) }
         }
         cap.addView(TextView(this).apply {
             text = "BY TEAM"; textSize = 11f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#8A5F52")); letterSpacing = 0.08f
@@ -654,7 +677,7 @@ class TeamActivity : AppCompatActivity() {
             text = if (cycleMode) "PEOPLE / MEMBERS" else "SUBMITTED / MEMBERS"
             textSize = 10f; setTypeface(null, Typeface.BOLD); setTextColor(Pal.c("#8A5F52")); letterSpacing = 0.04f
         })
-        host.addView(cap)
+        teamsBox.addView(cap)
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(Pal.c("#FFFAE3")) }
@@ -691,7 +714,7 @@ class TeamActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(matchW, dp(1)).apply { marginStart = dp(14); marginEnd = dp(14) }
             })
         }
-        host.addView(box)
+        teamsBox.addView(box)
     }
 
     private fun pickNightDate(current: String) {
