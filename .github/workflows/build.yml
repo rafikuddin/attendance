@@ -12,10 +12,10 @@ concurrency:
   group: build-apk
   cancel-in-progress: true
 
-# contents: lets the build publish the APK on the repo's Releases page. pages: lets its last step ask GitHub to rebuild the website.
+# contents: lets the build publish the APK on the repo's Releases page. actions: lets its last step start the website publish (pages.yml).
 permissions:
   contents: write
-  pages: write
+  actions: write
 
 jobs:
   build:
@@ -138,15 +138,17 @@ jobs:
           draft: ${{ env.APK_SUFFIX != '' }}
           files: ${{ env.APK_NAME }}
 
-      # Last step: ask GitHub to rebuild the website (GitHub Pages; the Actions list shows it as "pages build and deployment"),
-      # so it also runs right after the APK is built. It can never fail the build: if Pages is off it only prints a note.
-      - name: Refresh the website
+      # Last step: start the website publish (pages.yml; the Actions list shows it as "pages build and deployment").
+      # Nothing else publishes the website, so it always comes AFTER the APK is built (and never when the build fails).
+      # This step can never fail the build: if pages.yml is missing it only prints a note.
+      - name: Publish the website
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          if gh api --method POST "repos/${{ github.repository }}/pages/builds" --jq '"Website rebuild requested: " + .status'; then
-            echo "### 🌐 Website refresh requested (pages build and deployment)" >> "$GITHUB_STEP_SUMMARY"
+          if gh workflow run pages.yml --ref "${{ github.ref_name }}"; then
+            echo "### 🌐 Website publish started (pages build and deployment)" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "::notice::Could not ask for a website rebuild (is Settings > Pages switched on?). The APK is not affected."
+            echo "::notice::Could not start pages.yml (is it added under .github/workflows?). The APK is not affected."
           fi
