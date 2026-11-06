@@ -481,6 +481,13 @@ class MainActivity : AppCompatActivity() {
         card.visibility = android.view.View.VISIBLE
     }
 
+    /** A driver has no leave balance on Home: the heading line and the card are not shown (the server says who is a driver). */
+    private fun hideBalanceForDriver(driver: Boolean) {
+        val state = if (driver) android.view.View.GONE else android.view.View.VISIBLE
+        findViewById<android.view.View>(R.id.rowBalHeading)?.visibility = state
+        findViewById<android.view.View>(R.id.cardBalance)?.visibility = state
+    }
+
     /** Fills the three leave bars: the bar shows what is left (full = nothing used yet). */
     private fun showBalance(b: org.json.JSONArray) {
         findViewById<TextView>(R.id.tvBalHeading).text = "LEAVE BALANCE ${Calendar.getInstance().get(Calendar.YEAR)}"
@@ -610,6 +617,7 @@ class MainActivity : AppCompatActivity() {
             LateReason.bind(this, findViewById(R.id.tvLateReason), todayRecord)
             if (todayLate && todayRecord?.optString("lateReason")?.isEmpty() == true)
                 LateReason.require(this) { loadStatus() }          // late today and no reason yet: compulsory
+            hideBalanceForDriver(res.optBoolean("driver"))
             res.optJSONArray("balance")?.let { showBalance(it) }
             // A night is named by the date its evening started, so between midnight and 6 AM "tonight" is still yesterday's date.
             // The server says which night it is (the night hold hours are set by an admin); the old 6 AM rule is only a fallback.
