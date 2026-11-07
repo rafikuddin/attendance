@@ -477,7 +477,7 @@ class AdminActivity : AppCompatActivity() {
         content.addView(chipButton("🔐  Menu access for several people") {
             if (users.isEmpty()) { toast("Wait until the users have loaded."); return@chipButton }
             val chosen = LinkedHashSet<String>()
-            pickPeople(chosen) { if (chosen.isNotEmpty()) accessDialog(chosen.toList(), null, null) }
+            pickPeople(chosen) { if (chosen.isNotEmpty()) accessBulkDialog(chosen.toList()) }
         })
         val status = note("Loading users…")
         content.addView(status)
@@ -485,6 +485,7 @@ class AdminActivity : AppCompatActivity() {
             if (id != loadId) return@api
             content.removeView(status)
             if (res == null) { content.addView(note(err ?: "Could not load users.")); return@api }
+            content.addView(serverNote(res.optString("sv"), false))
             val arr = res.optJSONArray("users")
             val list = ArrayList<JSONObject>()
             if (arr != null) for (i in 0 until arr.length()) list.add(arr.getJSONObject(i))
@@ -654,6 +655,113 @@ class AdminActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton("Cancel", null).show()
+    }
+
+    /**
+     * What the Admin Panel says about the Code.gs that is live (Users tab: one line; App tab: with the version this app expects). [sv] is the "sv" of a
+     * server reply. A Code.gs that was never pasted, or pasted but not deployed as a New version, shows here at once.
+     */
+    private fun serverNote(sv: String?, full: Boolean): View {
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; if (!full) setPadding(dp(4), dp(8), dp(4), dp(4)) }
+        val state = ServerInfo.state(sv)
+        if (state == ServerInfo.State.OK) {
+            col.addView(label("🖥  Server (Code.gs) $sv  ·  ✓ up to date for this app", if (full) 15f else 12f, "#15803D", true))
+            if (full) col.addView(label("This app was built for Code.gs ${ServerInfo.EXPECTED} or newer.", 13f, "#8A5F52", false).apply { setPadding(0, dp(4), 0, 0) })
+        } else {
+            col.addView(label(if (state == ServerInfo.State.UNKNOWN) "⚠  The server did not say which Code.gs it runs" else "⚠  The server runs an OLDER Code.gs ($sv)", if (full) 15f else 13f, "#B45309", true))
+            col.addView(label(
+                if (!full) "Some things may not work yet. Open the App tab to see how to fix it."
+                else (if (state == ServerInfo.State.UNKNOWN) "Its Code.gs is older than this app, or the newest one was pasted but not deployed as a New version. " else "") +
+                    "This app was built for Code.gs ${ServerInfo.EXPECTED} or newer, so some things may not work yet. To fix it: paste the newest Code.gs over the old one in Apps Script, then Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy.",
+                if (full) 13f else 12f, "#8A5F52", false).apply { setPadding(0, dp(4), 0, 0) })
+        }
+        return col
+    }
+
+    /**
+     * Menu access for SEVERAL people. Nothing is replaced: every row starts on "no change" and a tap cycles it (menus: no change → allow → lock;
+     * extra rights: no change → give → take away). Only the rows you changed are sent, and the server changes only those for every person.
+     */
+    private fun accessBulkDialog(names: List<String>) {
+        val anyAdmin = names.any { n -> users.any { it.optString("username").equals(n, true) && it.optBoolean("isAdmin") } }
+        val includesMe = names.any { it.equals(session.username, true) }
+        val state = LinkedHashMap<String, Int>()                 // key -> 0 no change, 1 allow / give, 2 lock / take away
+        val names1 = LinkedHashMap<String, String>()             // key -> the words shown in the summary
+        val chips = LinkedHashMap<String, TextView>()
+        val menuKeys = ArrayList<String>()
+        val rights = listOf("surveys" to "📋  Can create & manage surveys", "teamview" to "📇  Can see Profile & Calendar of own team",
+            "accounts" to "💰  Orders: Accounts", "delivery" to "🚚  Orders: Delivery", "driver" to "🚗  Driver (car meter picture)", "track" to "📍  Track movement")
+        val summary = label("", 13f, "#6B352A", true).apply { setPadding(0, dp(12), 0, 0) }
+        val error = label("", 13f, "#DC2626", false).apply { setPadding(0, dp(6), 0, 0) }
+        fun words(key: String): String = names1[key] ?: key
+        fun refreshSummary() {
+            fun part(icon: String, want: Int, pool: List<String>): String? =
+                pool.filter { state[it] == want }.takeIf { it.isNotEmpty() }?.let { "$icon " + it.joinToString(", ") { k -> words(k) } }
+            val lines = listOfNotNull(part("🔒 Lock:", 2, menuKeys), part("✅ Allow:", 1, menuKeys), part("➕ Give:", 1, rights.map { it.first }), part("➖ Take away:", 2, rights.map { it.first }))
+            summary.text = if (lines.isEmpty()) "Nothing will change yet. Tap a row to change it."
+                else "Will change, for ${names.size} ${if (names.size == 1) "person" else "people"}:\n" + lines.joinToString("\n")
+            error.text = ""
+        }
+        fun paint(key: String, menu: Boolean) {
+            val v = chips[key] ?: return
+            val (txt, fg, bg) = when (state[key] ?: 0) {
+                1 -> Triple(if (menu) "✅ Allow" else "➕ Give", "#166534", "#DCFCE7")
+                2 -> Triple(if (menu) "🔒 Lock" else "➖ Take away", "#B91C1C", "#FEE2E2")
+                else -> Triple("no change", "#8A5F52", "#F0E3A6")
+            }
+            v.text = txt; v.setTextColor(Pal.c(fg))
+            v.background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(Pal.c(bg)) }
+        }
+        fun addRow(form: LinearLayout, key: String, text: String, menu: Boolean) {
+            state[key] = 0; names1[key] = text.substringAfter("  ").substringBefore(" (")
+            val chip = TextView(this).apply {
+                textSize = 13f; setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER
+                setPadding(dp(12), dp(8), dp(12), dp(8)); minWidth = dp(104)
+            }
+            chips[key] = chip
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(6), 0, dp(6)); minimumHeight = dp(48); isClickable = true; isFocusable = true
+                addView(label(text, 15f, "#3E1D16", false).apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(8) } })
+                addView(chip)
+                setOnClickListener { state[key] = ((state[key] ?: 0) + 1) % 3; paint(key, menu); refreshSummary() }
+            }
+            form.addView(row); paint(key, menu)
+        }
+        val form = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), 0) }
+        form.addView(label("Only what you change here is saved. Every row left on “no change” stays exactly as it is for each of the ${names.size} people. Tap a row to change it.", 13f, "#8A5F52", false))
+        form.addView(label("MENUS", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(12), 0, dp(2)) })
+        Access.items.forEach { (key, text) ->
+            if (key == "admin" && (!anyAdmin || includesMe)) return@forEach
+            menuKeys.add(key); addRow(form, key, text, true)
+        }
+        form.addView(label("EXTRA RIGHTS", 12f, "#6B352A", true).apply { letterSpacing = 0.08f; setPadding(0, dp(14), 0, dp(2)) })
+        rights.forEach { (key, text) -> addRow(form, key, text, false) }
+        form.addView(label("A person who is a driver because of the Role column of the sheet stays a driver. A locked menu is not shown to that person at all.", 12f, "#A98578", false).apply { setPadding(0, dp(8), 0, 0) })
+        form.addView(summary); form.addView(error)
+        refreshSummary()
+        val dialog = AlertDialog.Builder(this).setTitle("Menu access: ${names.size} people")
+            .setView(ScrollView(this).apply { addView(form) })
+            .setPositiveButton("Save", null)             // set below, so a message does not close the dialog
+            .setNegativeButton("Cancel", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                fun keys(want: Int, pool: List<String>) = JSONArray(pool.filter { state[it] == want })
+                val menus = menuKeys.toList(); val rt = rights.map { it.first }
+                val body = JSONObject().put("action", "adminSetAccess").put("mode", "merge").put("usernames", JSONArray(names))
+                    .put("lock", keys(2, menus)).put("unlock", keys(1, menus)).put("give", keys(1, rt)).put("take", keys(2, rt))
+                if (state.values.all { it == 0 }) { error.text = "Nothing is changed yet. Tap a row first."; return@setOnClickListener }
+                adminApi(body) { res, err ->
+                    if (res != null) {
+                        dialog.dismiss()
+                        val c = res.optInt("changed"); val n = res.optInt("updated")
+                        toast(if (c == 0) "Nothing needed changing: all $n already had this." else "Changed for $c of $n ${if (n == 1) "person" else "people"}.")
+                        loadUsers()
+                    } else error.text = err ?: "Could not save"
+                }
+            }
+        }
+        dialog.show()
     }
 
     /** Tick = the person MAY use it; untick = locked. [now] is the current locked list of one person (null when several are chosen). */
@@ -1291,6 +1399,12 @@ class AdminActivity : AppCompatActivity() {
             next(0)
         })
         form.addView(msg)
+        val salaryResult = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(SalarySheet.card(this, "adminReport", null, "The file holds everybody (and people who left during the period, up to their last working day).") { f, res ->
+            salaryResult.removeAllViews()
+            salaryResult.addView(reportReadyCard(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to")))
+        })
+        content.addView(salaryResult)
         content.addView(cardOf(form))
         content.addView(result)
         content.addView(emailReportsCard {
@@ -2030,6 +2144,10 @@ class AdminActivity : AppCompatActivity() {
         content.addView(cardOf(column().apply {
             addView(label("Installed: ${AppUpdate.installedName(this@AdminActivity)}  (build ${AppUpdate.installedCode(this@AdminActivity)})", 15f, "#3E1D16", true))
         }))
+        content.addView(heading("SERVER (CODE.GS)"))
+        val serverHolder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(serverHolder)
+        serverHolder.addView(note("Checking…"))
         content.addView(heading("OFFERED TO EVERYONE"))
         val holder = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         content.addView(holder)
@@ -2039,6 +2157,9 @@ class AdminActivity : AppCompatActivity() {
         api(JSONObject().put("action", "appInfo")) { res, err ->
             if (id != loadId) return@api
             holder.removeAllViews()
+            serverHolder.removeAllViews()
+            if (res != null) serverHolder.addView(cardOf(column().apply { addView(serverNote(res.optString("sv"), true)) }))
+            else serverHolder.addView(note("Could not check the server version."))
             if (res == null) { holder.addView(note(err ?: "Could not load the published version.")); return@api }
             val u = res.optJSONObject("update")
             if (u == null) { holder.addView(emptyState("Nothing is published yet.", "📦")); return@api }

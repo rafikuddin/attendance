@@ -250,6 +250,14 @@ class ReportActivity : AppCompatActivity() {
             next(0)
         })
         form.addView(msg)
+        // One tap: the whole pay period in one salary file (a manager's file holds the team, everybody else's holds only their own row)
+        val salaryResult = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(SalarySheet.card(this, "myReport", if (isManager) "team" else "me",
+            if (isManager) "The file holds you and everyone below you." else "The file holds only your own row.") { f, res ->
+            salaryResult.removeAllViews()
+            salaryResult.addView(readyCard(f, res.optInt("users"), res.optInt("days"), res.optString("from"), res.optString("to"), -1))
+        })
+        content.addView(salaryResult)
         content.addView(cardOf(form))
         content.addView(result)
 
