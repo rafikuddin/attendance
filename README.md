@@ -102,11 +102,14 @@ Real screens from the app (Dark theme; Light uses the same layout on butter and 
   - keep your **official phone**, **personal phone** and **email address**;
   - set an **emergency contact**: phone number plus **relation** from a drop-down (*Wife, Son, Brother, Mother, Father, Daughter, Other*). Choose **Other** and a box appears where you write the relation yourself;
   - choose your **Base Name** from a searchable list — the **Base Code** fills in by itself (a name used by several bases shows its code in the list) — and your **T-shirt size** (S, M, L, XL, XXL, 2XL).
+  - choose your **Blood group** from a drop-down (*A+, A−, B+, B−, AB+, AB−, O+, O−*; the first choice, *Not set*, clears it). It is optional. An admin can also set it for a person (*Admin Panel → Users → Profile*), and a line manager who has the *Can see Profile & Calendar of own team* right sees it read only, like the phones and the emergency contact. Saved in the Profiles tab column **O** (BloodGroup) as plain text such as `O-`; a Profiles tab made before this gets the column by itself on the next save. Needs the newest `Code.gs` (Code.gs `2026-11-09.01`); an older script ignores it.
   - add your **bike number**, and — **for managers only** — your **laptop model**.
   - The base list is the **Bases** tab of the Sheet (BaseCode, BaseName; made automatically with the 161 bases). Edit that tab to add, rename or remove bases. Saved in the Profiles tab columns K–M (BaseName, BaseCode, TShirt).
   
   Every field is optional (an emergency phone and its relation go together). Phone numbers are checked (digits, 8–15, optional `+`) and email addresses too. Only you can change your own profile.
 - **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, 🎉 holidays, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
+
+- **🌐 Reports in a browser** — on the project website (**Sign in** at the top, or `…/attendance/dashboard/`) people sign in with the same Employee ID and password and read their reports on a phone or a computer: the **Numbers** (present, late, leave, absent, day off, night holds, driver km), a calendar of every day with the check-in times, and the Excel files. A manager also sees **My team** and an admin **Everyone**: a *Today* strip (who is in, late, on leave, not in), a day-by-day chart, and a people table that can be sorted and searched, where a name opens that person's calendar. It is **read only**: nothing can be changed from the website. The sign-in lasts 6 hours at most, ends after 15 minutes without use, and *Sign out* on the website never signs out the phones. An admin can switch it off with the Script Property `WEB_LOGIN` = `off`. Needs `Code.gs` `2026-11-17.01`, the newest `worker.js` and the website files; see **Website** under *Setup* and the wiki page *Website Dashboard*.
 
 ### For managers
 - **Team notices** — on the Notices screen a manager has **✍️ Post a notice**: a title, a message and how many days to show it. It is visible to **that manager and everyone below them** only (not to their own boss or other teams), and only the manager who wrote it can remove it. Ordinary staff cannot post. Admins still post notices for everyone from the Admin Panel.
@@ -166,7 +169,7 @@ The app uses a **glass / gradient** style: a soft **clay → tan → butter** gl
 | **Team** *(managers only)* | Team status, roll-ups, drill-down, leave approvals |
 | **Calendar** | Pay-period view of attendance, leave and night holds |
 | **Night Hold** | Overnight stay report with location, district/thana and hotel |
-| **My Profile** | Change your photo; phones, email, emergency contact + relation, Base Name (+ Base Code), T-shirt size, bike number, laptop model (managers) |
+| **My Profile** | Change your photo; phones, email, emergency contact + relation, Base Name (+ Base Code), T-shirt size, blood group, bike number, laptop model (managers) |
 | **Notices** | Everything admins and your manager have posted; managers can post a team notice |
 | **My Reports** | Download your own (managers: or your team's) attendance / night hold Excel file |
 | **Admin Panel** *(admins only)* | Add users, reset passwords, post notices, add holidays, publish app updates |
@@ -225,21 +228,23 @@ Releases are signed with a private key that is **never** stored in the repo.
 
 ### 5. Website (optional, GitHub Pages)
 The folder `docs/` holds a one-page website for the app (`docs/index.html`, no build step, no tracking). It shows what the app does, the daily rules with a live Dhaka clock, a sample of the Team screen, how it fits together, how to install, and links to the Wiki, the Releases page and the source. It is published by its own workflow, **pages build and deployment** (`.github/workflows/pages.yml`), which **Build APK starts as its very last step**, so the website always comes after the APK, never before. To switch it on:
-1. On GitHub add the file `.github/workflows/pages.yml` (like the other workflow files it cannot come inside `update.zip`) and paste the newest `build.yml` over the old one.
+1. On GitHub add the file `.github/workflows/pages.yml` (like the other workflow files it cannot come inside `update.zip`) and paste the newest `build.yml` over the old one. Write the file name with **small letters only**: GitHub treats `Pages.yml` and `pages.yml` as two different files (a phone keyboard often makes the first letter a capital). The newest `build.yml` finds either spelling, but small letters keep everything the same as this guide.
 2. Open **Settings → Pages**. Under *Build and deployment*, set **Source** to **GitHub Actions**.
 3. Open **Actions → pages build and deployment → Run workflow** once to publish now. After that every successful **Build APK** starts it by itself.
 4. Wait a minute or two. The site is then at `https://<your-user>.github.io/<repo>/` — for this repo **https://rafikuddin.github.io/attendance/**.
 
 Good to know:
 - A GitHub Pages site is **always public**, and **everything inside `docs/` becomes public**, including `docs/screenshots`. Blur names, logos and real figures before you put a picture there. On the Free plan the repository itself must be public.
-- The page uses only the app's own screens, made-up numbers in the sample phone, and no password, key or server address.
+- The main page uses only the app's own screens, made-up numbers in the sample phone, and no password, key or server address.
 - The *Download the APK* button asks GitHub for the newest release and falls back to the Releases page if GitHub does not answer. A browser tab remembers that answer until it is closed, so open the site in a new tab to see the newest version.
+- **Build APK's summary tells you whether it worked:** *🌐 Website publish started (… found as: pages.yml)* — or a note *Could not start the website publish* when no `pages.yml` / `Pages.yml` is under `.github/workflows`. If the Actions list never shows a **pages build and deployment** run after a build, check that note and the file name first.
 - With **Source = GitHub Actions**, GitHub no longer publishes the site every time files are saved. Only `pages.yml` does, and only when **Build APK** (or you, with **Run workflow**) starts it. So the Actions list always shows **Build APK** first and **pages build and deployment** after it. A build that fails or is stopped publishes nothing. The last step of `build.yml` needs the `actions: write` line (the current file has it) and it never fails the build: if `pages.yml` is missing it only prints a note.
 - If **pages build and deployment** shows a red ✗ and says Pages is not enabled, **Source** is not yet **GitHub Actions** (step 2). The APK is never affected.
 - **Two names that look the same in the Actions list.** **pages build and deployment** (with spaces) is ours, `pages.yml`. **pages-build-deployment** (with hyphens) is GitHub's own older publisher: it starts by itself on every save for as long as **Source** is *Deploy from a branch*, and it stops once **Source** is **GitHub Actions**. After `pages.yml` has published the site, its last step (*Remove the old runs of GitHub's own publisher*) deletes the **finished** runs of that one GitHub workflow, so its second entry leaves the list. It touches no other workflow, never a run that is still going, and never fails the job (it needs the `actions: write` line, which the current `pages.yml` has). If a run cannot be removed the step says so in its summary and the run can be deleted by hand (**⋯ → Delete workflow run**).
 - To go back to the old way, set **Source** to **Deploy from a branch** (your main branch, folder **/docs**). GitHub then publishes on every save again, before the APK is ready, and `pages.yml` is not used.
 - If you rename the repository or your GitHub user name, change the address in the `<head>` of `docs/index.html` (the `canonical`, `og:url` and `og:image` lines) and the links in the page.
 - An `update.zip` that contains `docs/` also starts one APK build (harmless). Changing only `.md` files starts none.
+- **Reports in a browser (`docs/dashboard/`).** The same site has a sign-in page for reports (see *Reports in a browser* under Features). It needs three things in this order: the newest `Code.gs` pasted into Apps Script as a **New version**, the newest `worker.js` pasted into the Cloudflare Worker (keep its two secrets; it now lets browsers on `https://rafikuddin.github.io` talk to the Worker and refuses browsers on any other website; the phone app is not affected), and the website files from `update.zip`. If you rename the repository or the user, or use your own domain, change `API` at the top of `docs/dashboard/dashboard.js`, the `connect-src` line of `docs/dashboard/index.html` and `ALLOWED_ORIGINS` in `worker.js`. The page contains no secret key and no password.
 - The page is set in the free fonts **Big Shoulders** and **Work Sans** (SIL Open Font License; the licence texts sit next to the files in `docs/fonts`).
 
 ---
@@ -294,6 +299,8 @@ Workflow files (`.github/workflows/*.yml`) can't be changed by a zip — edit th
 | Pay period | `Code.gs` → `PERIOD_START_DAY` / `PERIOD_END_DAY` | 26 → 25 |
 | Weekly off | `Code.gs` → `isFridayDate` | Friday |
 | Server URL | `Api.kt` → `Config.SCRIPT_URL` | — |
+| Website sign-in: length (reports only, never renewed) · idle sign-out · on/off switch | `Code.gs` → `WEB_SESSION_HOURS` · `docs/dashboard/dashboard.js` → `IDLE_MS` · Script Property `WEB_LOGIN` (`off` = no website sign-in) | 6 hours · 15 minutes · on |
+| Websites that may call the Worker from a browser | `worker.js` → `ALLOWED_ORIGINS` | `https://rafikuddin.github.io` |
 | Short sign-in length (box unticked) | `Code.gs` → `SHORT_SESSION_HOURS` | 12 hours |
 | Minimum password length, lockout, token lifetime | `Code.gs` → `MIN_PASSWORD_LENGTH`, `MAX_FAILED_LOGINS`, `LOCKOUT_MINUTES`, `TOKEN_DAYS` | 8, 5 tries, 15 min, 30 days |
 | Shortest reason for a leave request | `Code.gs` → `MIN_REASON_LENGTH` | 3 characters (a picture is also required) |
@@ -330,6 +337,9 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 | No **Update** card on Home although I published a version | The published *build number* must be higher than the installed one (shown in Admin → App). Pull Home down to refresh it. |
 | *"App not installed as package conflicts"* when updating | The new APK was signed with a different key (for example a `…-TEMP-KEY.apk`). Add the four signing secrets, rebuild, uninstall the app once, install, and publish updates from then on. |
 | Update download fails or says *damaged* | Check the internet and tap Update again. If it keeps failing, upload the APK again from Admin → App. |
+| The website shows *Could not reach the server* but the app works | The Cloudflare Worker still has the old code. Paste the newest `worker.js` (Workers → your worker → Edit code → Deploy). It lets the project website talk to the Worker. |
+| The website says *Sign-in on the website is switched off* | The Script Property `WEB_LOGIN` is `off`. Delete it (or set anything else) to switch the website back on. |
+| The website says *Please open the SAM BOND app first* | That account must choose its own new password. Do it in the app, then sign in on the website. |
 | Someone forgot their password | Admin Panel → Users → **Reset password** (this also lifts a *too many wrong passwords* pause). |
 | The Admin Panel isn't in the 👤 menu | Their *Role* cell must say `admin`; then open or refresh Home once. |
 | Someone lost their phone | In the Apps Script editor run `revokeOneUser` (edit the username inside it first), or `revokeEveryone`. |
@@ -354,6 +364,7 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 - **Stronger admin protection (security update).** Six admin actions now need the admin's **own password**: changing who may use which menu, making a person active/inactive, posting a notice for everyone, removing a notice, and editing someone's profile or photo. After one correct password the server gives the app a short proof (15 minutes, kept only in memory, tied to that admin and that sign-in, and no other token can pass as it), so the next action does not ask again. Password hashing is now **150000 rounds** with an unpredictable salt (older hashes still work and upgrade themselves at the next sign-in; sign-in takes about a second). There are **no sample accounts**: `setup` creates none, and `makeAdmin` reads the Employee ID from the Script Property `MAKE_ADMIN_USER`.
 - **E-mail alerts.** A forgot-password code works only for the address it was mailed to (if the profile e-mail changes, the code dies). Changing the e-mail on an account mails the **old** address (the new one is shown masked); when an **admin** changes it, that person is also signed out everywhere. Five wrong passwords mail the account owner and the admins **once** per pause (at most 10 such mails an hour, none when the daily mail quota is nearly gone), and the app as a whole hands out at most 20 reset codes an hour.
 - **Optional extra locks (Script Properties).** `SHEET_ID` (move the sheet ID out of the code, then blank the constant in `Code.gs`), `APP_KEY` (the script refuses every request that does not carry `?k=<key>`; used together with the optional Cloudflare Worker `worker.js`) and `RELEASE_CERT_SHA256` (publishing an app is refused unless the APK is signed with your release key; the Executions log shows the fingerprint of the first APK you publish). The phone also deletes its **whole cache folder** at sign-out.
+- **Website sign-in (reports in a browser)** is read only and separate from the phones: its token can ask for reports and for nothing else, lasts at most 6 hours, is never renewed, and ends at *Sign out* (which does not sign out the phones), at a password change or when an admin switches the account off. The page holds no secret, keeps the token in the browser tab only, stores no report data, has a strict Content-Security-Policy and shows server text as plain text. The Worker answers browsers only for the project website's address. An admin can switch it off in a second with the Script Property `WEB_LOGIN` = `off`. Details are in `SECURITY.md`.
 - **Temporary passwords** copied in the Admin Panel are marked sensitive on Android 13+ and wiped from the clipboard after one minute.
 - **Backups are disabled** for the app, and saved data on the phone is encrypted and wiped at logout.
 - **Movement tracking is visible and limited.** Only people an admin ticked are tracked; the phone shows a permanent notification and asks the person once; points are kept only after attendance and until 6 PM (a driver: the Day End); only the person, the line managers above and admins can open them (`trackView`); rows older than 90 days are deleted. Tell your staff before you switch it on, and check what your local rules and your contracts say about location data.
@@ -375,6 +386,11 @@ The late/absent hours and pay period are also used by the app screens (Home and 
   update-wiki.yml      Unpacks an uploaded wiki zip and replaces the GitHub Wiki with it
 docs/                  The website (GitHub Pages: Settings → Pages → Source: GitHub Actions)
   index.html           One page with its own styles and script; no build step
+  dashboard/           Reports in a browser: sign in, sign out, numbers, chart, people table, calendars, Excel files
+    index.html         The page (strict Content-Security-Policy, no inline script or style)
+    dashboard.css      Styles (same colours as the app, light and dark)
+    dashboard.js       The script: talks to the Worker, shows everything as plain text
+    theme.js           Applies the saved Light / Dark choice before the page paints
   fonts/               Big Shoulders and Work Sans (WOFF) with their licence texts
   og.png               The picture shown when the website link is shared
   screenshots/         The pictures used by the README and the website

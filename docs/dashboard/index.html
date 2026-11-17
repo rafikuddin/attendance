@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · SAM BOND Reports</title>
+<meta name="description" content="Sign in to see your SAM BOND attendance reports in a browser.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src https://sambond.samuda-sales.workers.dev; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FFF1A6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2B130E" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236B352A'/%3E%3Cpath d='M8 17l5.5 5.5L24 11' fill='none' stroke='%23FFF1A6' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preload" href="../fonts/BigShoulders-Bold.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="../fonts/WorkSans-Regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="dashboard.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap top__in">
+    <a class="mark" href="../" aria-label="SAM BOND Attendance, back to the main page">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#6B352A"/><path d="M8 17l5.5 5.5L24 11" fill="none" stroke="#FFF1A6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <b>SAM BOND</b><span>Reports</span>
+    </a>
+    <span class="who" id="who" hidden></span>
+    <button class="btn btn--small" id="out" type="button" hidden>Sign out</button>
+    <button class="mode" id="mode" type="button" aria-label="Switch to the dark theme">🌙</button>
+  </div>
+</header>
+
+<main id="main">
+  <noscript><div class="wrap"><p class="notice">This page needs JavaScript to show your reports. Please turn it on and reload.</p></div></noscript>
+
+  <section class="login" id="login" aria-labelledby="loginTitle" hidden>
+    <div class="wrap">
+      <div class="login__card">
+        <h1 id="loginTitle">Sign in to your reports</h1>
+        <p class="muted">Use the same Employee ID and password as in the SAM BOND app. This page only shows reports. To check in, ask for leave or change anything, use the app.</p>
+        <form id="loginForm" autocomplete="on" novalidate>
+          <label class="field" for="user">Employee ID
+            <input id="user" name="username" type="text" inputmode="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="100" required>
+          </label>
+          <label class="field" for="pass">Password
+            <span class="pw">
+              <input id="pass" name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="200" required>
+              <button class="pw__show" id="showPass" type="button" aria-pressed="false">Show</button>
+            </span>
+          </label>
+          <p class="msg msg--err" id="loginMsg" role="alert" hidden></p>
+          <button class="btn btn--primary btn--wide" id="loginGo" type="submit">Sign in</button>
+        </form>
+        <ul class="fine">
+          <li>Forgot your password? Ask your admin to reset it, or use “Forgot password” in the app.</li>
+          <li>You are signed out after 15 minutes without use, and always after 6 hours.</li>
+          <li>Using a shared computer? Press “Sign out” when you finish.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="app" id="app" aria-label="Reports" hidden>
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <h1 id="title">Reports</h1>
+          <p class="muted" id="sub"></p>
+        </div>
+        <p class="until muted" id="until"></p>
+      </div>
+
+      <form class="controls" id="controls" novalidate>
+        <div class="seg" id="scopes" role="group" aria-label="Whose report"></div>
+        <label class="ctl">Period
+          <select id="period">
+            <option value="current">This pay period</option>
+            <option value="previous">Last pay period</option>
+            <option value="custom">Choose dates…</option>
+          </select>
+        </label>
+        <span class="dates" id="dates" hidden>
+          <label class="ctl">From <input type="date" id="from"></label>
+          <label class="ctl">To <input type="date" id="to"></label>
+        </span>
+        <button class="btn btn--primary" id="show" type="submit">Show</button>
+      </form>
+
+      <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
+
+      <div id="report" hidden>
+        <p class="range" id="range"></p>
+        <section class="card today" id="todayCard" aria-labelledby="todayTitle" hidden>
+          <h2 id="todayTitle">Today</h2>
+          <div class="today__row" id="todayRow"></div>
+          <details class="notin" id="notIn" hidden><summary id="notInSum"></summary><ul id="notInList"></ul></details>
+        </section>
+
+        <div class="kpis" id="kpis"></div>
+
+        <section class="card" id="chartCard" aria-labelledby="chartTitle" hidden>
+          <h2 id="chartTitle">Day by day</h2>
+          <ul class="legend" id="legend"></ul>
+          <div class="chartbox"><div class="chart" id="chart" role="group" aria-label="One bar for each day. Use the left and right arrow keys to move between days."></div></div>
+          <p class="readout" id="readout" aria-live="polite">Tap or point at a bar to see that day.</p>
+          <details class="daytable"><summary>Show these numbers as a table</summary><div class="tablewrap"><table id="dayTable"></table></div></details>
+        </section>
+
+        <section class="card" id="peopleCard" aria-labelledby="peopleTitle" hidden>
+          <div class="card__head">
+            <h2 id="peopleTitle">People</h2>
+            <label class="search"><span class="sr">Search people</span><input id="search" type="search" placeholder="Search name, ID or job" autocomplete="off" spellcheck="false"></label>
+          </div>
+          <div class="tablewrap"><table class="people" id="people"></table></div>
+          <p class="muted small" id="peopleNote"></p>
+          <p class="muted small swipe">Swipe the table sideways to see more columns.</p>
+          <button class="btn btn--ghost btn--small" id="more" type="button" hidden>Show everybody</button>
+        </section>
+
+        <section class="card" id="meCard" aria-labelledby="meTitle" hidden>
+          <h2 id="meTitle">Your days</h2>
+          <div id="meBody"></div>
+        </section>
+
+        <section class="card" id="dlCard" aria-labelledby="dlTitle" hidden>
+          <h2 id="dlTitle">Excel files</h2>
+          <p class="muted small" id="dlNote">The same files as in the app, for the people and dates shown above.</p>
+          <div class="dl" id="dl"></div>
+        </section>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog class="dlg" id="dlg" aria-labelledby="dlgTitle">
+  <div class="dlg__in">
+    <div class="dlg__head"><h2 id="dlgTitle"></h2><button class="btn btn--small btn--ghost" id="dlgClose" type="button">Close</button></div>
+    <div id="dlgBody"></div>
+  </div>
+</dialog>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Your sign-in stays in this browser tab only and is erased when you sign out or close the tab. Nothing from your reports is saved on this device.</p>
+    <p><a href="../">Back to the main page</a></p>
+  </div>
+</footer>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

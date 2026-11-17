@@ -163,6 +163,14 @@
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.Sam.Field.Dropdown"
+                    android:hint="Blood group" android:layout_marginTop="12dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/ddBlood"
+                        android:inputType="none"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Sam.Field.Dropdown"
                     android:hint="Designation (set by admin)" android:layout_marginTop="12dp"
                     android:layout_width="match_parent" android:layout_height="wrap_content">
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/ddDesig"

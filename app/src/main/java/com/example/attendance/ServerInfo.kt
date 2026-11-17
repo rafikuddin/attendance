@@ -7,7 +7,7 @@ package com.example.attendance
  */
 object ServerInfo {
     /** The Code.gs this app was built for. Raise it, together with SERVER_VERSION in Code.gs, whenever the app needs a newer Code.gs. */
-    const val EXPECTED = "2026-11-07.01"
+    const val EXPECTED = "2026-11-09.01"
 
     enum class State {
         /** The server did not send a version: its Code.gs is older than this feature, or the newest one was not deployed. */

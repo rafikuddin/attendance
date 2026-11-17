@@ -71,6 +71,14 @@ Only the **newest build** gets fixes. The app updates from inside: an admin publ
 - Text typed on a phone (address, hotel, reason…) is stored as plain text, so it cannot run as a spreadsheet formula.
 - Selfies and files live in Google Drive folders of the account that runs the script. The script never makes a file public.
 
+### Website sign-in (browser dashboard)
+
+- The website at `…github.io/attendance/dashboard/` signs in with the same Employee ID and password and shows **reports only**. It gets a **website-only token**: it can ask for reports and for nothing else (every other action is refused by the server, even for an admin), it lasts at most **6 hours**, is never renewed, and ends at once when the person presses *Sign out*, changes the password, or an admin switches the account off or revokes it. Signing out on the website does not sign out the phones.
+- The same lock-out as the app applies (5 wrong passwords, 15 minutes). A person who must still choose a new password cannot sign in on the website.
+- The page holds no secret. The token stays in that browser tab only and is deleted at sign-out; reports are never stored in the browser; no cookies, no tracking, no outside scripts or fonts. The page has a strict Content-Security-Policy, shows server text as plain text only and asks search engines not to list it.
+- The Cloudflare Worker answers a browser only for the project website's address (`ALLOWED_ORIGINS`) and refuses a browser on any other website. This is a courtesy against other web pages, **not** a lock: a program outside a browser can send any `Origin`. The real protection is the sign-in and the server's rules, as for the app.
+- An admin can switch website sign-in off in a second: Script Property `WEB_LOGIN` = `off`.
+
 ### App updates
 
 - Only an admin can publish an update, with their own password. Phones download it only when signed in, check its **SHA-256 fingerprint**, and Android installs it only if it carries the **same signing key** as the installed app.
@@ -137,8 +145,10 @@ You do not need to report these: they are known, and the wiki says so too.
 - **Floods:** a flood of requests can slow everyone down, because Apps Script has no per-caller limits. The optional Cloudflare front door limits requests per address.
 - **Fake GPS and old photos:** a modified app or a rooted phone can still lie about its location or send a stored photo. Only Play Integrity attestation would close this, and it is not included. Managers reviewing selfies and locations is the practical control.
 - **No biometric app lock.** R8 shrinks the app, but the app's own code is not obfuscated. Photos cached on the phone are not separately encrypted; they are deleted at sign-out.
+- **Website sign-in uses a script cache for its sign-out list.** *Sign out* on the website ends that sign-in at once, but if Google clears the script cache early the ended sign-in could work again until its 6 hours are over. Changing the password, switching the account off or `WEB_LOGIN` = `off` are not affected by this.
+- **A shared or public computer:** the website forgets everything at *Sign out* and when the tab is closed, but a program on that computer (or a person looking over the shoulder) could see the report while it is on the screen. Use your own phone or computer for reports.
 - **The face check** runs on the phone, so it is a clue for managers, not proof.
 
 ---
 
-_Last reviewed: 2 November 2026._
+_Last reviewed: 17 November 2026._

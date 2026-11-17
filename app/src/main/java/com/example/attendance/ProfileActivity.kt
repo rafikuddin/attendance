@@ -38,6 +38,8 @@ class ProfileActivity : AppCompatActivity() {
         const val EXTRA_NAME = "targetName"
         /** A line manager (allowed by an admin) looking at the profile of someone below them: nothing can be changed. */
         const val EXTRA_VIEW_ONLY = "viewOnly"
+        /** The first choice of the Blood group list: it clears the blood group. */
+        private const val NOT_SET = "Not set"
     }
     private var viewOnly = false
 
@@ -58,6 +60,7 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var etBaseName: EditText
     private lateinit var etBaseCode: EditText
     private lateinit var ddTshirt: MaterialAutoCompleteTextView
+    private lateinit var ddBlood: MaterialAutoCompleteTextView
     private lateinit var ddDesig: MaterialAutoCompleteTextView
     private lateinit var tilLaptop: TextInputLayout
     private lateinit var etLaptop: EditText
@@ -70,6 +73,7 @@ class ProfileActivity : AppCompatActivity() {
     private var bases: List<Pair<String, String>> = emptyList()      // code to name, from the server's Bases list
     private var baseCode = ""                                        // the chosen Base Code ("" = none)
     private var tshirtSizes: List<String> = listOf("S", "M", "L", "XL", "XXL", "2XL")
+    private var bloodGroups: List<String> = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
     private var designations: List<String> = listOf("Sales Officer", "Territory Sales Officer", "Zonal Manager", "Area Manager", "Regional Sales Manager",
         "Divisional Sales Manager", "Sales Manager", "Sales Admin", "Sales Operation")
     private var cameraFile: File? = null
@@ -101,7 +105,7 @@ class ProfileActivity : AppCompatActivity() {
         etOfficial = findViewById(R.id.etOfficial); etPersonal = findViewById(R.id.etPersonal); etEmail = findViewById(R.id.etEmail)
         etEmergency = findViewById(R.id.etEmergency); ddRelation = findViewById(R.id.ddRelation)
         tilOther = findViewById(R.id.tilOther); etOther = findViewById(R.id.etOther)
-        etBaseName = findViewById(R.id.etBaseName); etBaseCode = findViewById(R.id.etBaseCode); ddTshirt = findViewById(R.id.ddTshirt); ddDesig = findViewById(R.id.ddDesig)
+        etBaseName = findViewById(R.id.etBaseName); etBaseCode = findViewById(R.id.etBaseCode); ddTshirt = findViewById(R.id.ddTshirt); ddBlood = findViewById(R.id.ddBlood); ddDesig = findViewById(R.id.ddDesig)
         etBaseName.setOnClickListener { chooseBase() }
         etBike = findViewById(R.id.etBike); tilLaptop = findViewById(R.id.tilLaptop); etLaptop = findViewById(R.id.etLaptop)
         btnSave = findViewById(R.id.btnSaveProfile); btnTake = findViewById(R.id.btnTakePhoto); btnPick = findViewById(R.id.btnPickPhoto)
@@ -112,6 +116,9 @@ class ProfileActivity : AppCompatActivity() {
 
         setRelationChoices()
         setTshirtChoices()
+        setBloodChoices()
+        // The first choice, "Not set", clears the blood group again.
+        ddBlood.setOnItemClickListener { _, _, pos, _ -> if (pos == 0) ddBlood.setText("", false) }
         setDesigChoices()
         // Only an admin editing someone's profile can change the designation; everyone else just sees it.
         if (target == null || viewOnly) { ddDesig.isEnabled = false; ddDesig.setAdapter(null) }
@@ -123,7 +130,7 @@ class ProfileActivity : AppCompatActivity() {
             else cameraPermission.launch(Manifest.permission.CAMERA)
         }
         if (viewOnly) {                                   // read only: no typing, no photo change, no save
-            listOf<View>(etOfficial, etPersonal, etEmail, etEmergency, ddRelation, etOther, etBike, etLaptop, ddTshirt, ddDesig, etBaseName).forEach { it.isEnabled = false }
+            listOf<View>(etOfficial, etPersonal, etEmail, etEmergency, ddRelation, etOther, etBike, etLaptop, ddTshirt, ddBlood, ddDesig, etBaseName).forEach { it.isEnabled = false }
             btnSave.visibility = View.GONE; btnTake.visibility = View.GONE; btnPick.visibility = View.GONE
         }
         loadProfile()
@@ -151,6 +158,10 @@ class ProfileActivity : AppCompatActivity() {
 
     private fun setDesigChoices() {
         if (target != null && !viewOnly) ddDesig.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, designations))
+    }
+
+    private fun setBloodChoices() {
+        ddBlood.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, listOf(NOT_SET) + bloodGroups))
     }
 
     private fun setTshirtChoices() {
@@ -193,6 +204,9 @@ class ProfileActivity : AppCompatActivity() {
             val tl = res.optJSONArray("tshirtSizes")
             if (tl != null && tl.length() > 0) tshirtSizes = (0 until tl.length()).map { tl.getString(it) }
             setTshirtChoices()
+            val bl2 = res.optJSONArray("bloodGroups")
+            if (bl2 != null && bl2.length() > 0) bloodGroups = (0 until bl2.length()).map { bl2.getString(it) }
+            setBloodChoices()
             val dl = res.optJSONArray("designations")
             if (dl != null && dl.length() > 0) designations = (0 until dl.length()).map { dl.getString(it) }
             setDesigChoices()
@@ -206,6 +220,7 @@ class ProfileActivity : AppCompatActivity() {
                 baseCode = savedCode; etBaseName.setText(p.optString("baseName")); etBaseCode.setText(savedCode)
             } else showBase(savedCode)
             ddTshirt.setText(p.optString("tshirt"), false)
+            ddBlood.setText(p.optString("bloodGroup"), false)
             ddDesig.setText(p.optString("designation"), false)
             val rel = p.optString("relation")
             when {
@@ -236,6 +251,7 @@ class ProfileActivity : AppCompatActivity() {
             .put("email", etEmail.text.toString().trim()).put("emergencyPhone", emergency).put("relation", relation)
             .put("bike", etBike.text.toString().trim()).put("laptop", etLaptop.text.toString().trim())
             .put("baseCode", baseCode).put("tshirt", ddTshirt.text.toString().trim())
+            .put("bloodGroup", ddBlood.text.toString().trim().let { if (it == NOT_SET) "" else it })
         if (target != null && !viewOnly) body.put("designation", ddDesig.text.toString().trim())      // only an admin editing someone sends it
         btnSave.isEnabled = false
         msg("Saving...", true)
