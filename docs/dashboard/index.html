@@ -2,79 +2,88 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sign in · SAM BOND Reports</title>
 <meta name="description" content="Sign in to see your SAM BOND attendance reports in a browser.">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src https://sambond.samuda-sales.workers.dev; base-uri 'none'; form-action 'none'">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#FFF1A6" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#2B130E" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236B352A'/%3E%3Cpath d='M8 17l5.5 5.5L24 11' fill='none' stroke='%23FFF1A6' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<link rel="preload" href="../fonts/BigShoulders-Bold.woff" as="font" type="font/woff" crossorigin>
-<link rel="preload" href="../fonts/WorkSans-Regular.woff" as="font" type="font/woff" crossorigin>
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#1A0F16">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23FF6B3D'/%3E%3Cpath d='M8 17l5.5 5.5L24 11' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preload" href="../fonts/Inter-Regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="../fonts/InterDisplay-SemiBold.woff" as="font" type="font/woff" crossorigin>
 <link rel="stylesheet" href="dashboard.css">
 <script src="theme.js"></script>
 </head>
-<body>
+<body class="locked">
+
+<div class="scene" aria-hidden="true">
+  <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" focusable="false">
+    <defs>
+      <radialGradient id="sun" cx="50%" cy="50%" r="50%"><stop class="sun1" offset="0"/><stop class="sun2" offset=".55"/><stop class="sun2 fade" offset="1" stop-opacity="0"/></radialGradient>
+      <linearGradient id="fl" x1="0" y1="0" x2="0" y2="1"><stop class="flr" offset="0" stop-opacity="0"/><stop class="flr" offset="1" stop-opacity=".9"/></linearGradient>
+      <filter id="soft" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="2.2"/></filter>
+    </defs>
+    <g filter="url(#soft)">
+      <circle cx="1180" cy="330" r="250" fill="url(#sun)"/>
+      <path class="a1" d="M130 760V380a150 150 0 0 1 300 0V760Z"/>
+      <path class="a2" d="M470 760V300a150 150 0 0 1 300 0V760Z"/>
+      <path class="a3" d="M810 760V430a110 110 0 0 1 220 0V760Z"/>
+      <rect class="wd" x="1230" y="140" width="22" height="620" rx="8"/>
+      <rect class="wd" x="1390" y="140" width="22" height="620" rx="8"/>
+      <rect class="wd" x="1230" y="300" width="182" height="16" rx="6"/>
+      <rect class="wd" x="1230" y="470" width="182" height="16" rx="6"/>
+      <rect x="0" y="740" width="1600" height="160" fill="url(#fl)"/>
+    </g>
+  </svg>
+</div>
+<div class="grain" aria-hidden="true"></div>
 <a class="skip" href="#main">Skip to content</a>
 
-<header class="top">
-  <div class="wrap top__in">
-    <a class="mark" href="../" aria-label="SAM BOND Attendance, back to the main page">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#6B352A"/><path d="M8 17l5.5 5.5L24 11" fill="none" stroke="#FFF1A6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <b>SAM BOND</b><span>Reports</span>
-    </a>
-    <span class="who" id="who" hidden></span>
-    <button class="btn btn--small" id="out" type="button" hidden>Sign out</button>
-    <button class="mode" id="mode" type="button" aria-label="Switch to the dark theme">🌙</button>
-  </div>
-</header>
+<noscript><p class="banner warn nojs">This page needs JavaScript to show your reports. Please turn it on and reload.</p></noscript>
 
-<main id="main">
-  <noscript><div class="wrap"><p class="notice">This page needs JavaScript to show your reports. Please turn it on and reload.</p></div></noscript>
+<div class="app" id="app" hidden>
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
 
-  <section class="login" id="login" aria-labelledby="loginTitle" hidden>
-    <div class="wrap">
-      <div class="login__card">
-        <h1 id="loginTitle">Sign in to your reports</h1>
-        <p class="muted">Use the same Employee ID and password as in the SAM BOND app. This page only shows reports. To check in, ask for leave or change anything, use the app.</p>
-        <form id="loginForm" autocomplete="on" novalidate>
-          <label class="field" for="user">Employee ID
-            <input id="user" name="username" type="text" inputmode="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="100" required>
-          </label>
-          <label class="field" for="pass">Password
-            <span class="pw">
-              <input id="pass" name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="200" required>
-              <button class="pw__show" id="showPass" type="button" aria-pressed="false">Show</button>
-            </span>
-          </label>
-          <p class="msg msg--err" id="loginMsg" role="alert" hidden></p>
-          <button class="btn btn--primary btn--wide" id="loginGo" type="submit">Sign in</button>
-        </form>
-        <ul class="fine">
-          <li>Forgot your password? Ask your admin to reset it, or use “Forgot password” in the app.</li>
-          <li>You are signed out after 15 minutes without use, and always after 6 hours.</li>
-          <li>Using a shared computer? Press “Sign out” when you finish.</li>
-        </ul>
+  <aside class="side glass" id="side" aria-label="Menu">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 17l5.5 5.5L24 11" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><b>SAM BOND</b><small>Reports</small></div>
+      <em>WEB</em>
+      <button class="ib cls" id="navx" type="button" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <nav class="menu" id="menu" aria-label="Whose report">
+      <span class="pill" id="pill" aria-hidden="true"></span>
+      <div class="msec">Reports</div>
+      <div id="scopes" role="group" aria-label="Whose report"></div>
+    </nav>
+    <div class="side-foot">
+      <div class="pace" id="pace">
+        <div class="r1"><span>Session</span><b id="paceT"></b></div>
+        <div class="bar"><i id="paceBar"></i></div>
+        <div id="until"></div>
+      </div>
+      <div class="who"><span class="av" id="av" aria-hidden="true"></span><div><b id="who"></b><small id="whoRole"></small></div></div>
+      <div class="sobs">
+        <button class="sob" id="mode2" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg><span>Theme</span></button>
+        <button class="sob" id="out2" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H9M15 8l4 4-4 4M19 12H9"/></svg><span>Sign out</span></button>
       </div>
     </div>
-  </section>
+  </aside>
 
-  <section class="app" id="app" aria-label="Reports" hidden>
-    <div class="wrap">
-      <div class="head">
-        <div>
-          <h1 id="title">Reports</h1>
-          <p class="muted" id="sub"></p>
-        </div>
-        <p class="until muted" id="until"></p>
-      </div>
+  <main class="wrap" id="main">
+    <div class="stage">
+      <header class="bar-top glass">
+        <button class="ib mnu" id="mnu" type="button" aria-label="Open menu" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="tt"><h1 id="title">Reports</h1><p id="sub"></p></div>
+        <button class="ib" id="mode" type="button" aria-label="Switch to the light theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg></button>
+        <button class="cta" id="refresh" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.7-6"/><path d="M20.5 4v4.8h-4.8"/></svg><span>Refresh</span></button>
+        <button class="ib keep" id="out" type="button" aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H9M15 8l4 4-4 4M19 12H9"/></svg></button>
+      </header>
 
-      <form class="controls" id="controls" novalidate>
-        <div class="seg" id="scopes" role="group" aria-label="Whose report"></div>
-        <label class="ctl">Period
+      <form class="fbar glass" id="controls" novalidate>
+        <label class="fl"><span>Period</span>
           <select id="period">
             <option value="current">This pay period</option>
             <option value="previous">Last pay period</option>
@@ -82,71 +91,120 @@
           </select>
         </label>
         <span class="dates" id="dates" hidden>
-          <label class="ctl">From <input type="date" id="from"></label>
-          <label class="ctl">To <input type="date" id="to"></label>
+          <label class="fl"><span>From</span><input type="date" id="from"></label>
+          <label class="fl"><span>To</span><input type="date" id="to"></label>
         </span>
-        <button class="btn btn--primary" id="show" type="submit">Show</button>
+        <button class="frs" id="show" type="submit">Show</button>
+        <p class="fsum" id="range"></p>
       </form>
 
-      <p class="msg" id="msg" role="status" aria-live="polite" hidden></p>
+      <p class="banner note" id="msg" role="status" aria-live="polite" hidden></p>
 
-      <div id="report" hidden>
-        <p class="range" id="range"></p>
-        <section class="card today" id="todayCard" aria-labelledby="todayTitle" hidden>
-          <h2 id="todayTitle">Today</h2>
-          <div class="today__row" id="todayRow"></div>
+      <div class="rep" id="report" hidden>
+        <div class="tiles" id="kpis"></div>
+        <div class="tiles auto" id="kpis2"></div>
+
+        <section class="glass card panel" id="todayCard" aria-labelledby="todayTitle" hidden data-rise>
+          <div class="ph"><h2 id="todayTitle">Today</h2><small id="todayDate"></small></div>
+          <div class="today" id="todayRow"></div>
           <details class="notin" id="notIn" hidden><summary id="notInSum"></summary><ul id="notInList"></ul></details>
         </section>
 
-        <div class="kpis" id="kpis"></div>
-
-        <section class="card" id="chartCard" aria-labelledby="chartTitle" hidden>
-          <h2 id="chartTitle">Day by day</h2>
-          <ul class="legend" id="legend"></ul>
-          <div class="chartbox"><div class="chart" id="chart" role="group" aria-label="One bar for each day. Use the left and right arrow keys to move between days."></div></div>
-          <p class="readout" id="readout" aria-live="polite">Tap or point at a bar to see that day.</p>
-          <details class="daytable"><summary>Show these numbers as a table</summary><div class="tablewrap"><table id="dayTable"></table></div></details>
+        <section class="glass card panel" id="chartCard" aria-labelledby="chartTitle" hidden data-rise>
+          <div class="ph"><h2 id="chartTitle">Day by day</h2><small>One bar for each day</small></div>
+          <ul class="lg2" id="legend"></ul>
+          <div class="chart" id="chart" tabindex="0" role="group" aria-label="Day by day bars. Use the left and right arrow keys to move between days."></div>
+          <p class="note" id="readout" aria-live="polite">Tap or point at a bar to see that day.</p>
+          <details class="daytable"><summary>Show these numbers as a table</summary><div class="tw"><table class="t" id="dayTable"></table></div></details>
         </section>
 
-        <section class="card" id="peopleCard" aria-labelledby="peopleTitle" hidden>
-          <div class="card__head">
-            <h2 id="peopleTitle">People</h2>
-            <label class="search"><span class="sr">Search people</span><input id="search" type="search" placeholder="Search name, ID or job" autocomplete="off" spellcheck="false"></label>
+        <section class="glass card panel" id="peopleCard" aria-labelledby="peopleTitle" hidden data-rise>
+          <div class="ph"><h2 id="peopleTitle">People</h2>
+            <label class="psearch"><span class="sr">Search people</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+              <input id="search" type="search" placeholder="Search name, ID or job" autocomplete="off" spellcheck="false"></label>
           </div>
-          <div class="tablewrap"><table class="people" id="people"></table></div>
-          <p class="muted small" id="peopleNote"></p>
-          <p class="muted small swipe">Swipe the table sideways to see more columns.</p>
-          <button class="btn btn--ghost btn--small" id="more" type="button" hidden>Show everybody</button>
+          <div class="tw"><table class="t people" id="people"></table></div>
+          <p class="note" id="peopleNote"></p>
+          <p class="note swipe">Swipe the table sideways to see more columns.</p>
+          <button class="btn alt" id="more" type="button" hidden>Show everybody</button>
         </section>
 
-        <section class="card" id="meCard" aria-labelledby="meTitle" hidden>
+        <section class="glass card panel" id="meCard" aria-labelledby="meTitle" hidden data-rise>
           <h2 id="meTitle">Your days</h2>
           <div id="meBody"></div>
         </section>
 
-        <section class="card" id="dlCard" aria-labelledby="dlTitle" hidden>
+        <section class="glass card panel" id="dlCard" aria-labelledby="dlTitle" hidden data-rise>
           <h2 id="dlTitle">Excel files</h2>
-          <p class="muted small" id="dlNote">The same files as in the app, for the people and dates shown above.</p>
+          <p class="note" id="dlNote">The same files as in the app, for the people and dates shown above.</p>
           <div class="dl" id="dl"></div>
         </section>
+
+        <footer class="foot" data-rise><span>Your sign-in stays in this browser tab only and is erased when you sign out or close the tab. Nothing from your reports is saved on this device.</span><span><a href="../">Main page</a> · Set in Inter (<a href="../fonts/Inter-OFL.txt">licence</a>)</span></footer>
       </div>
     </div>
-  </section>
-</main>
+  </main>
+</div>
 
-<dialog class="dlg" id="dlg" aria-labelledby="dlgTitle">
+<dialog class="dlg glass" id="dlg" aria-labelledby="dlgTitle">
   <div class="dlg__in">
-    <div class="dlg__head"><h2 id="dlgTitle"></h2><button class="btn btn--small btn--ghost" id="dlgClose" type="button">Close</button></div>
+    <button class="ib x" id="dlgClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="ush"><span class="av" id="dlgAv" aria-hidden="true"></span><div><h2 id="dlgTitle"></h2><small id="dlgSub"></small></div></div>
     <div id="dlgBody"></div>
   </div>
 </dialog>
 
-<footer class="foot">
-  <div class="wrap">
-    <p>Your sign-in stays in this browser tab only and is erased when you sign out or close the tab. Nothing from your reports is saved on this device.</p>
-    <p><a href="../">Back to the main page</a></p>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="lgn" id="login" hidden>
+  <div class="lgc" id="lgc">
+    <svg class="msc" id="msc" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+      <defs>
+        <clipPath id="mclip"><circle cx="100" cy="100" r="96"/></clipPath>
+        <linearGradient id="mbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A3550"/><stop offset="1" stop-color="#2A1F30"/></linearGradient>
+        <linearGradient id="mbd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC08A"/><stop offset=".55" stop-color="#FF8A4F"/><stop offset="1" stop-color="#F0561F"/></linearGradient>
+        <linearGradient id="mhd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB27C"/><stop offset="1" stop-color="#F26A2E"/></linearGradient>
+      </defs>
+      <circle cx="100" cy="100" r="96" fill="url(#mbg)"/>
+      <g clip-path="url(#mclip)">
+        <g id="mBody">
+          <path d="M100 24C100 24 42 92 42 134a58 58 0 0 0 116 0C158 92 100 24 100 24Z" fill="url(#mbd)"/>
+          <path d="M92 52C80 68 62 96 58 118" fill="none" stroke="#FFE3C8" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+          <g id="mFace">
+            <circle cx="66" cy="146" r="8" fill="#FF5C7A" opacity=".35"/><circle cx="134" cy="146" r="8" fill="#FF5C7A" opacity=".35"/>
+            <g class="eye"><ellipse cx="80" cy="128" rx="14" ry="16" fill="#fff"/><ellipse cx="120" cy="128" rx="14" ry="16" fill="#fff"/>
+              <g id="mPup"><circle cx="80" cy="129" r="7" fill="#2A1A22"/><circle cx="120" cy="129" r="7" fill="#2A1A22"/><circle cx="82.5" cy="126" r="2.2" fill="#fff"/><circle cx="122.5" cy="126" r="2.2" fill="#fff"/></g>
+            </g>
+            <path d="M68 107q11-7 22-2" fill="none" stroke="#B8401A" stroke-width="3.2" stroke-linecap="round"/>
+            <path d="M110 105q11-5 22 2" fill="none" stroke="#B8401A" stroke-width="3.2" stroke-linecap="round"/>
+            <path id="mMouth" d="M88 152Q100 163 112 152" fill="none" stroke="#7A2A12" stroke-width="3.6" stroke-linecap="round"/>
+          </g>
+        </g>
+        <g class="arm" id="mArmL"><path d="M34 214C36 180 52 150 76 132" fill="none" stroke="url(#mhd)" stroke-width="22" stroke-linecap="round"/><ellipse cx="79" cy="128" rx="20" ry="18" fill="url(#mhd)" stroke="#D9521F" stroke-width="1.5"/><path d="M71 116v9M79 114v10M87 116v9" stroke="#D9521F" stroke-width="2" stroke-linecap="round"/></g>
+        <g class="arm" id="mArmR"><path d="M166 214C164 180 148 150 124 132" fill="none" stroke="url(#mhd)" stroke-width="22" stroke-linecap="round"/><ellipse cx="121" cy="128" rx="20" ry="18" fill="url(#mhd)" stroke="#D9521F" stroke-width="1.5"/><path d="M113 116v9M121 114v10M129 116v9" stroke="#D9521F" stroke-width="2" stroke-linecap="round"/></g>
+      </g>
+      <circle cx="100" cy="100" r="95" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2"/>
+    </svg>
+    <h1 id="loginTitle">SAM BOND Reports</h1>
+    <p class="lsub">Sign in with your Employee ID to read your reports</p>
+    <form id="loginForm" autocomplete="on" novalidate>
+      <div class="lgf"><label for="user">Employee ID</label>
+        <div class="lgi"><input id="user" name="username" type="text" inputmode="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="100" required></div></div>
+      <div class="lgf"><label for="pass">Password</label>
+        <div class="lgi"><input class="pw" id="pass" name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="200" required>
+          <button type="button" id="showPass" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+      <button class="lgb" id="loginGo" type="submit">Sign in</button>
+      <p class="lgm" id="loginMsg" role="alert" aria-live="assertive" hidden></p>
+    </form>
+    <ul class="lgnotes">
+      <li>Read only. To check in, ask for leave or change anything, use the app.</li>
+      <li>Signed out after 15 minutes without use, and always after 6 hours.</li>
+      <li>Forgot your password? Ask your admin, or use “Forgot password” in the app.</li>
+    </ul>
+    <p class="lgt"><a href="../">Back to the main page</a></p>
   </div>
-</footer>
+</div>
 
 <script src="dashboard.js"></script>
 </body>

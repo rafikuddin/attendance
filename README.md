@@ -109,7 +109,7 @@ Real screens from the app (Dark theme; Light uses the same layout on butter and 
   Every field is optional (an emergency phone and its relation go together). Phone numbers are checked (digits, 8–15, optional `+`) and email addresses too. Only you can change your own profile.
 - **Calendar** — the pay period (26th–25th) at a glance: present, late, leave, Friday off, 🎉 holidays, absent, and 🌙 night-hold days. Tap any date for details, including that day's night-hold status.
 
-- **🌐 Reports in a browser** — on the project website (**Sign in** at the top, or `…/attendance/dashboard/`) people sign in with the same Employee ID and password and read their reports on a phone or a computer: the **Numbers** (present, late, leave, absent, day off, night holds, driver km), a calendar of every day with the check-in times, and the Excel files. A manager also sees **My team** and an admin **Everyone**: a *Today* strip (who is in, late, on leave, not in), a day-by-day chart, and a people table that can be sorted and searched, where a name opens that person's calendar. It is **read only**: nothing can be changed from the website. The sign-in lasts 6 hours at most, ends after 15 minutes without use, and *Sign out* on the website never signs out the phones. An admin can switch it off with the Script Property `WEB_LOGIN` = `off`. Needs `Code.gs` `2026-11-17.01`, the newest `worker.js` and the website files; see **Website** under *Setup* and the wiki page *Website Dashboard*.
+- **🌐 Reports in a browser** — on the project website (**Sign in** at the top, or `…/attendance/dashboard/`) people sign in with the same Employee ID and password and read their reports on a phone or a computer, in a dark *glass* look (a side menu that becomes a drawer on a phone, number tiles with rings, a day-by-day chart, and a small drop on the sign-in page that covers its eyes while you type your password): the **Numbers** (present, late, leave, absent, day off, night holds, driver km), a calendar of every day with the check-in times, and the Excel files. A manager also sees **My team** and an admin **Everyone**: a *Today* strip (who is in, late, on leave, not in), a day-by-day chart, and a people table that can be sorted and searched, where a name opens that person's calendar. It is **read only**: nothing can be changed from the website. The sign-in lasts 6 hours at most, ends after 15 minutes without use, and *Sign out* on the website never signs out the phones. An admin can switch it off with the Script Property `WEB_LOGIN` = `off`. Needs `Code.gs` `2026-11-17.01`, the newest `worker.js` and the website files; see **Website** under *Setup* and the wiki page *Website Dashboard*.
 
 ### For managers
 - **Team notices** — on the Notices screen a manager has **✍️ Post a notice**: a title, a message and how many days to show it. It is visible to **that manager and everyone below them** only (not to their own boss or other teams), and only the manager who wrote it can remove it. Ordinary staff cannot post. Admins still post notices for everyone from the Admin Panel.
@@ -245,7 +245,8 @@ Good to know:
 - If you rename the repository or your GitHub user name, change the address in the `<head>` of `docs/index.html` (the `canonical`, `og:url` and `og:image` lines) and the links in the page.
 - An `update.zip` that contains `docs/` also starts one APK build (harmless). Changing only `.md` files starts none.
 - **Reports in a browser (`docs/dashboard/`).** The same site has a sign-in page for reports (see *Reports in a browser* under Features). It needs three things in this order: the newest `Code.gs` pasted into Apps Script as a **New version**, the newest `worker.js` pasted into the Cloudflare Worker (keep its two secrets; it now lets browsers on `https://rafikuddin.github.io` talk to the Worker and refuses browsers on any other website; the phone app is not affected), and the website files from `update.zip`. If you rename the repository or the user, or use your own domain, change `API` at the top of `docs/dashboard/dashboard.js`, the `connect-src` line of `docs/dashboard/index.html` and `ALLOWED_ORIGINS` in `worker.js`. The page contains no secret key and no password.
-- The page is set in the free fonts **Big Shoulders** and **Work Sans** (SIL Open Font License; the licence texts sit next to the files in `docs/fonts`).
+- The main page is set in the free fonts **Big Shoulders** and **Work Sans**; the reports page (`docs/dashboard/`) is set in **Inter** and **Inter Display** (all SIL Open Font License; the licence texts sit next to the files in `docs/fonts`, Inter's is `Inter-OFL.txt`). The fonts are part of the site: nothing is loaded from another address.
+- The reports page has its own look: dark liquid-glass panels over a warm scene with an orange accent (from the *Samuda Growth Hub* design file). The main page keeps Clay Brown + Soft Butter. The sun / moon button switches the scene between dark and light; the choice is the same as on the main page. The look is in `docs/dashboard/dashboard.css` (colours at the top, in `:root`); the scene is drawn in `docs/dashboard/index.html`.
 
 ---
 
@@ -337,7 +338,7 @@ The late/absent hours and pay period are also used by the app screens (Home and 
 | No **Update** card on Home although I published a version | The published *build number* must be higher than the installed one (shown in Admin → App). Pull Home down to refresh it. |
 | *"App not installed as package conflicts"* when updating | The new APK was signed with a different key (for example a `…-TEMP-KEY.apk`). Add the four signing secrets, rebuild, uninstall the app once, install, and publish updates from then on. |
 | Update download fails or says *damaged* | Check the internet and tap Update again. If it keeps failing, upload the APK again from Admin → App. |
-| The website shows *Could not reach the server* but the app works | The Cloudflare Worker still has the old code. Paste the newest `worker.js` (Workers → your worker → Edit code → Deploy). It lets the project website talk to the Worker. |
+| The website says *The server answered, but it does not let this website read the answer yet* | The Cloudflare Worker still has the old code. Paste the newest `worker.js` (Workers → your worker → Edit code → Deploy). It lets the project website talk to the Worker. *Could not reach the server* alone means the internet is down or the Worker address is wrong. |
 | The website says *Sign-in on the website is switched off* | The Script Property `WEB_LOGIN` is `off`. Delete it (or set anything else) to switch the website back on. |
 | The website says *Please open the SAM BOND app first* | That account must choose its own new password. Do it in the app, then sign in on the website. |
 | Someone forgot their password | Admin Panel → Users → **Reset password** (this also lifts a *too many wrong passwords* pause). |
@@ -388,10 +389,10 @@ docs/                  The website (GitHub Pages: Settings → Pages → Source:
   index.html           One page with its own styles and script; no build step
   dashboard/           Reports in a browser: sign in, sign out, numbers, chart, people table, calendars, Excel files
     index.html         The page (strict Content-Security-Policy, no inline script or style)
-    dashboard.css      Styles (same colours as the app, light and dark)
+    dashboard.css      Styles (dark glass look, orange accent; light and dark scene)
     dashboard.js       The script: talks to the Worker, shows everything as plain text
     theme.js           Applies the saved Light / Dark choice before the page paints
-  fonts/               Big Shoulders and Work Sans (WOFF) with their licence texts
+  fonts/               Big Shoulders, Work Sans, Inter and Inter Display (WOFF) with their licence texts
   og.png               The picture shown when the website link is shared
   screenshots/         The pictures used by the README and the website
   .nojekyll            Tells GitHub Pages to publish the folder as it is
