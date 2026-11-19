@@ -185,7 +185,10 @@ body.locked .app{visibility:hidden}
 .ph small{font-size:11px;color:var(--faint)}
 .note{margin:2px 0 0;font-size:11px;line-height:1.5;color:var(--faint)}
 .today{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px}
-.today div{display:flex;flex-direction:column;gap:2px;padding:11px 13px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:11.5px;color:var(--mut)}
+.today div,.today .tbtn{display:flex;flex-direction:column;gap:2px;padding:11px 13px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:11.5px;color:var(--mut)}
+.today .tbtn{box-sizing:border-box;margin:0;font-family:inherit;text-align:left;cursor:pointer;transition:background-color .15s,transform .25s cubic-bezier(.16,1,.3,1)}
+.today .tbtn:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)}
+.today .tbtn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
 .today b{font:600 26px/1.1 var(--f-display);color:var(--ink);font-variant-numeric:tabular-nums}
 .notin summary,.daytable summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--mut);padding:2px 0}
 .notin summary:hover,.daytable summary:hover{color:var(--ink)}
@@ -204,7 +207,7 @@ body.locked .app{visibility:hidden}
 .chart .gl{stroke:var(--line);stroke-width:1;stroke-dasharray:2 5}
 .chart .seg{transform-box:fill-box;transform-origin:50% 100%}
 .seg.s-in{fill:var(--good)} .seg.s-late{fill:var(--late)} .seg.s-leave{fill:var(--leave)} .seg.s-abs{fill:var(--bad)} .seg.s-off{fill:var(--na);opacity:.45}
-.chart .hit{fill:transparent;cursor:crosshair}
+.chart .hit{fill:transparent;cursor:pointer}
 .chart .hl{fill:#fff;opacity:0;transition:opacity .15s;pointer-events:none}
 .chart .hit:hover+.hl,.chart .hl.on{opacity:.08}
 .tip{position:absolute;z-index:3;pointer-events:none;background:var(--tip-bg);color:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 11px;font-size:11.5px;line-height:1.5;white-space:nowrap;opacity:0;transform:translateY(4px);transition:opacity .14s,transform .14s;box-shadow:0 10px 26px rgba(0,0,0,.4);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
@@ -451,3 +454,39 @@ dialog.pwd{width:min(420px,calc(100% - 24px))}
   .asec>.btn{align-self:stretch}
   .tick{grid-template-columns:minmax(0,1fr)}
 }
+
+/* ---------- details: press a number tile, a day bar or a name ---------- */
+.tile.click{cursor:pointer}
+.tilebtn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;border-radius:8px;flex:1 1 auto;min-width:0}
+.tilebtn::after{content:"";position:absolute;inset:0;border-radius:inherit;z-index:1}
+.tilebtn:focus-visible{outline:0}
+.tilebtn:focus-visible::after{outline:2px solid var(--accent2);outline-offset:2px;border-radius:24px}
+.tilebtn svg{width:13px;height:13px;margin-left:auto;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;opacity:.55;transition:transform .25s cubic-bezier(.16,1,.3,1),opacity .2s}
+.tile.click:hover .tilebtn svg,.tilebtn:focus-visible svg{opacity:1;transform:translateX(3px)}
+.tile.click .spw{position:relative;z-index:2}
+.dmore{display:inline-block;margin:2px 0 4px;font-size:12.5px}
+.dback{display:inline-flex;align-items:center;gap:4px;margin:0 0 10px;font-size:12.5px}
+.dback svg,.dnav svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.dnav{display:flex;justify-content:space-between;gap:12px;margin:0 0 10px}
+.dnav .lnk{display:inline-flex;align-items:center;gap:4px;font-size:12.5px}
+.dnav .lnk[disabled]{opacity:.35;cursor:default;pointer-events:none}
+.dlist{list-style:none;margin:6px 0 14px;padding:0;display:flex;flex-direction:column;gap:2px}
+.drow{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:11px;width:100%;padding:8px 10px;border-radius:14px;color:var(--ink);cursor:pointer;transition:background-color .15s}
+.drow:hover{background:rgba(255,255,255,.07)}
+.drow:focus-visible{outline:2px solid var(--accent2);outline-offset:1px}
+.drow.static{cursor:default;border-bottom:1px solid var(--line);border-radius:0}
+.drow.static:hover{background:none}
+.drow .av{width:30px;height:30px;font-size:11px}
+.drow .dn{flex:1 1 auto;min-width:0;font-weight:600;font-size:13px;line-height:1.25;overflow-wrap:anywhere}
+.drow .dn small{display:block;margin-top:2px;font-weight:400;font-size:11px;color:var(--faint);overflow-wrap:anywhere}
+.drow .dc{flex:none;display:flex;flex-direction:column;align-items:flex-end;text-align:right;font-variant-numeric:tabular-nums;max-width:45%}
+.drow .dc b{font:600 15px/1.2 var(--f-display);overflow-wrap:anywhere}
+.drow .dc small{font-size:10.5px;color:var(--faint);line-height:1.3}
+.dgrp{margin:0 0 4px}
+.dgrp h3,.dgrp summary{display:flex;align-items:center;gap:8px;margin:8px 0 0;font:600 10.5px/1.25 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--mut);cursor:default}
+.dgrp summary{cursor:pointer}
+.dgrp summary:focus-visible{outline:2px solid var(--accent2);outline-offset:2px;border-radius:6px}
+.dgrp .ct{margin-left:2px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--ink);letter-spacing:0}
+#dlgTitle:focus{outline:0}
+@media (prefers-reduced-motion: reduce){.tilebtn svg,.today .tbtn{transition:none}.today .tbtn:hover{transform:none}}
+@media (max-width:520px){.drow .dc{max-width:42%}.dnav{gap:6px}}

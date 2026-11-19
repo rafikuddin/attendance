@@ -56,7 +56,9 @@
     team: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM2.5 20a6.5 6.5 0 0 1 13 0M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14a6 6 0 0 1 3.5 6',
     all: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
     down: 'M12 4v11M7 11l5 5 5-5M5 20h14',
-    moon: 'M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z'
+    moon: 'M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z',
+    go: 'M9 6l6 6-6 6',
+    back: 'M15 6l-6 6 6 6'
   };
   function icon(d) { return s('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' }, [s('path', { d: d })]); }
   function iconSun() {
@@ -166,7 +168,7 @@
   var el = {};
   ['login', 'lgc', 'msc', 'mMouth', 'loginForm', 'loginMsg', 'loginGo', 'user', 'pass', 'showPass', 'app', 'side', 'scrim', 'mnu', 'navx', 'menu', 'pill', 'who', 'whoRole', 'av', 'out', 'out2', 'mode', 'mode2',
    'title', 'sub', 'until', 'paceT', 'paceBar', 'controls', 'scopes', 'period', 'dates', 'from', 'to', 'show', 'refresh', 'msg', 'toast',
-   'report', 'range', 'todayCard', 'todayDate', 'todayRow', 'notIn', 'notInSum', 'notInList', 'kpis', 'kpis2', 'chartCard', 'legend', 'chart', 'readout', 'dayTable',
+   'report', 'range', 'todayCard', 'todayDate', 'todayRow', 'notIn', 'notInSum', 'notInList', 'kpis', 'kpis2', 'chartCard', 'legend', 'chart', 'readout', 'dayMore', 'dayTable',
    'peopleCard', 'search', 'people', 'peopleNote', 'more', 'meCard', 'meTitle', 'meBody', 'dlCard', 'dl', 'dlg', 'dlgAv', 'dlgTitle', 'dlgSub', 'dlgBody', 'dlgClose',
    'adminNav', 'adminItems', 'adminView', 'adDlg', 'adClose', 'adAv', 'adTitle', 'adSub', 'adBody', 'pwDlg', 'pwForm', 'pwClose', 'pwTitle', 'pwSub', 'pwText', 'pwInput', 'pwMsg', 'pwCancel', 'pwGo', 'pwGoText'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
@@ -503,6 +505,7 @@
     el.from.max = d.today; el.to.max = d.today;
     var daily = S.daily = dailyCounts(d);
     S.sel = -1;
+    try { if (el.dlg.open) el.dlg.close(); } catch (e) { /* not open */ }
     renderToday(d, daily, many);
     renderKpis(d, daily, many);
     show(el.chartCard, many); if (many) renderChart(d, daily, true);
@@ -527,7 +530,7 @@
     clear(el.todayRow);
     [['In', c.in + c.late], ['Late', c.late], ['On leave', c.leave], ['Not in yet', c.pend], ['Absent', c.abs], ['Day off', c.off]].forEach(function (x) {
       if ((x[0] === 'Not in yet' || x[0] === 'Day off') && !x[1]) return;
-      el.todayRow.appendChild(h('div', null, [h('b', { text: String(x[1]) }), x[0]]));
+      el.todayRow.appendChild(h('button', { type: 'button', class: 'tbtn', title: 'Show who', onclick: function () { openDay(i); } }, [h('b', { text: String(x[1]) }), x[0]]));
     });
     var names = d.people.filter(function (p) { var k = p.days.charAt(i); return k === 'A' || k === 'N'; });
     show(el.notIn, names.length > 0);
@@ -561,8 +564,11 @@
       o.chip ? h('span', { class: 'chip ' + o.chip[0], text: o.chip[1] }) : null
     ]);
     var row = h('div', { class: 'trow' }, [main, o.share === null || o.share === undefined ? null : ring(o.share, o.inner, o.shareLabel)]);
-    return h('article', { class: 'glass card lift tile kpi k-' + o.kind + (o.hero ? ' hero' : ''), 'data-rise': true }, [
-      h('h3', null, [h('i', { 'aria-hidden': 'true' }), h('span', { text: o.label })]), row, o.spark || null]);
+    var label = h('span', { text: o.label });
+    var head = h('h3', null, [h('i', { 'aria-hidden': 'true' }), o.go
+      ? h('button', { type: 'button', class: 'tilebtn', 'aria-label': o.label + ', ' + o.value + (o.unit ? ' ' + o.unit : '') + '. Show details', onclick: o.go }, [label, icon(ICON.go)])
+      : label]);
+    return h('article', { class: 'glass card lift tile kpi k-' + o.kind + (o.hero ? ' hero' : '') + (o.go ? ' click' : ''), 'data-rise': true }, [head, row, o.spark || null]);
   }
   function ratio(a, b) { return b > 0 ? Math.max(0, Math.min(1, a / b)) : null; }
 
@@ -570,16 +576,17 @@
     var t = d.totals, unit = many ? 'person-days' : 'days';
     var present = num(t.present), late = num(t.late), leave = num(t.leave), absent = num(t.absent), off = num(t.off), pending = num(t.pending);
     var base = present + leave + absent + pending;
+    var go = function (key, n, alone) { return n > 0 && (many || !alone) ? function () { openKind(key); } : null; };   // a tile with nothing behind it is not a button
     clear(el.kpis); clear(el.kpis2);
     el.kpis.appendChild(tile({ kind: 'in', label: 'Present', value: present, unit: 'days', sub: many ? 'person-days' : '', share: ratio(present, base), inner: present > 0 ? Math.max(0, present - late) / present : 0,
-      shareLabel: 'of counted days (outer ring), on time (inner ring)', hero: true, chip: present > 0 ? ['up', Math.max(0, present - late) + ' on time'] : null, spark: many ? spark(d, daily) : null }));
-    el.kpis.appendChild(tile({ kind: 'late', label: 'Late', value: late, sub: 'inside Present', share: ratio(late, present), shareLabel: 'of present days' }));
-    el.kpis.appendChild(tile({ kind: 'leave', label: 'Leave', value: leave, sub: unit, share: ratio(leave, base), shareLabel: 'of counted days' }));
-    el.kpis.appendChild(tile({ kind: 'abs', label: 'Absent', value: absent, sub: unit, share: ratio(absent, base), shareLabel: 'of counted days' }));
-    el.kpis.appendChild(tile({ kind: 'off', label: 'Day off', value: off, sub: 'Fridays and holidays', share: ratio(off, base + off), shareLabel: 'of all days' }));
-    el.kpis2.appendChild(tile({ kind: 'gen', label: 'Night holds', value: num(t.nights) }));
-    if (num(t.km) > 0) el.kpis2.appendChild(tile({ kind: 'gen', label: 'Driver km', value: Math.round(t.km), unit: 'km' }));
-    if (pending > 0) el.kpis2.appendChild(tile({ kind: 'gen', label: 'Pending', value: pending, sub: 'today is not over' }));
+      shareLabel: 'of counted days (outer ring), on time (inner ring)', hero: true, go: go('in', present), chip: present > 0 ? ['up', Math.max(0, present - late) + ' on time'] : null, spark: many ? spark(d, daily) : null }));
+    el.kpis.appendChild(tile({ kind: 'late', label: 'Late', value: late, sub: 'inside Present', share: ratio(late, present), shareLabel: 'of present days', go: go('late', late) }));
+    el.kpis.appendChild(tile({ kind: 'leave', label: 'Leave', value: leave, sub: unit, share: ratio(leave, base), shareLabel: 'of counted days', go: go('leave', leave) }));
+    el.kpis.appendChild(tile({ kind: 'abs', label: 'Absent', value: absent, sub: unit, share: ratio(absent, base), shareLabel: 'of counted days', go: go('abs', absent) }));
+    el.kpis.appendChild(tile({ kind: 'off', label: 'Day off', value: off, sub: 'Fridays and holidays', share: ratio(off, base + off), shareLabel: 'of all days', go: go('off', off) }));
+    el.kpis2.appendChild(tile({ kind: 'gen', label: 'Night holds', value: num(t.nights), go: go('nights', num(t.nights), true) }));
+    if (num(t.km) > 0) el.kpis2.appendChild(tile({ kind: 'gen', label: 'Driver km', value: Math.round(t.km), unit: 'km', go: go('km', Math.round(t.km), true) }));
+    if (pending > 0) el.kpis2.appendChild(tile({ kind: 'gen', label: 'Pending', value: pending, sub: 'today is not over', go: go('pend', pending) }));
   }
 
   /* a small line of present people for each counted day: point or tap to read a day */
@@ -675,7 +682,7 @@
       var hl = s('rect', { class: 'hl', x: m.l + band * i, y: m.t, width: band, height: ih, rx: 6 });
       hls.push(hl);
       hit.addEventListener('pointerenter', function () { pick(i); });
-      hit.addEventListener('click', function () { pick(i); });
+      hit.addEventListener('click', function () { pick(i); openDay(i); });
       svg.appendChild(hit); svg.appendChild(hl);
     });
     svg.addEventListener('pointerleave', function () { tip.classList.remove('show'); });
@@ -695,12 +702,13 @@
         });
       }
       tip.classList.add('show');
+      el.dayMore.textContent = 'Show who: ' + withDay(date); show(el.dayMore, true);
       var left = cx > W * .6 ? cx - tip.offsetWidth - 10 : cx + 10;
       tip.style.left = Math.max(0, left) + 'px'; tip.style.top = Math.max(0, m.t + 6) + 'px';
     }
     S.pick = pick;
     if (S.sel >= 0 && S.sel < n) { hls[S.sel].setAttribute('class', 'hl on'); }
-    else el.readout.textContent = 'Each bar is one day. Tap or point at a bar to see that day. The tallest bar is ' + plural(max, 'person', 'people') + '.';
+    else { el.readout.textContent = 'Each bar is one day. Point at a bar to see that day, press it to see who. The tallest bar is ' + plural(max, 'person', 'people') + '.'; show(el.dayMore, false); }
   }
 
   function startDay() { var n = S.data.dates.length, i = Math.max(0, S.data.dates.indexOf(S.data.today)); return i >= n ? n - 1 : i; }
@@ -711,6 +719,7 @@
   el.chart.addEventListener('keydown', function (ev) {
     if (!S.data || !S.pick) return;
     var n = S.data.dates.length, cur = S.sel >= 0 ? S.sel : startDay();
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); S.pick(cur); openDay(cur); return; }
     var to = ev.key === 'ArrowRight' ? cur + 1 : (ev.key === 'ArrowLeft' ? cur - 1 : (ev.key === 'Home' ? 0 : (ev.key === 'End' ? n - 1 : -1)));
     if (to < 0 || to >= n) return;
     ev.preventDefault(); S.pick(to);
@@ -830,15 +839,151 @@
     return grid;
   }
 
-  function openPerson(p) {
-    el.dlgTitle.textContent = p.name;
-    el.dlgAv.textContent = initials(p.name);
-    el.dlgSub.textContent = [p.username, p.designation, p.manager ? 'Reports to ' + p.manager : ''].filter(Boolean).join(' · ');
-    clear(el.dlgBody); el.dlgBody.appendChild(personView(p, S.data, true));
+  /* ---------- One window for every detail (a person, a number, a day) ---------- */
+  function openDlg(title, av, sub, body) {
+    el.dlgTitle.textContent = title; el.dlgAv.textContent = av; el.dlgSub.textContent = sub || '';
+    clear(el.dlgBody); el.dlgBody.appendChild(body);
+    if (el.dlg.open) { el.dlgBody.parentNode.scrollTop = 0; try { el.dlgTitle.focus(); } catch (e) { /* not focusable */ } return; }   // already open: the content is swapped
     if (typeof el.dlg.showModal === 'function') el.dlg.showModal(); else el.dlg.setAttribute('open', '');
   }
+  function backBtn(fn, label) { return h('button', { type: 'button', class: 'lnk dback', onclick: fn }, [icon(ICON.back), label]); }
+  function isMe(p) { return !!(S.data && S.data.me && p.username.toLowerCase() === String(S.data.me.username || '').toLowerCase()); }
+  function who(p) { return [p.username, p.designation].filter(Boolean).join(' · '); }
+  function byName(a, b) { return String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }); }
+
+  function openPerson(p, back) {
+    var body = personView(p, S.data, true);
+    if (back) body.insertBefore(backBtn(back.fn, back.label), body.firstChild);
+    openDlg(p.name, initials(p.name), [p.username, p.designation, p.manager ? 'Reports to ' + p.manager : ''].filter(Boolean).join(' · '), body);
+  }
+  el.dlgTitle.setAttribute('tabindex', '-1');
   el.dlgClose.addEventListener('click', function () { el.dlg.close(); });
   el.dlg.addEventListener('click', function (ev) { if (ev.target === el.dlg) el.dlg.close(); });
+  el.dlg.addEventListener('close', function () { var tp = $('.tip', el.chart); if (tp) tp.classList.remove('show'); });
+  el.dayMore.addEventListener('click', function () { if (S.data && S.sel >= 0) openDay(S.sel); });
+
+  /* ---------- A number tile: who (or which days) is behind it ---------- */
+  var KIND = {
+    in:     { title: 'Present',     field: 'present', dot: 'in',    codes: ['in', 'late'], unit: 'day' },
+    late:   { title: 'Late',        field: 'late',    dot: 'late',  codes: ['late'], unit: 'day' },
+    leave:  { title: 'Leave',       field: 'leave',   dot: 'leave', codes: ['leave'], unit: 'day' },
+    abs:    { title: 'Absent',      field: 'absent',  dot: 'abs',   codes: ['abs'], unit: 'day' },
+    off:    { title: 'Day off',     field: 'off',     dot: 'off',   codes: ['off'], unit: 'day' },
+    pend:   { title: 'Pending',     field: 'pending', dot: 'pend',  codes: ['pend'], unit: 'day' },
+    nights: { title: 'Night holds', field: 'nights',  dot: 'off',   unit: 'night' },
+    km:     { title: 'Driver km',   field: 'km',      dot: 'off',   unit: 'km' }
+  };
+
+  function personRow(p, big, small, open) {
+    return h('li', null, [h('button', { type: 'button', class: 'drow', onclick: open }, [
+      h('span', { class: 'av', 'aria-hidden': 'true', text: initials(p.name) }),
+      h('span', { class: 'dn' }, [p.name + (isMe(p) ? ' (you)' : ''), h('small', { text: who(p) })]),
+      h('span', { class: 'dc' }, [h('b', { text: big }), small ? h('small', { text: small }) : null])
+    ])]);
+  }
+  function dayRow(label, note, right) {
+    return h('li', { class: 'drow static' }, [
+      h('span', { class: 'dn' }, [label, note ? h('small', { text: note }) : null]),
+      h('span', { class: 'dc' }, [right ? h('b', { text: right }) : null])
+    ]);
+  }
+  function clock(v) {                                          // "09:50:00 AM" is shown as "9:50 AM"
+    var m = /^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$/.exec(String(v || '').trim());
+    return m ? Number(m[1]) + ':' + m[2] + (m[3] ? ' ' + m[3].toUpperCase() : '') : String(v || '');
+  }
+  function totalText(key, n) { return key === 'km' ? n + ' km' : key === 'nights' ? plural(n, 'night hold', 'night holds') : plural(n, 'person-day', 'person-days'); }
+
+  function openKind(key) {
+    var d = S.data, K = KIND[key], many = d.people.length > 1, period = long(d.from) + ' to ' + long(d.to);
+    var body = h('div'), list = h('ul', { class: 'dlist' }), total = 0, count = 0, av = '';
+    if (!many) {                                               // one person: the days
+      var p0 = d.people[0] || { days: '', times: null };
+      d.dates.forEach(function (date, i) {
+        var c = p0.days.charAt(i), k = kindOf(c);
+        if (!K.codes || K.codes.indexOf(k) < 0) return;
+        var hol = holName(d, date), note = k === 'in' ? 'On time' : k === 'late' ? 'Late' : k === 'leave' ? leaveName(c, d) : k === 'off' ? (hol || (dow(date) === 5 ? 'Friday' : 'Day off')) : k === 'pend' ? 'Not in yet' : 'No check-in';
+        if (hol && k !== 'off') note += ' · ' + hol;
+        list.appendChild(dayRow(withDay(date), note, p0.times && p0.times[i] ? clock(p0.times[i]) : ''));
+        count++;
+      });
+      total = count;
+      body.appendChild(h('p', { class: 'meta', text: plural(count, 'day', 'days') + ' in this period.' }));
+    } else if (key === 'off') {                                // everybody's days off are mostly the same days: show the days
+      S.daily.forEach(function (c, i) {
+        if (!c.off) return;
+        var date = d.dates[i], hol = holName(d, date);
+        list.appendChild(h('li', null, [h('button', { type: 'button', class: 'drow', onclick: function () { openDay(i, { fn: function () { openKind('off'); }, label: 'Back to Day off' }); } }, [
+          h('span', { class: 'dn' }, [withDay(date), h('small', { text: hol || (dow(date) === 5 ? 'Friday' : 'Day off') })]),
+          h('span', { class: 'dc' }, [h('b', { text: String(c.off) }), h('small', { text: c.off === 1 ? 'person' : 'people' })])
+        ])]));
+        total += c.off; count++;
+      });
+      body.appendChild(h('p', { class: 'meta', text: plural(count, 'day', 'days') + ' off in this period. Press a day to see who.' }));
+    } else {                                                   // a team: the people, most first
+      var rows = d.people.filter(function (p) { return num(p[K.field]) > 0; }).sort(function (a, b) { return num(b[K.field]) - num(a[K.field]) || byName(a, b); });
+      rows.forEach(function (p) {
+        var n = key === 'km' ? Math.round(num(p.km)) : num(p[K.field]);
+        total += n;
+        var small = key === 'km' ? 'km' : n === 1 ? K.unit : K.unit + 's';
+        if (key === 'in' && p.late) small += ', ' + p.late + ' late';
+        if (key === 'leave') {
+          var types = (d.leaveTypes || []).map(function (nm, i) { return p.leaveByType && p.leaveByType[i] ? nm + ' ' + p.leaveByType[i] : ''; }).filter(Boolean).join(', ');
+          if (types) small += ', ' + types;
+        }
+        list.appendChild(personRow(p, String(n), small, function () { openPerson(p, { fn: function () { openKind(key); }, label: 'Back to ' + K.title }); }));
+      });
+      count = rows.length;
+      body.appendChild(h('p', { class: 'meta', text: totalText(key, total) + ' from ' + plural(count, 'person', 'people') + '. Press a name to see their days.' }));
+    }
+    if (!count) body.appendChild(h('p', { class: 'muted', text: 'Nothing to show for this period.' }));
+    else body.appendChild(list);
+    av = String(many && key === 'off' ? count : total);
+    openDlg(K.title, av.length > 3 ? '999+' : av, period, body);
+  }
+
+  /* ---------- A day: who was in, late, on leave, absent ---------- */
+  function openDay(i, back) {
+    var d = S.data; if (!d || !S.daily || i < 0 || i >= d.dates.length) return;
+    var date = d.dates[i], c = S.daily[i], hol = holName(d, date), many = d.people.length > 1;
+    var g = { in: [], late: [], leave: [], abs: [], pend: [], off: [], none: [] };
+    d.people.forEach(function (p) { g[kindOf(p.days.charAt(i))].push(p); });
+    var body = h('div');
+    var nav = h('div', { class: 'dnav' }, [
+      h('button', { type: 'button', class: 'lnk', disabled: i === 0, onclick: function () { openDay(i - 1, back); } }, [icon(ICON.back), 'Previous day']),
+      h('button', { type: 'button', class: 'lnk', disabled: i === d.dates.length - 1, onclick: function () { openDay(i + 1, back); } }, ['Next day', icon(ICON.go)])
+    ]);
+    if (back) body.appendChild(backBtn(back.fn, back.label));
+    body.appendChild(nav);
+    var parts2 = [];
+    if (c.in + c.late) parts2.push((c.in + c.late) + ' in');
+    if (c.late) parts2.push(c.late + ' late');
+    if (c.leave) parts2.push(c.leave + ' on leave');
+    if (c.abs) parts2.push(c.abs + ' absent');
+    if (c.pend) parts2.push(c.pend + ' not in yet');
+    body.appendChild(h('p', { class: 'meta', text: (isOffDay(c) ? 'Day off' + (hol ? ' (' + hol + ')' : '') + '.' : parts2.join(' · ') + (hol ? ' · ' + hol : '') + '.') + (many ? ' Press a name to see their days.' : '') }));
+    var groups = [['in', 'On time', 'in'], ['late', 'Late', 'late'], ['leave', 'On leave', 'leave'], ['abs', 'Absent', 'abs'], ['pend', 'Not in yet', 'pend'], ['off', 'Day off', 'off']];
+    var shown = 0;
+    groups.forEach(function (gr) {
+      var rows = g[gr[0]].slice().sort(byName);
+      if (!rows.length) return;
+      var ul = h('ul', { class: 'dlist' });
+      rows.forEach(function (p) {
+        var c0 = p.days.charAt(i), right = (gr[0] === 'in' || gr[0] === 'late') && p.times && p.times[i] ? clock(p.times[i]) : (gr[0] === 'leave' ? leaveName(c0, d) : '');
+        var row = many
+          ? personRow(p, right, '', function () { openPerson(p, { fn: function () { openDay(i, back); }, label: 'Back to ' + withDay(date) }); })
+          : dayRow(p.name, '', right);
+        if (many && !right) row.querySelector('.dc').textContent = '';
+        ul.appendChild(row);
+      });
+      var head = [h('i', { class: 'dot dot--' + gr[2], 'aria-hidden': 'true' }), gr[1] + ' ', h('span', { class: 'ct', text: String(rows.length) })];
+      if (gr[0] === 'off') body.appendChild(h('details', { class: 'dgrp' }, [h('summary', null, head), ul]));
+      else body.appendChild(h('section', { class: 'dgrp' }, [h('h3', null, head), ul]));
+      shown++;
+    });
+    if (g.none.length) body.appendChild(h('p', { class: 'holi muted', text: plural(g.none.length, 'person is', 'people are') + ' not counted on this day (after their last working day).' }));
+    if (!shown) body.appendChild(h('p', { class: 'muted', text: 'Nothing to show for this day.' }));
+    openDlg(withDay(date), String(parts(date).d), parts(date).y + (hol ? ' · ' + hol : ''), body);
+  }
 
   /* ---------- Excel files ---------- */
   function renderDownloads() {
