@@ -53,10 +53,14 @@
       <em>WEB</em>
       <button class="ib cls" id="navx" type="button" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-    <nav class="menu" id="menu" aria-label="Whose report">
+    <nav class="menu" id="menu" aria-label="Menu">
       <span class="pill" id="pill" aria-hidden="true"></span>
       <div class="msec">Reports</div>
       <div id="scopes" role="group" aria-label="Whose report"></div>
+      <div id="adminNav" hidden>
+        <div class="msec">Admin</div>
+        <div id="adminItems" role="group" aria-label="Admin panel"></div>
+      </div>
     </nav>
     <div class="side-foot">
       <div class="pace" id="pace">
@@ -99,6 +103,8 @@
       </form>
 
       <p class="banner note" id="msg" role="status" aria-live="polite" hidden></p>
+
+      <div class="rep adm" id="adminView" hidden></div>
 
       <div class="rep" id="report" hidden>
         <div class="tiles" id="kpis"></div>
@@ -155,6 +161,25 @@
   </div>
 </dialog>
 
+<dialog class="dlg glass" id="adDlg" aria-labelledby="adTitle">
+  <div class="dlg__in">
+    <button class="ib x" id="adClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="ush"><span class="av" id="adAv" aria-hidden="true"></span><div><h2 id="adTitle"></h2><small id="adSub"></small></div></div>
+    <div id="adBody"></div>
+  </div>
+</dialog>
+
+<dialog class="dlg glass pwd" id="pwDlg" aria-labelledby="pwTitle">
+  <form class="dlg__in" id="pwForm" novalidate>
+    <button class="ib x" id="pwClose" type="button" aria-label="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="ush"><span class="av" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/></svg></span><div><h2 id="pwTitle">Confirm with your password</h2><small id="pwSub"></small></div></div>
+    <p class="note" id="pwText"></p>
+    <label class="af"><span>Your own password</span><input id="pwInput" name="confirm-password" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="200"></label>
+    <p class="lgm aerr" id="pwMsg" role="alert" aria-live="assertive" hidden></p>
+    <div class="arow"><button class="btn alt" id="pwCancel" type="button">Cancel</button><button class="btn" id="pwGo" type="submit"><span id="pwGoText">Confirm</span></button></div>
+  </form>
+</dialog>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="lgn" id="login" hidden>
@@ -198,7 +223,7 @@
       <p class="lgm" id="loginMsg" role="alert" aria-live="assertive" hidden></p>
     </form>
     <ul class="lgnotes">
-      <li>Read only. To check in, ask for leave or change anything, use the app.</li>
+      <li>Here you read your reports. To check in or ask for leave, use the app. Admins can also manage the office here.</li>
       <li>Signed out after 15 minutes without use, and always after 6 hours.</li>
       <li>Forgot your password? Ask your admin, or use “Forgot password” in the app.</li>
     </ul>
@@ -206,6 +231,7 @@
   </div>
 </div>
 
+<script src="admin.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

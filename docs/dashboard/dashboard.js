@@ -1,6 +1,7 @@
 /* SAM BOND Reports: the browser dashboard.
  *
- * Read-only. It signs in with the same Employee ID and password as the app, asks the server for reports and shows them.
+ * It signs in with the same Employee ID and password as the app, asks the server for reports and shows them. An admin whose Admin Panel is not locked also gets an
+ * Admin menu (admin.js): the server decides who may, and every change there asks for the admin's own password again.
  * - No library, no tracking, nothing loaded from another site (the page's Content-Security-Policy allows only this site and the SAM BOND server).
  * - The sign-in token lives in this browser tab only (sessionStorage) and is removed on Sign out. Report data is never stored.
  * - Everything from the server is put on the page as plain text (never as HTML), and nothing here writes inline style attributes.
@@ -20,8 +21,8 @@
   var SVGNS = 'http://www.w3.org/2000/svg';
   var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-  var S = { token: null, name: '', flags: { isManager: false, isAdmin: false, locks: [] }, scope: 'me', period: 'current', data: null, daily: null,
-            sort: { key: 'name', dir: 1 }, query: '', showAll: false, expireAt: 0, last: Date.now(), req: 0, sel: -1, chartW: 0 };
+  var S = { token: null, name: '', flags: { isManager: false, isAdmin: false, webAdmin: false, locks: [] }, scope: 'me', period: 'current', data: null, daily: null,
+            sort: { key: 'name', dir: 1 }, query: '', showAll: false, expireAt: 0, last: Date.now(), req: 0, sel: -1, chartW: 0, view: 'report', notice: '' };
 
   /* ---------- Small helpers ---------- */
   function h(tag, attrs, kids) {
@@ -144,15 +145,17 @@
   }
 
   /* ---------- Session (this tab only) ---------- */
-  function tokenExpiry(tok) {
+  function tokenData(tok) {
     try {
       var p = String(tok).split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
       while (p.length % 4) p += '=';
-      return Number(JSON.parse(atob(p)).x) || 0;
-    } catch (e) { return 0; }
+      return JSON.parse(atob(p)) || {};
+    } catch (e) { return {}; }
   }
+  function tokenExpiry(tok) { return Number(tokenData(tok).x) || 0; }
+  function tokenUser(tok) { return String(tokenData(tok).u || ''); }
   function saveSession() {
-    try { sessionStorage.setItem(STORE, JSON.stringify({ t: S.token, n: S.name, m: S.flags.isManager, a: S.flags.isAdmin, l: S.flags.locks })); } catch (e) { /* blocked: the sign-in then lasts until reload */ }
+    try { sessionStorage.setItem(STORE, JSON.stringify({ t: S.token, n: S.name, m: S.flags.isManager, a: S.flags.isAdmin, w: S.flags.webAdmin, l: S.flags.locks })); } catch (e) { /* blocked: the sign-in then lasts until reload */ }
   }
   function loadSession() {
     try { var o = JSON.parse(sessionStorage.getItem(STORE) || 'null'); return o && o.t ? o : null; } catch (e) { return null; }
@@ -164,7 +167,8 @@
   ['login', 'lgc', 'msc', 'mMouth', 'loginForm', 'loginMsg', 'loginGo', 'user', 'pass', 'showPass', 'app', 'side', 'scrim', 'mnu', 'navx', 'menu', 'pill', 'who', 'whoRole', 'av', 'out', 'out2', 'mode', 'mode2',
    'title', 'sub', 'until', 'paceT', 'paceBar', 'controls', 'scopes', 'period', 'dates', 'from', 'to', 'show', 'refresh', 'msg', 'toast',
    'report', 'range', 'todayCard', 'todayDate', 'todayRow', 'notIn', 'notInSum', 'notInList', 'kpis', 'kpis2', 'chartCard', 'legend', 'chart', 'readout', 'dayTable',
-   'peopleCard', 'search', 'people', 'peopleNote', 'more', 'meCard', 'meTitle', 'meBody', 'dlCard', 'dl', 'dlg', 'dlgAv', 'dlgTitle', 'dlgSub', 'dlgBody', 'dlgClose'
+   'peopleCard', 'search', 'people', 'peopleNote', 'more', 'meCard', 'meTitle', 'meBody', 'dlCard', 'dl', 'dlg', 'dlgAv', 'dlgTitle', 'dlgSub', 'dlgBody', 'dlgClose',
+   'adminNav', 'adminItems', 'adminView', 'adDlg', 'adClose', 'adAv', 'adTitle', 'adSub', 'adBody', 'pwDlg', 'pwForm', 'pwClose', 'pwTitle', 'pwSub', 'pwText', 'pwInput', 'pwMsg', 'pwCancel', 'pwGo', 'pwGoText'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
   var stage = $('.stage');
 
@@ -188,10 +192,12 @@
     dropSession();
     S.req++;                                                  // an answer that is still on its way is thrown away
     try { if (el.dlg.open) el.dlg.close(); } catch (e) { /* not open */ }
+    if (admin) admin.reset();                                 // closes its windows and forgets the 15-minute marker
     closeNav(true);
-    [el.kpis, el.kpis2, el.chart, el.legend, el.dayTable, el.people, el.meBody, el.dl, el.todayRow, el.notInList, el.dlgBody, el.scopes].forEach(function (n) { if (n) clear(n); });
+    [el.kpis, el.kpis2, el.chart, el.legend, el.dayTable, el.people, el.meBody, el.dl, el.todayRow, el.notInList, el.dlgBody, el.scopes, el.adminItems, el.adminView].forEach(function (n) { if (n) clear(n); });
+    show(el.adminNav, false); show(el.adminView, false);
     el.user.value = '';
-    S.name = ''; S.flags = { isManager: false, isAdmin: false, locks: [] };
+    S.name = ''; S.view = 'report'; S.flags = { isManager: false, isAdmin: false, webAdmin: false, locks: [] };
     showLogin(message || 'You are signed out.', false);
   }
 
@@ -262,7 +268,7 @@
       el.pass.value = '';
       if (!r || !r.ok || !r.token) { loginFail((r && r.error) || 'Could not sign in. Please try again.'); el.pass.focus(); return; }
       S.token = r.token; S.name = String(r.name || user);
-      S.flags = { isManager: !!r.isManager, isAdmin: !!r.isAdmin, locks: Array.isArray(r.locks) ? r.locks : [] };
+      S.flags = { isManager: !!r.isManager, isAdmin: !!r.isAdmin, webAdmin: !!r.isAdmin && r.webAdmin === true, locks: Array.isArray(r.locks) ? r.locks : [] };
       saveSession(); enterApp();
     });
   });
@@ -327,7 +333,7 @@
       glide(lead, to[lead], .36); glide(trail, to[trail], .55);
     });
   }
-  function activeScope() { return $('.mi[aria-pressed="true"]', el.scopes); }
+  function activeScope() { return $('.mi[aria-pressed="true"]', el.menu); }
   function resetPill() { var b = activeScope(); if (b) slidePill(b, false); }
   window.addEventListener('resize', function () { resetPill(); if (window.innerWidth > 900) closeNav(true); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(resetPill);
@@ -341,40 +347,103 @@
     el.who.textContent = S.name; el.av.textContent = initials(S.name);
     el.whoRole.textContent = S.flags.isAdmin ? 'Admin' : (S.flags.isManager ? 'Manager' : 'Employee');
     var locked = S.flags.locks.indexOf('reports') >= 0;
-    S.scope = S.flags.isAdmin ? 'all' : (S.flags.isManager ? 'team' : 'me');
-    S.period = 'current'; S.query = ''; S.showAll = false; S.sel = -1;
+    S.scope = canEveryone() ? 'all' : (S.flags.isManager ? 'team' : 'me');
+    S.period = 'current'; S.query = ''; S.showAll = false; S.sel = -1; S.view = 'report'; show(el.adminView, false);
     el.period.value = 'current'; show(el.dates, false); el.search.value = '';
     var end = S.expireAt ? new Date(S.expireAt) : null;
     el.until.textContent = end ? 'Signed in until ' + pad(end.getHours()) + ':' + pad(end.getMinutes()) + ' at the latest. You are signed out after 15 minutes without use.' : 'You are signed out after 15 minutes without use.';
     paintPace();
-    buildScopes();
-    if (locked) {
-      show(el.controls, false); show(el.report, false);
-      el.title.textContent = 'Reports'; el.sub.textContent = '';
-      showMsg('Reports are switched off for your account. Please ask your admin.', true);
-      return;
-    }
+    buildScopes(); buildAdmin();
+    if (locked) { reportsOff(); return; }
     show(el.controls, true); showMsg('');
     load();
   }
+  function reportsOff() {
+    show(el.controls, false); show(el.report, false);
+    el.title.textContent = 'Reports'; el.sub.textContent = ''; document.title = 'Reports · SAM BOND Reports';
+    showMsg('Reports are switched off for your account. Please ask your admin.', true);
+  }
 
+  function canEveryone() { return S.flags.isAdmin && S.flags.locks.indexOf('admin') < 0; }       // the server refuses "everybody" while the Admin Panel is locked for the person
   function buildScopes() {
     var list = [['me', 'My report', ICON.me]];
     if (S.flags.isManager) list.push(['team', 'My team', ICON.team]);
-    if (S.flags.isAdmin) list.push(['all', 'Everyone', ICON.all]);
+    if (canEveryone()) list.push(['all', 'Everyone', ICON.all]);
     clear(el.scopes);
     list.forEach(function (it) {
       var b = h('button', { type: 'button', class: 'mi', 'data-scope': it[0], 'aria-pressed': it[0] === S.scope ? 'true' : 'false' }, [icon(it[2]), h('span', { text: it[1] })]);
       b.addEventListener('click', function () {
         closeNav(true);
-        if (S.scope === it[0]) return;
+        var wasAdmin = S.view === 'admin';
+        if (S.scope === it[0] && !wasAdmin) return;
         S.scope = it[0]; S.query = ''; S.showAll = false; S.sel = -1; el.search.value = '';
-        $$('.mi', el.scopes).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
-        slidePill(b, true); load();
+        $$('.mi', el.menu).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        slidePill(b, true);
+        if (wasAdmin) backToReports(); else load();
       });
       el.scopes.appendChild(b);
     });
     requestAnimationFrame(resetPill);
+  }
+
+  /* ---------- The Admin menu (admin.js) ---------- */
+  var admin = null;
+  function rise(nodes) {                                       // the same soft entrance the report panels have
+    if (reduce) return;
+    nodes.forEach(function (n, i) {
+      if (n && n.animate) n.animate([{ opacity: 0, transform: 'translateY(18px) scale(.98)', filter: 'blur(8px)' }, { opacity: 1, transform: 'none', filter: 'blur(0px)' }], { duration: 560, delay: 30 + i * 50, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'backwards' });
+    });
+  }
+  function adminAllowed() { return !!(admin && S.flags.isAdmin && S.flags.webAdmin && S.flags.locks.indexOf('admin') < 0); }
+  function buildAdmin() {
+    clear(el.adminItems);
+    show(el.adminNav, adminAllowed());
+    if (!adminAllowed()) return;
+    admin.views.forEach(function (v) {
+      var b = h('button', { type: 'button', class: 'mi', 'data-admin': v.id, 'aria-pressed': 'false' }, [icon(v.icon), h('span', { text: v.label })]);
+      b.addEventListener('click', function () {
+        closeNav(true);
+        if (S.view === 'admin' && admin.current() === v.id) return;
+        $$('.mi', el.menu).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        slidePill(b, true); showAdmin(v.id);
+      });
+      el.adminItems.appendChild(b);
+    });
+    requestAnimationFrame(resetPill);
+  }
+  function showAdmin(id) {
+    S.view = 'admin'; S.req++;                                 // a report that is still on its way is thrown away
+    el.show.disabled = false; el.refresh.disabled = false;
+    show(el.controls, false); show(el.report, false); showMsg('');
+    show(el.adminView, true);
+    admin.show(id);
+  }
+  function backToReports() {
+    S.view = 'report'; show(el.adminView, false);
+    if (admin) admin.leave();
+    if (S.flags.locks.indexOf('reports') >= 0) { reportsOff(); return; }
+    show(el.controls, true); showMsg('');
+    load();
+  }
+  // The server says the Admin panel is not for this person (any more): take the menu away and go back to the reports.
+  function adminLost(message) {
+    S.flags.webAdmin = false; saveSession();
+    var was = S.view === 'admin';
+    S.notice = message || 'The Admin panel is not available for you.';
+    buildAdmin();
+    if (was) {
+      var sel = null;
+      $$('.mi', el.menu).forEach(function (x) { var on = x.getAttribute('data-scope') === S.scope; x.setAttribute('aria-pressed', on ? 'true' : 'false'); if (on) sel = x; });
+      if (sel) slidePill(sel, true);
+      backToReports();
+    } else { showMsg(S.notice, true); S.notice = ''; }
+  }
+  if (typeof window.SBAdminFactory === 'function') {
+    admin = window.SBAdminFactory({
+      h: h, clear: clear, api: api, toast: toast, el: el, host: el.adminView, icon: icon, initials: initials,
+      msg: showMsg, ended: sessionEnded, lost: adminLost, rise: rise, expiry: tokenExpiry, me: function () { return tokenUser(S.token); },
+      head: function (title, sub, docTitle) { el.title.textContent = docTitle; el.sub.textContent = sub || ''; document.title = docTitle + ' · SAM BOND Reports'; }
+    });
   }
 
   el.period.addEventListener('change', function () {
@@ -384,7 +453,7 @@
     else { if (S.data) { el.from.max = S.data.today; el.to.max = S.data.today; if (!el.from.value) el.from.value = S.data.from; if (!el.to.value) el.to.value = S.data.to; } el.from.focus(); }
   });
   el.controls.addEventListener('submit', function (ev) { ev.preventDefault(); load(); });
-  el.refresh.addEventListener('click', function () { load(); });
+  el.refresh.addEventListener('click', function () { if (S.view === 'admin' && admin) admin.refresh(); else load(); });
 
   function load() {
     var id = ++S.req;
@@ -399,7 +468,8 @@
       el.show.disabled = false; el.refresh.disabled = false;
       if (r && r.auth) { sessionEnded(); return; }
       if (!r || !r.ok) { showMsg((r && r.error) || 'The report could not be loaded.', true); return; }
-      S.data = r; showMsg('');
+      S.data = r;
+      if (S.notice) { showMsg(S.notice, true); S.notice = ''; } else showMsg('');
       render();
     });
   }
@@ -874,7 +944,7 @@
   var saved = loadSession();
   if (saved && tokenExpiry(saved.t) > Date.now() + 30000) {
     S.token = saved.t; S.name = String(saved.n || '');
-    S.flags = { isManager: !!saved.m, isAdmin: !!saved.a, locks: Array.isArray(saved.l) ? saved.l : [] };
+    S.flags = { isManager: !!saved.m, isAdmin: !!saved.a, webAdmin: !!saved.a && saved.w === true, locks: Array.isArray(saved.l) ? saved.l : [] };
     enterApp();
   } else {
     dropSession(); showLogin('', false);
