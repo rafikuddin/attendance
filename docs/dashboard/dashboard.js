@@ -21,8 +21,8 @@
   var SVGNS = 'http://www.w3.org/2000/svg';
   var reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-  var S = { token: null, name: '', flags: { isManager: false, isAdmin: false, webAdmin: false, locks: [] }, scope: 'me', period: 'current', data: null, daily: null,
-            sort: { key: 'name', dir: 1 }, query: '', showAll: false, expireAt: 0, last: Date.now(), req: 0, sel: -1, chartW: 0, view: 'report', notice: '' };
+  var S = { token: null, name: '', flags: { isManager: false, isAdmin: false, webAdmin: false, locks: [] }, scope: 'me', period: 'today', data: null, daily: null,
+            sort: { key: 'name', dir: 1 }, query: '', showAll: false, detail: {}, expireAt: 0, last: Date.now(), req: 0, sel: -1, chartW: 0, view: 'report', notice: '' };
 
   /* ---------- Small helpers ---------- */
   function h(tag, attrs, kids) {
@@ -58,18 +58,33 @@
     down: 'M12 4v11M7 11l5 5 5-5M5 20h14',
     moon: 'M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z',
     go: 'M9 6l6 6-6 6',
-    back: 'M15 6l-6 6 6 6'
+    pin: 'M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21ZM12 12.2a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z',
+    back: 'M15 6l-6 6 6 6',
+    in: 'M5 12.5l4.5 4.5L19 7.5',
+    late: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7.5V12l3 2',
+    leave: 'M4 8.5h16V19H4zM9 8.5V6h6v2.5M4 13h16',
+    abs: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM9.3 9.3l5.4 5.4M14.7 9.3l-5.4 5.4',
+    off: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4',
+    km: 'M4 17a8 8 0 1 1 16 0M12 17l3.6-4.6M8 17h.01M16 17h.01',
+    pend: 'M7 4h10M7 20h10M8 4c0 4 8 4 8 8s-8 4-8 8M16 4c0 4-8 4-8 8s8 4 8 8'
   };
   function icon(d) { return s('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' }, [s('path', { d: d })]); }
   function iconSun() {
     return s('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' }, [s('circle', { cx: 12, cy: 12, r: 4.2 }),
       s('path', { d: 'M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6' })]);
   }
+  function setTitle(text) {                                    // the last word of a heading wears the serif accent; the words stay the same
+    var t = String(text), m = /^(.*\S)\s+(\S+)$/.exec(t);
+    clear(el.title);
+    if (m) el.title.appendChild(document.createTextNode(m[1] + ' '));
+    el.title.appendChild(h('em', { text: m ? m[2] : t }));
+  }
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
   function show(el, on) { el.hidden = !on; }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function dhakaToday() { var t = new Date(Date.now() + 6 * 3600000); return t.getUTCFullYear() + '-' + pad(t.getUTCMonth() + 1) + '-' + pad(t.getUTCDate()); }   // the company's day (Dhaka, UTC+6, no clock change)
   function parts(iso) { return { y: Number(iso.slice(0, 4)), m: Number(iso.slice(5, 7)), d: Number(iso.slice(8, 10)) }; }
   function dow(iso) { var p = parts(iso); return new Date(Date.UTC(p.y, p.m - 1, p.d, 12)).getUTCDay(); }
   function short(iso) { var p = parts(iso); return p.d + ' ' + MONTHS[p.m - 1]; }
@@ -199,6 +214,7 @@
     [el.kpis, el.kpis2, el.chart, el.legend, el.dayTable, el.people, el.meBody, el.dl, el.todayRow, el.notInList, el.dlgBody, el.scopes, el.adminItems, el.adminView].forEach(function (n) { if (n) clear(n); });
     show(el.adminNav, false); show(el.adminView, false);
     el.user.value = '';
+    S.detail = {};                                            // the places and times of people are forgotten with the sign-in
     S.name = ''; S.view = 'report'; S.flags = { isManager: false, isAdmin: false, webAdmin: false, locks: [] };
     showLogin(message || 'You are signed out.', false);
   }
@@ -350,25 +366,27 @@
     el.whoRole.textContent = S.flags.isAdmin ? 'Admin' : (S.flags.isManager ? 'Manager' : 'Employee');
     var locked = S.flags.locks.indexOf('reports') >= 0;
     S.scope = canEveryone() ? 'all' : (S.flags.isManager ? 'team' : 'me');
-    S.period = 'current'; S.query = ''; S.showAll = false; S.sel = -1; S.view = 'report'; show(el.adminView, false);
-    el.period.value = 'current'; show(el.dates, false); el.search.value = '';
+    S.period = 'today'; S.query = ''; S.showAll = false; S.sel = -1; S.view = 'report'; show(el.adminView, false);
+    el.period.value = 'today'; show(el.dates, false); el.search.value = '';
     var end = S.expireAt ? new Date(S.expireAt) : null;
     el.until.textContent = end ? 'Signed in until ' + pad(end.getHours()) + ':' + pad(end.getMinutes()) + ' at the latest. You are signed out after 15 minutes without use.' : 'You are signed out after 15 minutes without use.';
     paintPace();
     buildScopes(); buildAdmin();
     if (locked) { reportsOff(); return; }
+    if (S.scope === 'me' && ownOff()) { reportsOff('Attendance is switched off for your account, so there is no attendance report for you. Please ask your admin.'); return; }
     show(el.controls, true); showMsg('');
     load();
   }
-  function reportsOff() {
+  function reportsOff(message) {
     show(el.controls, false); show(el.report, false);
-    el.title.textContent = 'Reports'; el.sub.textContent = ''; document.title = 'Reports · SAM BOND Reports';
-    showMsg('Reports are switched off for your account. Please ask your admin.', true);
+    setTitle('Reports'); el.sub.textContent = ''; document.title = 'Reports · SAM BOND Reports';
+    showMsg(message || 'Reports are switched off for your account. Please ask your admin.', true);
   }
+  function ownOff() { return S.flags.locks.indexOf('attendance') >= 0; }                      // an admin switched Attendance off for this person: no report of their own attendance on the site
 
   function canEveryone() { return S.flags.isAdmin && S.flags.locks.indexOf('admin') < 0; }       // the server refuses "everybody" while the Admin Panel is locked for the person
   function buildScopes() {
-    var list = [['me', 'My report', ICON.me]];
+    var list = ownOff() ? [] : [['me', 'My report', ICON.me]];
     if (S.flags.isManager) list.push(['team', 'My team', ICON.team]);
     if (canEveryone()) list.push(['all', 'Everyone', ICON.all]);
     clear(el.scopes);
@@ -424,6 +442,7 @@
     S.view = 'report'; show(el.adminView, false);
     if (admin) admin.leave();
     if (S.flags.locks.indexOf('reports') >= 0) { reportsOff(); return; }
+    if (S.scope === 'me' && ownOff()) { reportsOff('Attendance is switched off for your account, so there is no attendance report for you. Please ask your admin.'); return; }
     show(el.controls, true); showMsg('');
     load();
   }
@@ -444,7 +463,7 @@
     admin = window.SBAdminFactory({
       h: h, clear: clear, api: api, toast: toast, el: el, host: el.adminView, icon: icon, initials: initials,
       msg: showMsg, ended: sessionEnded, lost: adminLost, rise: rise, expiry: tokenExpiry, me: function () { return tokenUser(S.token); },
-      head: function (title, sub, docTitle) { el.title.textContent = docTitle; el.sub.textContent = sub || ''; document.title = docTitle + ' · SAM BOND Reports'; }
+      head: function (title, sub, docTitle) { setTitle(docTitle); el.sub.textContent = sub || ''; document.title = docTitle + ' · SAM BOND Reports'; }
     });
   }
 
@@ -460,7 +479,8 @@
   function load() {
     var id = ++S.req;
     var body = { action: 'webReport', who: S.scope, period: S.period };
-    if (S.period === 'custom') {
+    if (S.period === 'today') { var day = dhakaToday(); body = { action: 'webReport', who: S.scope, from: day, to: day }; }     // the default: just today
+    else if (S.period === 'custom') {
       if (!el.from.value || !el.to.value) { showMsg('Choose a start date and an end date.', true); return; }
       body = { action: 'webReport', who: S.scope, from: el.from.value, to: el.to.value };
     }
@@ -469,6 +489,9 @@
       if (id !== S.req) return;                                // an older answer: ignore
       el.show.disabled = false; el.refresh.disabled = false;
       if (r && r.auth) { sessionEnded(); return; }
+      if (r && !r.ok && S.period === 'today' && /has not started yet/.test(String(r.error))) {       // this device's date is ahead of the office: show the pay period instead
+        S.period = 'current'; el.period.value = 'current'; S.notice = 'The date on this device is ahead of the office date, so this pay period is shown instead of Today.'; load(); return;
+      }
       if (!r || !r.ok) { showMsg((r && r.error) || 'The report could not be loaded.', true); return; }
       S.data = r;
       if (S.notice) { showMsg(S.notice, true); S.notice = ''; } else showMsg('');
@@ -498,17 +521,19 @@
   /* ---------- Render ---------- */
   function render() {
     var d = S.data, many = d.people.length > 1;
-    el.title.textContent = scopeLabel(S.scope);
+    show(el.report, true);                                      // visible first: the chart is measured at its real width
+    setTitle(scopeLabel(S.scope));
     el.sub.textContent = d.company || '';
     document.title = scopeLabel(S.scope) + ' · SAM BOND Reports';
-    el.range.textContent = long(d.from) + ' to ' + long(d.to) + ' · ' + plural(d.days, 'day', 'days') + (many ? ' · ' + plural(d.people.length, 'person', 'people') + '. Totals count person-days: one person on one day is one day.' : '');
+    el.range.textContent = (d.from === d.to ? withDay(d.from) + ' ' + parts(d.from).y : long(d.from) + ' to ' + long(d.to)) + ' · ' + plural(d.days, 'day', 'days') + (many ? ' · ' + plural(d.people.length, 'person', 'people') + '. Totals count person-days: one person on one day is one day.' : '');
     el.from.max = d.today; el.to.max = d.today;
     var daily = S.daily = dailyCounts(d);
-    S.sel = -1;
+    S.sel = -1; S.detail = {};
     try { if (el.dlg.open) el.dlg.close(); } catch (e) { /* not open */ }
     renderToday(d, daily, many);
     renderKpis(d, daily, many);
-    show(el.chartCard, many); if (many) renderChart(d, daily, true);
+    var bars = many && d.dates.length > 1;                     // one day is not a chart: the Today strip and the numbers say it
+    show(el.chartCard, bars); if (bars) renderChart(d, daily, true);
     show(el.peopleCard, many); if (many) renderPeople();
     show(el.meCard, !many);
     if (!many) {
@@ -516,7 +541,6 @@
       clear(el.meBody); if (d.people.length) el.meBody.appendChild(personView(d.people[0], d, false)); else el.meBody.appendChild(h('p', { class: 'muted', text: 'There is nothing to show for this period.' }));
     }
     renderDownloads();
-    show(el.report, true);
     enter();
   }
 
@@ -528,9 +552,10 @@
     var c = daily[i];
     el.todayDate.textContent = withDay(d.today);
     clear(el.todayRow);
+    var TT = { 'In': 't-in', 'Late': 't-late', 'On leave': 't-leave', 'Not in yet': 't-pend', 'Absent': 't-abs', 'Day off': 't-off' };
     [['In', c.in + c.late], ['Late', c.late], ['On leave', c.leave], ['Not in yet', c.pend], ['Absent', c.abs], ['Day off', c.off]].forEach(function (x) {
       if ((x[0] === 'Not in yet' || x[0] === 'Day off') && !x[1]) return;
-      el.todayRow.appendChild(h('button', { type: 'button', class: 'tbtn', title: 'Show who', onclick: function () { openDay(i); } }, [h('b', { text: String(x[1]) }), x[0]]));
+      el.todayRow.appendChild(h('button', { type: 'button', class: 'tbtn ' + TT[x[0]], title: 'Show who', onclick: function () { openDay(i); } }, [h('b', { text: String(x[1]) }), x[0]]));
     });
     var names = d.people.filter(function (p) { var k = p.days.charAt(i); return k === 'A' || k === 'N'; });
     show(el.notIn, names.length > 0);
@@ -565,10 +590,10 @@
     ]);
     var row = h('div', { class: 'trow' }, [main, o.share === null || o.share === undefined ? null : ring(o.share, o.inner, o.shareLabel)]);
     var label = h('span', { text: o.label });
-    var head = h('h3', null, [h('i', { 'aria-hidden': 'true' }), o.go
+    var head = h('h3', null, [h('i', { 'aria-hidden': 'true' }, [icon(ICON[o.icon || o.kind] || ICON.pend)]), o.go
       ? h('button', { type: 'button', class: 'tilebtn', 'aria-label': o.label + ', ' + o.value + (o.unit ? ' ' + o.unit : '') + '. Show details', onclick: o.go }, [label, icon(ICON.go)])
       : label]);
-    return h('article', { class: 'glass card lift tile kpi k-' + o.kind + (o.hero ? ' hero' : '') + (o.go ? ' click' : ''), 'data-rise': true }, [head, row, o.spark || null]);
+    return h('article', { class: 'glass card lift tile kpi k-' + o.kind + (o.hero ? ' hero' : '') + (o.go ? ' click' : ''), 'data-rise': true }, [head, row, o.seg || null, o.spark || null]);
   }
   function ratio(a, b) { return b > 0 ? Math.max(0, Math.min(1, a / b)) : null; }
 
@@ -579,14 +604,45 @@
     var go = function (key, n, alone) { return n > 0 && (many || !alone) ? function () { openKind(key); } : null; };   // a tile with nothing behind it is not a button
     clear(el.kpis); clear(el.kpis2);
     el.kpis.appendChild(tile({ kind: 'in', label: 'Present', value: present, unit: 'days', sub: many ? 'person-days' : '', share: ratio(present, base), inner: present > 0 ? Math.max(0, present - late) / present : 0,
-      shareLabel: 'of counted days (outer ring), on time (inner ring)', hero: true, go: go('in', present), chip: present > 0 ? ['up', Math.max(0, present - late) + ' on time'] : null, spark: many ? spark(d, daily) : null }));
+      shareLabel: 'of counted days (outer ring), on time (inner ring)', hero: true, go: go('in', present), chip: present > 0 ? ['up', Math.max(0, present - late) + ' on time'] : null,
+      seg: segbar([['in', 'On time', Math.max(0, present - late)], ['late', 'Late', late], ['leave', 'Leave', leave], ['abs', 'Absent', absent], ['pend', 'Not in yet', pending]]), spark: many ? spark(d, daily) : null }));
     el.kpis.appendChild(tile({ kind: 'late', label: 'Late', value: late, sub: 'inside Present', share: ratio(late, present), shareLabel: 'of present days', go: go('late', late) }));
     el.kpis.appendChild(tile({ kind: 'leave', label: 'Leave', value: leave, sub: unit, share: ratio(leave, base), shareLabel: 'of counted days', go: go('leave', leave) }));
     el.kpis.appendChild(tile({ kind: 'abs', label: 'Absent', value: absent, sub: unit, share: ratio(absent, base), shareLabel: 'of counted days', go: go('abs', absent) }));
     el.kpis.appendChild(tile({ kind: 'off', label: 'Day off', value: off, sub: 'Fridays and holidays', share: ratio(off, base + off), shareLabel: 'of all days', go: go('off', off) }));
-    el.kpis2.appendChild(tile({ kind: 'gen', label: 'Night holds', value: num(t.nights), go: go('nights', num(t.nights), true) }));
-    if (num(t.km) > 0) el.kpis2.appendChild(tile({ kind: 'gen', label: 'Driver km', value: Math.round(t.km), unit: 'km', go: go('km', Math.round(t.km), true) }));
-    if (pending > 0) el.kpis2.appendChild(tile({ kind: 'gen', label: 'Pending', value: pending, sub: 'today is not over', go: go('pend', pending) }));
+    el.kpis2.appendChild(tile({ kind: 'gen', icon: 'moon', label: 'Night holds', value: num(t.nights), go: go('nights', num(t.nights), true) }));
+    if (num(t.km) > 0) el.kpis2.appendChild(tile({ kind: 'gen', icon: 'km', label: 'Driver km', value: Math.round(t.km), unit: 'km', go: go('km', Math.round(t.km), true) }));
+    if (pending > 0) el.kpis2.appendChild(tile({ kind: 'gen', icon: 'pend', label: 'Pending', value: pending, sub: 'today is not over', go: go('pend', pending) }));
+  }
+
+  /* the counted days as one segmented bar: on time, late, leave, absent, not in yet */
+  function segbar(items) {
+    items = items.filter(function (x) { return x[2] > 0; });
+    var tot = items.reduce(function (a, x) { return a + x[2]; }, 0);
+    if (!tot) return null;
+    var bar = h('div', { class: 'sbar', 'aria-hidden': 'true' }), lg = h('ul', { class: 'slg', 'aria-hidden': 'true' }), say = [];
+    items.forEach(function (x) {
+      var pct = Math.round(x[2] / tot * 100), seg = h('i', { class: 's-' + x[0] });
+      seg.style.flex = x[2] + ' 1 0px';
+      bar.appendChild(seg);
+      lg.appendChild(h('li', null, [h('i', { class: 'dot dot--' + x[0] }), x[1] + ' ', h('b', { text: pct + '%' })]));
+      say.push(pct + '% ' + x[1].toLowerCase());
+    });
+    return h('div', { class: 'sbw', role: 'img', 'aria-label': 'Counted days: ' + say.join(', ') }, [h('b', { text: 'Counted days' }), bar, lg]);
+  }
+
+  /* a smooth line through the points that never swings past them */
+  function smooth(P) {
+    var f = function (v) { return v.toFixed(1); };
+    if (P.length < 3) return P.map(function (p, k) { return (k ? 'L' : 'M') + f(p[0]) + ' ' + f(p[1]); }).join(' ');
+    var out = 'M' + f(P[0][0]) + ' ' + f(P[0][1]);
+    for (var k = 0; k < P.length - 1; k++) {
+      var p0 = P[k - 1] || P[k], p1 = P[k], p2 = P[k + 1], p3 = P[k + 2] || p2;
+      var lo = Math.min(p1[1], p2[1]), hi = Math.max(p1[1], p2[1]);
+      var c1y = Math.max(lo, Math.min(hi, p1[1] + (p2[1] - p0[1]) / 6)), c2y = Math.max(lo, Math.min(hi, p2[1] - (p3[1] - p1[1]) / 6));
+      out += ' C' + f(p1[0] + (p2[0] - p0[0]) / 6) + ' ' + f(c1y) + ' ' + f(p2[0] - (p3[0] - p1[0]) / 6) + ' ' + f(c2y) + ' ' + f(p2[0]) + ' ' + f(p2[1]);
+    }
+    return out;
   }
 
   /* a small line of present people for each counted day: point or tap to read a day */
@@ -598,7 +654,7 @@
     pts.forEach(function (p) { mx = Math.max(mx, p[1]); mn = Math.min(mn, p[1]); });
     mn = mn * .9;
     var X = function (i) { return 3 + (W - 6) * i / Math.max(1, n - 1); }, Y = function (v) { return 4 + (H - 10) * (1 - (v - mn) / ((mx - mn) || 1)); };
-    var line = pts.map(function (p, k) { return (k ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join(' ');
+    var line = smooth(pts.map(function (p) { return [X(p[0]), Y(p[1])]; }));
     var area = line + ' L' + X(pts[pts.length - 1][0]).toFixed(1) + ' ' + H + ' L' + X(pts[0][0]).toFixed(1) + ' ' + H + ' Z';
     var dot = h('i', { class: 'spd' }), tip = h('div', { class: 'spt' });
     var wrap = h('div', { class: 'spw', 'aria-hidden': 'true' }, [dot, tip,
@@ -651,9 +707,9 @@
   function drawChart(d, daily, animate) {
     var host = el.chart, n = d.dates.length;
     clear(host);
-    var W = Math.max(280, host.clientWidth), H = Math.round(Math.max(210, Math.min(280, W * .5)));
+    var W = Math.max(280, host.clientWidth), H = Math.round(Math.max(224, Math.min(292, W * .5)));
     S.chartW = host.clientWidth;
-    var m = { l: 34, r: 6, t: 12, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b, band = iw / n, bw = Math.max(2, Math.min(26, band * .68));
+    var m = { l: 30, r: 6, t: 30, b: 28 }, iw = W - m.l - m.r, ih = H - m.t - m.b, band = iw / n, bw = Math.max(3, Math.min(28, band * .7));
     var max = 1; daily.forEach(function (c) { max = Math.max(max, c.in + c.late + c.leave + c.abs); });
     var nt = niceTop(max), y = function (v) { return m.t + ih - (v / nt.top) * ih; }, x = function (i) { return m.l + band * i + band / 2; };
     var svg = s('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H, 'aria-hidden': 'true', focusable: 'false' });
@@ -662,36 +718,53 @@
       svg.appendChild(s('line', { class: 'gl', x1: m.l, x2: W - m.r, y1: gy, y2: gy }));
       svg.appendChild(s('text', { x: m.l - 6, y: gy + 3.5, 'text-anchor': 'end', text: String(gv) }));
     }
-    var step = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 58))));       // as many day names as fit without touching
+    var step = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 58)))), labels = [];       // as many day names as fit without touching
     for (var i = 0; i < n; i++) {
-      if (i % step === 0 && (step === 1 || i <= n - 1 - step)) svg.appendChild(s('text', { x: x(i), y: H - 8, 'text-anchor': 'middle', text: short(d.dates[i]) }));
+      labels.push(i % step === 0 && (step === 1 || i <= n - 1 - step) ? svg.appendChild(s('text', { x: x(i), y: H - 8, 'text-anchor': 'middle', text: short(d.dates[i]) })) : null);
     }
-    var tip = h('div', { class: 'tip' }), hls = [];
+    var tip = h('div', { class: 'tip' }), hls = [], segs = [];
+    var firstTrk = null;
+    daily.forEach(function (c, i) {                                 // a light pill is the track of each day; the day's people stack inside it as pills
+      var tr = svg.appendChild(s('rect', { class: 'trk', x: x(i) - bw / 2, y: m.t, width: bw, height: ih, rx: bw / 2 }));
+      firstTrk = firstTrk || tr;
+    });
     daily.forEach(function (c, i) {
-      var base = m.t + ih;
-      if (isOffDay(c)) svg.appendChild(s('rect', { class: 'seg s-off', 'data-bar': '', 'data-i': i, x: x(i) - bw / 2, y: base - 4, width: bw, height: 4, rx: 2 }));
+      var base = m.t + ih, put = function (r) { segs.push({ n: svg.appendChild(r), i: i }); };
+      if (isOffDay(c)) put(s('rect', { class: 'seg s-off', 'data-bar': '', 'data-i': i, x: x(i) - bw / 2, y: base - 4, width: bw, height: 4, rx: 2 }));
       [['in', c.in], ['late', c.late], ['leave', c.leave], ['abs', c.abs]].forEach(function (sg) {
         if (!sg[1]) return;
-        var hgt = sg[1] / nt.top * ih, gap = hgt > 5 ? 2 : 0;       // a 2px gap between the stacked pieces
-        svg.appendChild(s('rect', { class: 'seg s-' + sg[0], 'data-bar': '', 'data-i': i, x: x(i) - bw / 2, y: base - hgt, width: bw, height: Math.max(1, hgt - gap), rx: Math.min(3, bw / 2) }));
+        var hgt = sg[1] / nt.top * ih, gap = hgt > 5 ? 2 : 0, rh = Math.max(1, hgt - gap);       // a 2px gap between the stacked pieces
+        put(s('rect', { class: 'seg s-' + sg[0], 'data-bar': '', 'data-i': i, x: x(i) - bw / 2, y: base - hgt, width: bw, height: rh, rx: Math.min(bw / 2, rh / 2) }));
         base -= hgt;
       });
     });
+    var pkT = s('text', { y: 0 }), pkR = s('rect', { rx: 9, height: 18 }), pk = s('g', { class: 'pk' }, [pkR, pkT]);   // the dark pill above the chosen day
+    svg.appendChild(pk);
     daily.forEach(function (c, i) {
-      var hit = s('rect', { class: 'hit', 'data-i': i, x: m.l + band * i, y: m.t, width: band, height: ih });
-      var hl = s('rect', { class: 'hl', x: m.l + band * i, y: m.t, width: band, height: ih, rx: 6 });
+      var hit = s('rect', { class: 'hit', 'data-i': i, x: m.l + band * i, y: 0, width: band, height: H - m.b + 6 });
+      var hl = s('rect', { class: 'hl', x: m.l + band * i + 1, y: m.t - 4, width: Math.max(2, band - 2), height: ih + 8, rx: Math.min(14, band / 2) });
       hls.push(hl);
       hit.addEventListener('pointerenter', function () { pick(i); });
       hit.addEventListener('click', function () { pick(i); openDay(i); });
-      svg.appendChild(hit); svg.appendChild(hl);
+      svg.insertBefore(hl, firstTrk); svg.appendChild(hit);                 // the soft column sits behind the pills
     });
     svg.addEventListener('pointerleave', function () { tip.classList.remove('show'); });
     host.appendChild(svg); host.appendChild(tip);
 
+    function mark(i) {                                              // the chosen day is full strength, the others step back
+      host.classList.add('has-sel');
+      hls.forEach(function (r, k) { r.setAttribute('class', k === i ? 'hl on' : 'hl'); });
+      segs.forEach(function (q) { q.n.setAttribute('class', q.n.getAttribute('class').replace(/ on$/, '') + (q.i === i ? ' on' : '')); });
+      labels.forEach(function (tx, k) { if (tx) tx.setAttribute('class', k === i ? 'on' : ''); });
+      var c = daily[i], tot = c.in + c.late + c.leave + c.abs, word = isOffDay(c) ? 'Off' : (c.in + c.late) + ' in';
+      var top = isOffDay(c) ? m.t + ih - 4 : y(tot), pw = Math.max(32, word.length * 6.6 + 16), cx = Math.max(pw / 2, Math.min(W - pw / 2, x(i))), py = Math.max(2, top - 25);
+      pkR.setAttribute('x', cx - pw / 2); pkR.setAttribute('y', py); pkR.setAttribute('width', pw);
+      pkT.setAttribute('x', cx); pkT.setAttribute('y', py + 12.6); pkT.textContent = word;
+      pk.setAttribute('class', 'pk on');
+    }
     function pick(i) {
       var c = daily[i], date = d.dates[i], cx = x(i);
-      S.sel = i;
-      hls.forEach(function (r, k) { r.setAttribute('class', k === i ? 'hl on' : 'hl'); });
+      S.sel = i; mark(i);
       el.readout.textContent = readoutText(d, c, i);
       clear(tip); tip.appendChild(h('b', { text: withDay(date) }));
       if (isOffDay(c)) tip.appendChild(h('div', { text: 'Day off' + (holName(d, date) ? ' (' + holName(d, date) + ')' : '') }));
@@ -703,11 +776,12 @@
       }
       tip.classList.add('show');
       el.dayMore.textContent = 'Show who: ' + withDay(date); show(el.dayMore, true);
-      var left = cx > W * .6 ? cx - tip.offsetWidth - 10 : cx + 10;
-      tip.style.left = Math.max(0, left) + 'px'; tip.style.top = Math.max(0, m.t + 6) + 'px';
+      var left = cx > W * .6 ? cx - tip.offsetWidth - 28 : cx + 28;                 // beside the dark pill, not under it
+      tip.style.left = Math.max(0, left) + 'px'; tip.style.top = Math.max(0, m.t + 14) + 'px';
     }
     S.pick = pick;
-    if (S.sel >= 0 && S.sel < n) { hls[S.sel].setAttribute('class', 'hl on'); }
+    host.classList.remove('has-sel');
+    if (S.sel >= 0 && S.sel < n) { mark(S.sel); }
     else { el.readout.textContent = 'Each bar is one day. Point at a bar to see that day, press it to see who. The tallest bar is ' + plural(max, 'person', 'people') + '.'; show(el.dayMore, false); }
   }
 
@@ -725,12 +799,14 @@
     ev.preventDefault(); S.pick(to);
   });
   var resizeTimer = 0;
-  window.addEventListener('resize', function () {
+  function redrawChart() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
       if (S.data && S.daily && !el.chartCard.hidden && el.chart.clientWidth && el.chart.clientWidth !== S.chartW) drawChart(S.data, S.daily, false);
     }, 150);
-  });
+  }
+  window.addEventListener('resize', redrawChart);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(redrawChart).observe(el.chart);       // also when the menu or the layout changes the width without a window resize
 
   function readoutText(d, c, i) {
     var date = d.dates[i], day = withDay(date), hol = holName(d, date);
@@ -794,49 +870,159 @@
   el.more.addEventListener('click', function () { S.showAll = true; renderPeople(); });
 
   /* ---------- One person: numbers and calendar ---------- */
-  function personView(p, d, noMeta) {
+  function personView(p, d, noMeta, opts) {
     var box = h('div');
+    var panel = h('div', { class: 'dday', tabindex: '-1', 'aria-live': 'polite', hidden: true });
     var meta = [p.username, p.designation, p.manager ? 'Reports to ' + p.manager : ''].filter(Boolean).join(' · ');
     if (meta && !noMeta) box.appendChild(h('p', { class: 'meta', text: meta }));
-    var chips = [['in', 'Present ' + p.present], ['late', 'Late ' + p.late], ['leave', 'Leave ' + p.leave], ['abs', 'Absent ' + p.absent], ['off', 'Day off ' + p.off], ['off', 'Night holds ' + p.nights]];
+    var chips = [['in', 'Present ' + p.present], ['late', 'Late ' + p.late], ['leave', 'Leave ' + p.leave], ['abs', 'Absent ' + p.absent], ['off', 'Day off ' + p.off], ['off', 'Night holds ' + p.nights, p.nights > 0]];
     if (p.pending) chips.push(['pend', 'Pending ' + p.pending]);
     if (p.km !== null && p.km !== undefined) chips.push(['off', 'Driver km ' + Math.round(p.km)]);
-    box.appendChild(h('div', { class: 'chips' }, chips.map(function (c) { return h('span', { class: 'pchip' }, [h('i', { class: 'dot dot--' + c[0], 'aria-hidden': 'true' }), c[1]]); })));
+    box.appendChild(h('div', { class: 'chips' }, chips.map(function (c) {
+      var inner = [h('i', { class: 'dot dot--' + c[0], 'aria-hidden': 'true' }), c[1]];
+      return c[2] ? h('button', { type: 'button', class: 'pchip pbtn', title: 'Show the night holds', onclick: function () { showNights(p, d, panel); } }, inner.concat([icon(ICON.go)])) : h('span', { class: 'pchip' }, inner);
+    })));
     var byType = (d.leaveTypes || []).map(function (n, i) { return p.leaveByType && p.leaveByType[i] ? n + ' ' + p.leaveByType[i] : ''; }).filter(Boolean);
     if (byType.length) box.appendChild(h('p', { class: 'meta', text: 'Leave taken: ' + byType.join(', ') }));
-    box.appendChild(calendar(p, d));
+    box.appendChild(calendar(p, d, function (i) { showDay(p, d, i, panel); }));
+    box.appendChild(h('p', { class: 'holi muted', text: 'Press a day to see the time, the place and a map link.' }));
+    box.appendChild(panel);
     var key = h('ul', { class: 'key' });
     [['In', 'present'], ['Late', 'present after the late time'], ['Abs', 'absent'], ['Off', 'Friday or holiday'], ['Pend', 'today is not over']].forEach(function (k) { key.appendChild(h('li', { text: k[0] + ' = ' + k[1] })); });
     (d.leaveTypes || []).forEach(function (n, i) { key.appendChild(h('li', { text: leaveShort(String(i + 1), d) + ' = ' + n })); });
+    key.appendChild(h('li', { text: 'Moon mark = a night hold' }));
     box.appendChild(key);
     var holi = Object.keys(d.holidays || {}).sort().map(function (k) { return short(k) + ' ' + holName(d, k); });
     if (holi.length) box.appendChild(h('p', { class: 'holi', text: 'Holidays in this period: ' + holi.join(', ') + '.' }));
     if (p.note) box.appendChild(h('p', { class: 'holi', text: p.note }));
-    if (!p.times) box.appendChild(h('p', { class: 'holi muted', text: 'Check-in times are shown when 80 people or fewer are on the page.' }));
+    if (!p.times) box.appendChild(h('p', { class: 'holi muted', text: 'Check-in times are shown in the boxes when 80 people or fewer are on the page.' }));
+    if (opts && opts.nights && p.nights > 0) setTimeout(function () { showNights(p, d, panel, true); }, 0);
     return box;
   }
 
-  function calendar(p, d) {
-    var grid = h('div', { class: 'cal', role: 'list', 'aria-label': 'One box for each day' });
+  function dayWords(c, d, date) {                                  // the short and the long word for one day letter
+    var k = kindOf(c), label, full;
+    if (k === 'in') { label = 'In'; full = 'Present'; } else if (k === 'late') { label = 'Late'; full = 'Present, late'; } else if (k === 'abs') { label = 'Abs'; full = 'Absent'; }
+    else if (k === 'off') { label = 'Off'; full = 'Day off'; } else if (k === 'pend') { label = 'Pend'; full = 'Not in yet'; } else if (k === 'none') { label = '–'; full = 'Not counted'; }
+    else { label = leaveShort(c, d); full = leaveName(c, d); }
+    var hol = holName(d, date);
+    if (hol) full += ' (' + hol + ')';
+    return { k: k, label: label, full: full };
+  }
+
+  function calendar(p, d, pick) {
+    var grid = h('div', { class: 'cal', role: 'group', 'aria-label': 'One box for each day. Press a day for details.' });
     ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(function (w) { grid.appendChild(h('div', { class: 'cal__h', text: w, 'aria-hidden': 'true' })); });
     var lead = (dow(d.dates[0]) + 1) % 7;                      // the week starts on Saturday
     for (var g = 0; g < lead; g++) grid.appendChild(h('div', { class: 'day day--gap', 'aria-hidden': 'true' }));
+    var nightOn = {}; (p.nightDates || []).forEach(function (x) { nightOn[x] = true; });
     d.dates.forEach(function (date, i) {
-      var c = p.days.charAt(i), k = kindOf(c), label, full;
-      if (k === 'in') { label = 'In'; full = 'Present'; } else if (k === 'late') { label = 'Late'; full = 'Present, late'; } else if (k === 'abs') { label = 'Abs'; full = 'Absent'; }
-      else if (k === 'off') { label = 'Off'; full = 'Day off'; } else if (k === 'pend') { label = 'Pend'; full = 'Not in yet'; } else if (k === 'none') { label = '–'; full = 'Not counted'; }
-      else { label = leaveShort(c, d); full = leaveName(c, d); }
-      var hol = holName(d, date);
-      if (hol) full += ' (' + hol + ')';
+      var w = dayWords(p.days.charAt(i), d, date), k = w.k, full = w.full;
       var time = p.times && p.times[i] ? String(p.times[i]) : '';
-      var dayNo = parts(date).d;
-      grid.appendChild(h('div', { class: 'day day--' + k, role: 'listitem', title: withDay(date) + ': ' + full + (time ? ' at ' + time : ''), 'aria-label': withDay(date) + ': ' + full + (time ? ' at ' + time : '') }, [
+      var dayNo = parts(date).d, night = !!nightOn[date];
+      var say = withDay(date) + ': ' + full + (time ? ' at ' + time : '') + (night ? '. Night hold' : '');
+      var btn = h('button', { type: 'button', class: 'day day--' + k, title: say, 'aria-label': say, 'aria-pressed': 'false', 'data-date': date, 'data-night': night ? '1' : null }, [
         h('span', { class: 'day__d', text: (dayNo === 1 || i === 0) ? short(date) : String(dayNo) }),
-        h('span', { class: 'day__c', text: label }),
-        h('span', { class: 'day__t', text: time })
-      ]));
+        h('span', { class: 'day__c', text: w.label }),
+        h('span', { class: 'day__t', text: time }),
+        night ? icon(ICON.moon) : null
+      ]);
+      btn.addEventListener('click', function () {
+        $$('.day[aria-pressed="true"]', grid).forEach(function (n) { n.setAttribute('aria-pressed', 'false'); });
+        btn.setAttribute('aria-pressed', 'true');
+        pick(i);
+      });
+      grid.appendChild(btn);
     });
     return grid;
+  }
+
+  /* ---------- A pressed day (or the night holds): the time, the place, a map link ---------- */
+  function mapLink(lat, lng) {                                     // only from two plain numbers: the link is never made from any other text
+    var a = String(lat === undefined || lat === null ? '' : lat).trim(), b = String(lng === undefined || lng === null ? '' : lng).trim();
+    if (!/^-?\d{1,3}(\.\d+)?$/.test(a) || !/^-?\d{1,3}(\.\d+)?$/.test(b)) return null;
+    if (Math.abs(Number(a)) > 90 || Math.abs(Number(b)) > 180 || (Number(a) === 0 && Number(b) === 0)) return null;
+    return h('a', { class: 'maplink', href: 'https://www.google.com/maps/search/?api=1&query=' + a + ',' + b, target: '_blank', rel: 'noopener noreferrer', referrerpolicy: 'no-referrer' }, [icon(ICON.pin), 'Open in Google Maps']);
+  }
+  function kv(rows) {
+    var dl = h('dl', { class: 'dkv' });
+    rows.forEach(function (r) { if (r && r[1] !== '' && r[1] !== null && r[1] !== undefined) dl.appendChild(h('div', null, [h('dt', { text: r[0] }), h('dd', null, [r[1]])])); });
+    return dl;
+  }
+  function placeRows(x) {                                          // address, position and the map link of one record
+    var link = mapLink(x.lat, x.lng), pos = link ? Number(x.lat).toFixed(5) + ', ' + Number(x.lng).toFixed(5) : '';
+    return [['Place', x.address || (link ? '' : 'No place was recorded')], ['Position', pos], ['Map', link]];
+  }
+  function personDetail(p, d) {                                    // one request for the whole period, then every press is answered from memory
+    var key = p.username.toLowerCase() + '|' + d.from + '|' + d.to;
+    if (S.detail[key]) return S.detail[key];
+    var pr = api({ action: 'webPerson', username: p.username, from: d.from, to: d.to }, 60000).then(function (r) {
+      if (r && r.auth) { sessionEnded(); return r; }
+      if (!r || !r.ok) delete S.detail[key];                       // a refusal or a failure is asked again next time
+      return r;
+    });
+    S.detail[key] = pr;
+    return pr;
+  }
+  function showPanel(panel, title, sub, nodes) {
+    clear(panel); panel.hidden = false;
+    panel.appendChild(h('h3', { class: 'dday__t', text: title }));
+    if (sub) panel.appendChild(h('p', { class: 'dday__s', text: sub }));
+    nodes.forEach(function (n) { if (n) panel.appendChild(n); });
+    if (panel.scrollIntoView) { try { panel.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); } catch (e) { /* an old browser: no scroll */ } }
+  }
+  function failNote(r) { return h('p', { class: 'dnote warn', role: 'alert', text: (r && r.error) || 'The details could not be loaded.' }); }
+
+  function attendanceBlock(rec, d) {
+    var rows = [['Check-in', clock(rec.time) + (rec.late ? ' · Late' : '')]];
+    if (rec.late && rec.lateReason) rows.push(['Late reason', rec.lateReason]);
+    rows = rows.concat(placeRows(rec));
+    if (rec.face) rows.push(['Face check', rec.face]);
+    if (rec.meterKm) rows.push(['Car meter (start)', rec.meterKm + ' km']);
+    if (rec.dayEnd) { rows.push(['Day end', clock(rec.dayEnd)]); if (rec.dayEndKm) rows.push(['Car meter (end)', rec.dayEndKm + ' km']); if (rec.driven >= 0) rows.push(['Driven', rec.driven + ' km']); }
+    return kv(rows);
+  }
+  function nightBlock(n) {
+    var area = [n.district, n.thana].filter(Boolean).join(' · ');
+    return kv([['Time', clock(n.time)], ['Hotel', n.hotel], ['Area', area]].concat(placeRows(n)));
+  }
+
+  function showDay(p, d, i, panel) {
+    var date = d.dates[i], c = p.days.charAt(i), w = dayWords(c, d, date), night = (p.nightDates || []).indexOf(date) >= 0;
+    var title = withDay(date) + ' ' + parts(date).y;
+    panel.setAttribute('data-i', String(i));
+    var needs = w.k === 'in' || w.k === 'late' || night;
+    if (!needs) {
+      showPanel(panel, title, w.full, [h('p', { class: 'dnote', text: ({ abs: 'No check-in was recorded on this day.', off: 'A day off: nothing is expected.', leave: 'On leave: no check-in is needed.', pend: 'Today is not over yet.', none: 'This day is after the last working day.' })[w.k] || '' })]);
+      return;
+    }
+    showPanel(panel, title, w.full, [h('p', { class: 'dnote', text: 'Loading the place…' })]);
+    personDetail(p, d).then(function (r) {
+      if (panel.getAttribute('data-i') !== String(i)) return;      // another day was pressed meanwhile
+      if (!r || !r.ok) { if (!(r && r.auth)) showPanel(panel, title, w.full, [failNote(r)]); return; }
+      var rec = (r.records || []).filter(function (x) { return x.date === date; })[0];
+      var ns = (r.nights || []).filter(function (x) { return x.date === date; });
+      var nodes = [];
+      if (rec) nodes.push(attendanceBlock(rec, d)); else if (w.k === 'in' || w.k === 'late') nodes.push(h('p', { class: 'dnote', text: 'No place was recorded for this day.' }));
+      ns.forEach(function (n) { nodes.push(h('h4', { class: 'dday__h' }, [icon(ICON.moon), 'Night hold']), nightBlock(n)); });
+      if (night && !ns.length) nodes.push(h('p', { class: 'dnote', text: 'The night hold of this day could not be found.' }));
+      showPanel(panel, title, w.full, nodes);
+    });
+  }
+
+  function showNights(p, d, panel, quiet) {
+    var title = 'Night holds', sub = plural(p.nights, 'night hold', 'night holds') + ' in this period';
+    panel.setAttribute('data-i', 'nights');
+    $$('.day[aria-pressed="true"]', panel.parentNode).forEach(function (n) { n.setAttribute('aria-pressed', 'false'); });
+    showPanel(panel, title, sub, [h('p', { class: 'dnote', text: 'Loading the places…' })]);
+    personDetail(p, d).then(function (r) {
+      if (panel.getAttribute('data-i') !== 'nights') return;
+      if (!r || !r.ok) { if (!(r && r.auth)) showPanel(panel, title, sub, [failNote(r)]); return; }
+      var ns = (r.nights || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      var nodes = ns.length ? [] : [h('p', { class: 'dnote', text: 'No night hold was found.' })];
+      ns.forEach(function (n) { nodes.push(h('h4', { class: 'dday__h' }, [icon(ICON.moon), withDay(n.date) + ' ' + parts(n.date).y]), nightBlock(n)); });
+      showPanel(panel, title, sub, nodes);
+    });
   }
 
   /* ---------- One window for every detail (a person, a number, a day) ---------- */
@@ -851,8 +1037,8 @@
   function who(p) { return [p.username, p.designation].filter(Boolean).join(' · '); }
   function byName(a, b) { return String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }); }
 
-  function openPerson(p, back) {
-    var body = personView(p, S.data, true);
+  function openPerson(p, back, opts) {
+    var body = personView(p, S.data, true, opts);
     if (back) body.insertBefore(backBtn(back.fn, back.label), body.firstChild);
     openDlg(p.name, initials(p.name), [p.username, p.designation, p.manager ? 'Reports to ' + p.manager : ''].filter(Boolean).join(' · '), body);
   }
@@ -930,7 +1116,7 @@
           var types = (d.leaveTypes || []).map(function (nm, i) { return p.leaveByType && p.leaveByType[i] ? nm + ' ' + p.leaveByType[i] : ''; }).filter(Boolean).join(', ');
           if (types) small += ', ' + types;
         }
-        list.appendChild(personRow(p, String(n), small, function () { openPerson(p, { fn: function () { openKind(key); }, label: 'Back to ' + K.title }); }));
+        list.appendChild(personRow(p, String(n), small, function () { openPerson(p, { fn: function () { openKind(key); }, label: 'Back to ' + K.title }, { nights: key === 'nights' }); }));
       });
       count = rows.length;
       body.appendChild(h('p', { class: 'meta', text: totalText(key, total) + ' from ' + plural(count, 'person', 'people') + '. Press a name to see their days.' }));
@@ -1026,11 +1212,14 @@
     if (reduce || !stage.animate) return;
     var ease = 'cubic-bezier(.16,1,.3,1)';
     rises.forEach(function (n, i) {
-      n.animate([{ opacity: 0, transform: 'translateY(22px) scale(.97)', filter: 'blur(10px)' }, { opacity: 1, transform: 'none', filter: 'blur(0px)' }], { duration: 700, delay: 40 + i * 55, easing: ease, fill: 'backwards' });
+      n.animate([{ opacity: 0, transform: 'translateY(22px) scale(.97)', filter: 'blur(6px)' }, { opacity: 1, transform: 'none', filter: 'blur(0px)' }], { duration: 700, delay: 40 + i * 55, easing: ease, fill: 'backwards' });
     });
     $$('circle.ra', stage).forEach(function (c) {
       var host = c.closest('[data-rise]'), k = rises.indexOf(host);
       c.animate([{ strokeDasharray: '0 100' }, { strokeDasharray: c.getAttribute('data-to') + ' 100' }], { duration: 1100, delay: 250 + Math.max(0, k) * 55, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' });
+    });
+    $$('.sbar i', stage).forEach(function (b, i) {
+      b.animate([{ transform: 'scaleX(0)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 800, delay: 450 + i * 90, easing: ease, fill: 'backwards' });
     });
     $$('[data-bar]', stage).forEach(function (b, i) {
       b.animate([{ transform: 'scaleY(0)' }, { transform: 'none' }], { duration: 760, delay: 350 + (Number(b.getAttribute('data-i')) || i) * 45, easing: ease, fill: 'backwards' });
@@ -1042,22 +1231,6 @@
       an.onfinish = function () { p.style.strokeDasharray = ''; };
     });
   }
-
-  /* ---------- A soft light that follows the pointer over each glass panel ---------- */
-  var sheenQueued = false, sheenEv = null;
-  document.addEventListener('pointermove', function (e) {
-    if (e.pointerType === 'touch') return;
-    sheenEv = e;
-    if (sheenQueued) return;
-    sheenQueued = true;
-    requestAnimationFrame(function () {
-      sheenQueued = false;
-      var t = sheenEv && sheenEv.target, g = t && t.closest ? t.closest('.glass') : null;
-      if (!g) return;
-      var r = g.getBoundingClientRect();
-      g.style.setProperty('--mx', (sheenEv.clientX - r.left) + 'px'); g.style.setProperty('--my', (sheenEv.clientY - r.top) + 'px');
-    });
-  }, { passive: true });
 
   /* ---------- Light / Dark (same choice as the main page) ---------- */
   var root = document.documentElement;
@@ -1075,11 +1248,28 @@
     el.mode.setAttribute('aria-label', dk ? 'Switch to the light theme' : 'Switch to the dark theme');
     $('span', el.mode2).textContent = dk ? 'Light' : 'Dark';
   }
-  function flip() {
+  function paintMeta(dk) {                                      // the browser bar follows a hand-picked theme too
+    var ms = $$('meta[name="theme-color"]');
+    if (!ms.length) return;
+    ms[0].removeAttribute('media'); ms[0].setAttribute('content', dk ? '#071611' : '#DCEFE5');
+    for (var k = 1; k < ms.length; k++) if (ms[k].parentNode) ms[k].parentNode.removeChild(ms[k]);
+  }
+  function flip(ev) {
     var next = isDark() ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
-    try { localStorage.setItem('sb-theme', next); } catch (e) { /* not saved: fine */ }
-    paintMode();
+    var apply = function () {
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('sb-theme', next); } catch (e) { /* not saved: fine */ }
+      paintMode(); paintMeta(next === 'dark');
+    };
+    if (reduce || typeof document.startViewTransition !== 'function') { apply(); return; }
+    var b = ev && ev.currentTarget && ev.currentTarget.getBoundingClientRect ? ev.currentTarget.getBoundingClientRect() : null;
+    var x = b ? b.left + b.width / 2 : window.innerWidth / 2, y = b ? b.top + b.height / 2 : 0;
+    var r = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)), vt;
+    try { vt = document.startViewTransition(apply); } catch (e) { apply(); return; }
+    vt.ready.then(function () {                                 // the new colours spread out from the button like a ripple
+      root.animate({ clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + r + 'px at ' + x + 'px ' + y + 'px)'] },
+        { duration: 650, easing: 'cubic-bezier(.22,1,.36,1)', pseudoElement: '::view-transition-new(root)' });
+    }).catch(function () { /* the colours already changed */ });
   }
   el.mode.addEventListener('click', flip); el.mode2.addEventListener('click', flip);
   paintMode();

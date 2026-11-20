@@ -9,8 +9,9 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src https://sambond.samuda-sales.workers.dev; base-uri 'none'; form-action 'none'">
 <meta name="color-scheme" content="dark light">
-<meta name="theme-color" content="#1A0F16">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23FF6B3D'/%3E%3Cpath d='M8 17l5.5 5.5L24 11' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#DCEFE5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#071611" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230F2E26'/%3E%3Cpath d='M8 17l5.5 5.5L24 11' fill='none' stroke='%23BDEBD8' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preload" href="../fonts/Inter-Regular.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="../fonts/InterDisplay-SemiBold.woff" as="font" type="font/woff" crossorigin>
 <link rel="stylesheet" href="dashboard.css">
@@ -18,27 +19,7 @@
 </head>
 <body class="locked">
 
-<div class="scene" aria-hidden="true">
-  <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" focusable="false">
-    <defs>
-      <radialGradient id="sun" cx="50%" cy="50%" r="50%"><stop class="sun1" offset="0"/><stop class="sun2" offset=".55"/><stop class="sun2 fade" offset="1" stop-opacity="0"/></radialGradient>
-      <linearGradient id="fl" x1="0" y1="0" x2="0" y2="1"><stop class="flr" offset="0" stop-opacity="0"/><stop class="flr" offset="1" stop-opacity=".9"/></linearGradient>
-      <filter id="soft" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="2.2"/></filter>
-    </defs>
-    <g filter="url(#soft)">
-      <circle cx="1180" cy="330" r="250" fill="url(#sun)"/>
-      <path class="a1" d="M130 760V380a150 150 0 0 1 300 0V760Z"/>
-      <path class="a2" d="M470 760V300a150 150 0 0 1 300 0V760Z"/>
-      <path class="a3" d="M810 760V430a110 110 0 0 1 220 0V760Z"/>
-      <rect class="wd" x="1230" y="140" width="22" height="620" rx="8"/>
-      <rect class="wd" x="1390" y="140" width="22" height="620" rx="8"/>
-      <rect class="wd" x="1230" y="300" width="182" height="16" rx="6"/>
-      <rect class="wd" x="1230" y="470" width="182" height="16" rx="6"/>
-      <rect x="0" y="740" width="1600" height="160" fill="url(#fl)"/>
-    </g>
-  </svg>
-</div>
-<div class="grain" aria-hidden="true"></div>
+<div class="scene" aria-hidden="true"></div>
 <a class="skip" href="#main">Skip to content</a>
 
 <noscript><p class="banner warn nojs">This page needs JavaScript to show your reports. Please turn it on and reload.</p></noscript>
@@ -89,6 +70,7 @@
       <form class="fbar glass" id="controls" novalidate>
         <label class="fl"><span>Period</span>
           <select id="period">
+            <option value="today" selected>Today</option>
             <option value="current">This pay period</option>
             <option value="previous">Last pay period</option>
             <option value="custom">Choose dates…</option>
@@ -148,7 +130,7 @@
           <div class="dl" id="dl"></div>
         </section>
 
-        <footer class="foot" data-rise><span>Your sign-in stays in this browser tab only and is erased when you sign out or close the tab. Nothing from your reports is saved on this device.</span><span><a href="../">Main page</a> · Set in Inter (<a href="../fonts/Inter-OFL.txt">licence</a>)</span></footer>
+        <footer class="foot" data-rise><span>Your sign-in stays in this browser tab only and is erased when you sign out or close the tab. Nothing from your reports is saved on this device.</span><span><a href="../">Main page</a> · Set in Inter and Lora Italic (<a href="../fonts/Inter-OFL.txt">licence</a>, <a href="../fonts/LoraItalic-OFL.txt">licence</a>)</span></footer>
       </div>
     </div>
   </main>
@@ -188,7 +170,7 @@
     <svg class="msc" id="msc" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
       <defs>
         <clipPath id="mclip"><circle cx="100" cy="100" r="96"/></clipPath>
-        <linearGradient id="mbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A3550"/><stop offset="1" stop-color="#2A1F30"/></linearGradient>
+        <linearGradient id="mbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2C6B57"/><stop offset="1" stop-color="#0F2E26"/></linearGradient>
         <linearGradient id="mbd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC08A"/><stop offset=".55" stop-color="#FF8A4F"/><stop offset="1" stop-color="#F0561F"/></linearGradient>
         <linearGradient id="mhd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB27C"/><stop offset="1" stop-color="#F26A2E"/></linearGradient>
       </defs>
@@ -212,7 +194,7 @@
       </g>
       <circle cx="100" cy="100" r="95" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2"/>
     </svg>
-    <h1 id="loginTitle">SAM BOND Reports</h1>
+    <h1 id="loginTitle">SAM BOND <em>Reports</em></h1>
     <p class="lsub">Sign in with your Employee ID to read your reports</p>
     <form id="loginForm" autocomplete="on" novalidate>
       <div class="lgf"><label for="user">Employee ID</label>

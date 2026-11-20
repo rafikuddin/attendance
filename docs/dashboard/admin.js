@@ -375,7 +375,8 @@
         if (it.key === 'admin' && !u.isAdmin) return;
         var cb = h('input', { type: 'checkbox', checked: lockedNow.indexOf(it.key) < 0, disabled: it.key === 'admin' && me });
         boxes['m:' + it.key] = cb;
-        grid.appendChild(h('label', { class: 'tk' }, [cb, h('span', { text: it.label }), it.key === 'admin' && me ? h('small', { text: 'You cannot lock your own' }) : null]));
+        var hint = it.key === 'admin' && me ? 'You cannot lock your own' : (it.key === 'attendance' ? 'Off: no attendance in the app and no My report on the website' : (it.key === 'reports' ? 'Off: no reports on the website' : ''));
+        grid.appendChild(h('label', { class: 'tk' }, [cb, h('span', { text: it.label }), hint ? h('small', { text: hint }) : null]));
       });
       sec.appendChild(grid);
       sec.appendChild(h('p', { class: 'note', text: 'Extra rights' }));
