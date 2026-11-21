@@ -38,6 +38,10 @@
       <span class="pill" id="pill" aria-hidden="true"></span>
       <div class="msec">Reports</div>
       <div id="scopes" role="group" aria-label="Whose report"></div>
+      <div id="leaveNav" hidden>
+        <div class="msec">Team</div>
+        <div id="leaveItems" role="group" aria-label="Team"></div>
+      </div>
       <div id="adminNav" hidden>
         <div class="msec">Admin</div>
         <div id="adminItems" role="group" aria-label="Admin panel"></div>
@@ -87,6 +91,8 @@
       <p class="banner note" id="msg" role="status" aria-live="polite" hidden></p>
 
       <div class="rep adm" id="adminView" hidden></div>
+
+      <div class="rep lv" id="leaveView" hidden></div>
 
       <div class="rep" id="report" hidden>
         <div class="tiles" id="kpis"></div>
@@ -215,6 +221,7 @@
 </div>
 
 <script src="admin.js"></script>
+<script src="leave.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

@@ -185,7 +185,7 @@
    'title', 'sub', 'until', 'paceT', 'paceBar', 'controls', 'scopes', 'period', 'dates', 'from', 'to', 'show', 'refresh', 'msg', 'toast',
    'report', 'range', 'todayCard', 'todayDate', 'todayRow', 'notIn', 'notInSum', 'notInList', 'kpis', 'kpis2', 'chartCard', 'legend', 'chart', 'readout', 'dayMore', 'dayTable',
    'peopleCard', 'search', 'people', 'peopleNote', 'more', 'meCard', 'meTitle', 'meBody', 'dlCard', 'dl', 'dlg', 'dlgAv', 'dlgTitle', 'dlgSub', 'dlgBody', 'dlgClose',
-   'adminNav', 'adminItems', 'adminView', 'adDlg', 'adClose', 'adAv', 'adTitle', 'adSub', 'adBody', 'pwDlg', 'pwForm', 'pwClose', 'pwTitle', 'pwSub', 'pwText', 'pwInput', 'pwMsg', 'pwCancel', 'pwGo', 'pwGoText'
+   'adminNav', 'adminItems', 'adminView', 'leaveNav', 'leaveItems', 'leaveView', 'adDlg', 'adClose', 'adAv', 'adTitle', 'adSub', 'adBody', 'pwDlg', 'pwForm', 'pwClose', 'pwTitle', 'pwSub', 'pwText', 'pwInput', 'pwMsg', 'pwCancel', 'pwGo', 'pwGoText'
   ].forEach(function (id) { el[id] = document.getElementById(id); });
   var stage = $('.stage');
 
@@ -210,9 +210,10 @@
     S.req++;                                                  // an answer that is still on its way is thrown away
     try { if (el.dlg.open) el.dlg.close(); } catch (e) { /* not open */ }
     if (admin) admin.reset();                                 // closes its windows and forgets the 15-minute marker
+    if (leaveP) leaveP.reset();                               // the leave applications and any picture are forgotten
     closeNav(true);
-    [el.kpis, el.kpis2, el.chart, el.legend, el.dayTable, el.people, el.meBody, el.dl, el.todayRow, el.notInList, el.dlgBody, el.scopes, el.adminItems, el.adminView].forEach(function (n) { if (n) clear(n); });
-    show(el.adminNav, false); show(el.adminView, false);
+    [el.kpis, el.kpis2, el.chart, el.legend, el.dayTable, el.people, el.meBody, el.dl, el.todayRow, el.notInList, el.dlgBody, el.scopes, el.adminItems, el.adminView, el.leaveItems, el.leaveView].forEach(function (n) { if (n) clear(n); });
+    show(el.adminNav, false); show(el.adminView, false); show(el.leaveNav, false); show(el.leaveView, false);
     el.user.value = '';
     S.detail = {};                                            // the places and times of people are forgotten with the sign-in
     S.name = ''; S.view = 'report'; S.flags = { isManager: false, isAdmin: false, webAdmin: false, locks: [] };
@@ -366,12 +367,13 @@
     el.whoRole.textContent = S.flags.isAdmin ? 'Admin' : (S.flags.isManager ? 'Manager' : 'Employee');
     var locked = S.flags.locks.indexOf('reports') >= 0;
     S.scope = canEveryone() ? 'all' : (S.flags.isManager ? 'team' : 'me');
-    S.period = 'today'; S.query = ''; S.showAll = false; S.sel = -1; S.view = 'report'; show(el.adminView, false);
+    S.period = 'today'; S.query = ''; S.showAll = false; S.sel = -1; S.view = 'report'; show(el.adminView, false); show(el.leaveView, false);
     el.period.value = 'today'; show(el.dates, false); el.search.value = '';
     var end = S.expireAt ? new Date(S.expireAt) : null;
     el.until.textContent = end ? 'Signed in until ' + pad(end.getHours()) + ':' + pad(end.getMinutes()) + ' at the latest. You are signed out after 15 minutes without use.' : 'You are signed out after 15 minutes without use.';
     paintPace();
-    buildScopes(); buildAdmin();
+    buildScopes(); buildAdmin(); buildLeave();
+    if (leaveAllowed()) leaveP.prefetch();                    // the menu shows how many applications are waiting
     if (locked) { reportsOff(); return; }
     if (S.scope === 'me' && ownOff()) { reportsOff('Attendance is switched off for your account, so there is no attendance report for you. Please ask your admin.'); return; }
     show(el.controls, true); showMsg('');
@@ -394,12 +396,12 @@
       var b = h('button', { type: 'button', class: 'mi', 'data-scope': it[0], 'aria-pressed': it[0] === S.scope ? 'true' : 'false' }, [icon(it[2]), h('span', { text: it[1] })]);
       b.addEventListener('click', function () {
         closeNav(true);
-        var wasAdmin = S.view === 'admin';
-        if (S.scope === it[0] && !wasAdmin) return;
+        var wasOther = S.view !== 'report';                  // the Admin or the Leave page is open
+        if (S.scope === it[0] && !wasOther) return;
         S.scope = it[0]; S.query = ''; S.showAll = false; S.sel = -1; el.search.value = '';
         $$('.mi', el.menu).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
         slidePill(b, true);
-        if (wasAdmin) backToReports(); else load();
+        if (wasOther) backToReports(); else load();
       });
       el.scopes.appendChild(b);
     });
@@ -433,14 +435,16 @@
   }
   function showAdmin(id) {
     S.view = 'admin'; S.req++;                                 // a report that is still on its way is thrown away
+    if (leaveP) leaveP.leave(); show(el.leaveView, false); closeWin();
     el.show.disabled = false; el.refresh.disabled = false;
     show(el.controls, false); show(el.report, false); showMsg('');
     show(el.adminView, true);
     admin.show(id);
   }
   function backToReports() {
-    S.view = 'report'; show(el.adminView, false);
+    S.view = 'report'; show(el.adminView, false); show(el.leaveView, false);
     if (admin) admin.leave();
+    if (leaveP) leaveP.leave();
     if (S.flags.locks.indexOf('reports') >= 0) { reportsOff(); return; }
     if (S.scope === 'me' && ownOff()) { reportsOff('Attendance is switched off for your account, so there is no attendance report for you. Please ask your admin.'); return; }
     show(el.controls, true); showMsg('');
@@ -459,6 +463,66 @@
       backToReports();
     } else { showMsg(S.notice, true); S.notice = ''; }
   }
+  /* ---------- The Leave applications menu (leave.js) ---------- */
+  var leaveP = null;
+  function closeWin() { try { if (el.dlg.open) el.dlg.close(); } catch (e) { /* not open */ } }
+  function leaveAllowed() { return !!(leaveP && S.flags.isManager && S.flags.locks.indexOf('team') < 0); }     // the server refuses it too, for a person with no team or a locked Team menu
+  function buildLeave() {
+    clear(el.leaveItems);
+    show(el.leaveNav, leaveAllowed());
+    if (!leaveAllowed()) return;
+    var v = leaveP.view;
+    var b = h('button', { type: 'button', class: 'mi', 'data-leave': v.id, 'aria-pressed': S.view === 'leave' ? 'true' : 'false' }, [icon(v.icon), h('span', { text: v.label })]);
+    b.addEventListener('click', function () {
+      closeNav(true);
+      if (S.view === 'leave') return;
+      $$('.mi', el.menu).forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      slidePill(b, true); showLeave();
+    });
+    el.leaveItems.appendChild(b);
+    requestAnimationFrame(resetPill);
+  }
+  function showLeave() {
+    S.view = 'leave'; S.req++;                                 // a report that is still on its way is thrown away
+    if (admin) admin.leave(); show(el.adminView, false); closeWin();
+    el.show.disabled = false; el.refresh.disabled = false;
+    show(el.controls, false); show(el.report, false); showMsg('');
+    show(el.leaveView, true);
+    leaveP.show();
+  }
+  // How many applications wait for a decision: a small number on the menu item.
+  function leaveBadge(n) {
+    if (!S.token) return;
+    var b = $('.mi[data-leave]', el.leaveItems);
+    if (!b) return;
+    var old = $('.bdg', b); if (old) b.removeChild(old);
+    n = Number(n) || 0;
+    b.setAttribute('aria-label', n > 0 ? 'Leave applications, ' + n + ' waiting' : 'Leave applications');
+    if (n > 0) b.appendChild(h('b', { class: 'bdg', 'aria-hidden': 'true', text: n > 99 ? '99+' : String(n) }));
+  }
+  // The server says this page is not for the person (any more): take the menu item away and go back to the reports.
+  function leaveLost(message, locks) {
+    if (Array.isArray(locks)) S.flags.locks = locks;
+    if (/line managers/.test(String(message))) { S.flags.isManager = false; if (S.scope === 'team') S.scope = 'me'; buildScopes(); }
+    saveSession();
+    var was = S.view === 'leave';
+    S.notice = message || 'Leave applications are not available for you.';
+    buildLeave();
+    if (was) {
+      var sel = null;
+      $$('.mi', el.menu).forEach(function (x) { var on = x.getAttribute('data-scope') === S.scope; x.setAttribute('aria-pressed', on ? 'true' : 'false'); if (on) sel = x; });
+      if (sel) slidePill(sel, true);
+      backToReports();
+    } else { showMsg(S.notice, true); S.notice = ''; }
+  }
+  if (typeof window.SBLeaveFactory === 'function') {
+    leaveP = window.SBLeaveFactory({
+      h: h, clear: clear, api: api, toast: toast, el: el, host: el.leaveView, icon: icon, initials: initials, openDlg: openDlg,
+      msg: showMsg, ended: function () { if (S.token) sessionEnded(); }, lost: function (m, l) { if (S.token) leaveLost(m, l); }, rise: rise, badge: leaveBadge,
+      head: function (title, sub, docTitle) { setTitle(docTitle); el.sub.textContent = sub || ''; document.title = docTitle + ' · SAM BOND Reports'; }
+    });
+  }
+
   if (typeof window.SBAdminFactory === 'function') {
     admin = window.SBAdminFactory({
       h: h, clear: clear, api: api, toast: toast, el: el, host: el.adminView, icon: icon, initials: initials,
@@ -474,7 +538,7 @@
     else { if (S.data) { el.from.max = S.data.today; el.to.max = S.data.today; if (!el.from.value) el.from.value = S.data.from; if (!el.to.value) el.to.value = S.data.to; } el.from.focus(); }
   });
   el.controls.addEventListener('submit', function (ev) { ev.preventDefault(); load(); });
-  el.refresh.addEventListener('click', function () { if (S.view === 'admin' && admin) admin.refresh(); else load(); });
+  el.refresh.addEventListener('click', function () { if (S.view === 'admin' && admin) admin.refresh(); else if (S.view === 'leave' && leaveP) leaveP.refresh(); else load(); });
 
   function load() {
     var id = ++S.req;
